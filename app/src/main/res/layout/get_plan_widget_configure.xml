@@ -4,72 +4,77 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:id="@+id/main"
-    android:padding="16dp">
-
-    <EditText
-        android:id="@+id/password_input"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:ems="10"
-        android:hint="Example_password123"
-        android:inputType="text"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/password_label" />
-
-    <TextView
-        android:id="@+id/password_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="40dp"
-        android:text="Пароль"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/login_input" />
+    android:background="@color/bg_dark">
 
     <TextView
         android:id="@+id/title_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        style="@style/label"
+        android:layout_marginTop="20dp"
         android:text="Данные для входа"
-        android:textStyle="bold"
         android:textSize="24sp"
+        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <TextView
+        android:id="@+id/login_label"
+        style="@style/label"
+        android:layout_marginTop="60dp"
+        android:text="Почта"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/title_label" />
+
     <EditText
         android:id="@+id/login_input"
+        android:autofillHints="email"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        style="@style/input"
         android:ems="10"
-        android:hint="example@gmail.com"
-        android:inputType="text"
+        android:padding="8dp"
+        android:layout_marginTop="12dp"
+        android:hint="@string/login_hint"
+        
+        android:inputType="textEmailAddress"
+        android:textAlignment="textStart"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/login_label" />
 
     <TextView
-        android:id="@+id/login_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="60dp"
-        android:text="Почта"
+        android:id="@+id/password_label"
+        style="@style/label"
+        android:layout_marginTop="40dp"
+        android:text="Пароль"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/title_label" />
+        app:layout_constraintTop_toBottomOf="@+id/login_input" />
 
-    <Button
-        android:id="@+id/confirm_button"
-        android:layout_width="wrap_content"
+    <EditText
+        android:id="@+id/password_input"
+        android:autofillHints="password"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        style="@style/input"
+        android:ems="10"
+        android:padding="8dp"
+        android:textAlignment="textStart"
+        android:hint="My_password123"
+        android:inputType="text"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/password_label" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/confirm_button"
         android:layout_marginTop="60dp"
-        android:backgroundTint="#0000DC"
-        android:textColor="#C8C8C8"
+        style="@style/button"
+        android:layout_width="183dp"
+        android:layout_height="57dp"
         android:text="Подтвердить"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

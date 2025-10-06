@@ -2,8 +2,25 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="light_blue_50">#FFE1F5FE</color>
-    <color name="light_blue_200">#FF81D4FA</color>
-    <color name="light_blue_600">#FF039BE5</color>
-    <color name="light_blue_900">#FF01579B</color>
+    <color name="bg_dark">#14161C</color>
+    <color name="bg_light">#E6E6FF</color>
+    <color name="text_light">#353535</color>
+    <color name="text_dark">#B8C0E7</color>
+    <color name="btn_bg">#1700E4</color>
+    <color name="input_bg_dark">#1F232C</color>
+    <color name="input_bg_light">#F4F4FF</color>
+    <color name="input_bg_autofilled_dark">#2B001EFF</color>
+    <color name="input_border_dark">#2B313C</color>
+    <color name="input_border_light">#84A0D3</color>
+    <color name="input_border_active_dark">#5E76AF</color>
+    <color name="input_border_active_light">#3050FF</color>
+    <color name="input_hint_dark">#40414E</color>
+    <color name="input_hint_light">#838383</color>
+    <color name="input_border_ok_dark">#379729</color>
+    <color name="input_border_ok_light">#30FF37</color>
+    <color name="input_border_error_dark">#972929</color>
+    <color name="input_border_error_light">#FF3030</color>
+    <color name="widget_icon">#3075FF </color>
+    <color name="widget_ripple">#4D4D4D</color>
+    <color name="widget_button_bg">#2F2F2F</color>
 </resources>
