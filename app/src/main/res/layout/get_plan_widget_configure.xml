@@ -69,14 +69,41 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/password_label" />
 
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:indeterminateTint="@color/text_dark"
+        android:indeterminateTintMode="src_atop"
+        android:indeterminate="true"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/password_input" />
+
+    <TextView
+        android:id="@+id/error_label"
+        style="@style/label"
+        android:layout_height="24dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:text="TextView"
+        android:visibility="gone"
+        app:layout_constraintStart_toEndOf="@+id/progress_bar"
+        app:layout_constraintTop_toBottomOf="@+id/password_input" />
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/confirm_button"
-        android:layout_marginTop="60dp"
         style="@style/button"
         android:layout_width="183dp"
         android:layout_height="57dp"
+        android:layout_marginTop="80dp"
         android:text="Подтвердить"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/password_input" />
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>

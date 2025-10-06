@@ -18,7 +18,7 @@
     <color name="input_hint_light">#838383</color>
     <color name="input_border_ok_dark">#379729</color>
     <color name="input_border_ok_light">#30FF37</color>
-    <color name="input_border_error_dark">#972929</color>
+    <color name="input_border_error_dark">#D51313</color>
     <color name="input_border_error_light">#FF3030</color>
     <color name="widget_icon">#3075FF </color>
     <color name="widget_ripple">#4D4D4D</color>

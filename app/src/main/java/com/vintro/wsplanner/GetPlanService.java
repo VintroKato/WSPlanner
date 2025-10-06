@@ -74,46 +74,9 @@ public class GetPlanService extends JobIntentService {
     }
 
     private ResponseBody downloadFile(Intent intent) {
-
-        Map<String, List<Cookie>> cookieStore = new HashMap<>();
-
-        OkHttpClient client = new OkHttpClient.Builder()
-                .cookieJar(new CookieJar() {
-                    @Override
-                    public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
-                        cookieStore.put(url.host(), cookies);
-                    }
-
-                    @Override
-                    public List<Cookie> loadForRequest(HttpUrl url) {
-                        List<Cookie> cookies = cookieStore.get(url.host());
-                        return cookies != null ? cookies : List.of();
-                    }
-                })
-                .build();
-
-        int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
-        String login = Utils.getLoginPref(this, widgetId);
-        String password = Utils.getPasswordPref(this, widgetId);
-
-        RequestBody formBody = new FormBody.Builder()
-                .add("username", login)
-                .add("password", password)
-                .build();
-
-        Request loginRequest = new Request.Builder()
-                .url(Utils.loginUrl)
-                .post(formBody)
-                .build();
-
-        try (Response loginResponse = client.newCall(loginRequest).execute()) {
-            Log.d("GetPlanService", "Loginning, answer: " + loginResponse.toString());
-            if (!loginResponse.isSuccessful()) {
-                Log.e("GetPlanService", "Loginning error: " + loginResponse.code());
-                return null;
-            }
-        } catch (Exception e) {
-            Log.e("GetPlanService", "Loginning error: " + e.getMessage());
+        OkHttpClient client = Utils.login(intent, this);
+        if (client == null) {
+            Log.e("GetPlanService", "Downloading file error: got null from Utils.login, intent: " + intent);
             return null;
         }
 
