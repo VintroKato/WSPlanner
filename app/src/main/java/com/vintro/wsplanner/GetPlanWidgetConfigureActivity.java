@@ -44,6 +44,8 @@ public class GetPlanWidgetConfigureActivity extends Activity {
             return insets;
         });
 
+        Logger.init(this);
+
         setResult(RESULT_CANCELED);
 
         loginInput = findViewById(R.id.login_input);
@@ -159,13 +161,13 @@ public class GetPlanWidgetConfigureActivity extends Activity {
 
         new Thread(() -> {
             int result = Utils.checkLogin(login, password);
-            Log.d("ConfigActivity.checkData", "Checking data in thread, result: " + result);
+            Logger.d("ConfigActivity.checkData", "Checking data in thread, result: " + result);
 
 
             runOnUiThread(() -> {
-                Log.d("ConfigActivity.checkData", "Checking data in UI thread, result: " + result);
+                Logger.d("ConfigActivity.checkData", "Checking data in UI thread, result: " + result);
                 if (result == -1) {
-                    Log.e("ConfigActivity.checkData", "Got -1 from checkLogin");
+                    Logger.e("ConfigActivity.checkData", "Got -1 from checkLogin");
                     Toast.makeText(this, "Произошла ошибка, обратитесь к разрабу", Toast.LENGTH_SHORT).show();
                 } else if (result == 0) {
                     setError();
@@ -179,7 +181,7 @@ public class GetPlanWidgetConfigureActivity extends Activity {
                     errorLabel.setTextColor(getResources().getColor(R.color.input_border_ok_dark));
                 } else {
                     Toast.makeText(this, "Произошла совершенно непонятная ошибка, которая физически не могла случиться, обратитесь к разрабу", Toast.LENGTH_LONG).show();
-                    Log.wtf("ConfigActivity.checkData", "Got strange result from checkLogin: " + result);
+                    Logger.wtf("ConfigActivity.checkData", "Got strange result from checkLogin: " + result);
                 }
             });
         }).start();

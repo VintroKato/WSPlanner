@@ -36,15 +36,17 @@ public class GetPlanService extends JobIntentService {
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.d("GetPlanService", "GetPlanService started");
+        Logger.init(this);
+        Logger.d("GetPlanService", "GetPlanService started");
+
     }
 
     @Override
     protected void onHandleWork(Intent intent) {
-        Log.d("GetPlanService", "GetPlanService.onHandleWork, intent: " + intent);
+        Logger.d("GetPlanService", "GetPlanService.onHandleWork, intent: " + intent);
 
         if (!isNetworkAvailable()) {
-            Log.w("GetPlanService", "No network connection");
+            Logger.w("GetPlanService", "No network connection");
             endService();
             return;
         }
@@ -68,7 +70,7 @@ public class GetPlanService extends JobIntentService {
 
 
         } catch (Exception e) {
-            Log.e("GetPlanService", "Error: " + e.getMessage());
+            Logger.e("GetPlanService", "Error: " + e.getMessage());
         }
         endService();
     }
@@ -76,7 +78,7 @@ public class GetPlanService extends JobIntentService {
     private ResponseBody downloadFile(Intent intent) {
         OkHttpClient client = Utils.login(intent, this);
         if (client == null) {
-            Log.e("GetPlanService", "Downloading file error: got null from Utils.login, intent: " + intent);
+            Logger.e("GetPlanService", "Downloading file error: got null from Utils.login, intent: " + intent);
             return null;
         }
 
@@ -88,7 +90,7 @@ public class GetPlanService extends JobIntentService {
             Response fileResponse = client.newCall(fileRequest).execute();
 
             if (!fileResponse.isSuccessful()) {
-                Log.e("GetPlanService", "Downloading error: " + fileResponse.code());
+                Logger.e("GetPlanService", "Downloading error: " + fileResponse.code());
                 fileResponse.close();
                 return null;
             }
@@ -96,16 +98,16 @@ public class GetPlanService extends JobIntentService {
             ResponseBody file = fileResponse.body();
 
             if (file == null || file.contentLength() == 0) {
-                Log.e("GetPlanService", "File body is null");
+                Logger.e("GetPlanService", "File body is null");
                 fileResponse.close();
                 return null;
             }
 
-            Log.d("GetPlanService", "File downloaded, size: " + file.contentLength());
+            Logger.d("GetPlanService", "File downloaded, size: " + file.contentLength());
             return file;
 
         } catch (Exception e) {
-            Log.e("GetPlanService", "Downloading error: " + e.getMessage());
+            Logger.e("GetPlanService", "Downloading error: " + e.getMessage());
             return null;
         }
     }
@@ -121,27 +123,27 @@ public class GetPlanService extends JobIntentService {
                 out.write(buffer, 0, bytesRead);
             }
         } catch (Exception e) {
-            Log.e("GetPlanService", "Error saving file: " + e.getMessage());
+            Logger.e("GetPlanService", "Error saving file: " + e.getMessage());
             return null;
         }
 
-        Log.d("GetPlanService", "File saved: " + outputFile.getAbsolutePath());
+        Logger.d("GetPlanService", "File saved: " + outputFile.getAbsolutePath());
         return outputFile;
     }
 
     private void openFile(File outputFile) {
         try {
             Uri localUri = FileProvider.getUriForFile(this, getPackageName() + ".provider", outputFile);
-            Log.d("GetPlanService", "File uri: " + localUri);
+            Logger.d("GetPlanService", "File uri: " + localUri);
 
             Intent i = new Intent(Intent.ACTION_VIEW);
             i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             i.setDataAndType(localUri, getContentResolver().getType(localUri));
             startActivity(i);
-            Log.d("GetPlanService", "File opened");
+            Logger.d("GetPlanService", "File opened");
         } catch (Exception e) {
-            Log.e("GetPlanService", "Error opening file: " + e.getMessage());
+            Logger.e("GetPlanService", "Error opening file: " + e.getMessage());
         }
     }
 
@@ -158,7 +160,7 @@ public class GetPlanService extends JobIntentService {
 
     private void endService() {
         updateWidget(false);
-        Log.d("GetPlanService", "Ending service");
+        Logger.d("GetPlanService", "Ending service");
     }
 
     private boolean isNetworkAvailable() {
