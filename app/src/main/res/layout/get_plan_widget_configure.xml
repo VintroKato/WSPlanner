@@ -30,10 +30,10 @@
         android:id="@+id/login_input"
         android:autofillHints="email"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         style="@style/input"
         android:ems="10"
-        android:padding="8dp"
+        android:paddingHorizontal="8dp"
         android:layout_marginTop="12dp"
         android:hint="@string/login_hint"
         
@@ -51,16 +51,16 @@
         android:text="Пароль"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/login_input" />
-
+    
     <EditText
         android:id="@+id/password_input"
         android:autofillHints="password"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:layout_marginTop="12dp"
         style="@style/input"
         android:ems="10"
-        android:padding="8dp"
+        android:paddingHorizontal="8dp"
         android:textAlignment="textStart"
         android:hint="My_password123"
         android:inputType="text"
@@ -94,16 +94,77 @@
         app:layout_constraintStart_toEndOf="@+id/progress_bar"
         app:layout_constraintTop_toBottomOf="@+id/password_input" />
 
+    <TextView
+        android:id="@+id/course_label"
+        style="@style/label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="40dp"
+        android:text="Курс"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/error_label" />
+
+    <GridLayout
+        android:id="@+id/course_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="0dp"
+        android:columnCount="4"
+        android:rowCount="1"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/course_label">
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/course_card_1"
+            style="@style/course_card"
+            >
+
+            <TextView
+                style="@style/course_card_text"
+                android:text="1" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/course_card_2"
+            style="@style/course_card">
+
+            <TextView
+                style="@style/course_card_text"
+                android:text="2" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/course_card_3"
+            style="@style/course_card">
+
+            <TextView
+                style="@style/course_card_text"
+                android:text="3" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/course_card_4"
+            style="@style/course_card">
+
+            <TextView
+                style="@style/course_card_text"
+                android:text="4" />
+        </com.google.android.material.card.MaterialCardView>
+
+    </GridLayout>
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/confirm_button"
         style="@style/button"
         android:layout_width="183dp"
         android:layout_height="57dp"
-        android:layout_marginTop="80dp"
         android:text="Подтвердить"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/password_input" />
+        app:layout_constraintTop_toBottomOf="@+id/course_layout" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

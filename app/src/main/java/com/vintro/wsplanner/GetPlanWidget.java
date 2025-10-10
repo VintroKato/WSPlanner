@@ -5,28 +5,16 @@ import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
 import android.widget.RemoteViews;
 
 public class GetPlanWidget extends AppWidgetProvider {
 
     static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         Logger.init(context);
-        Intent intent = new Intent(context, GetPlanWidget.class);
-        intent.setAction("com.vintro.wsplanner.ACTION_CLICK");
-        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-        Logger.d("GetPlanWidget.updateAppWidget()", "Intent created: " + intent);
-
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                context,
-                appWidgetId,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-        Logger.d("GetPlanWidget.updateAppWidget()", "PendingIntent created: " + pendingIntent);
+        PendingIntent pendingIntent = GetPlanWidget.createPendingIntent(context, appWidgetId);
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.get_plan_widget);
-        views.setImageViewResource(R.id.widget_download_button, R.drawable.baseline_download_24);
+        views.setImageViewResource(R.id.widget_download_button, R.drawable.icon_download);
         views.setOnClickPendingIntent(R.id.widget_download_button, pendingIntent);
         Logger.d("GetPlanWidget.updateAppWidget()", "onClick set");
 
@@ -41,6 +29,24 @@ public class GetPlanWidget extends AppWidgetProvider {
         for (int appWidgetId : appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId);
         }
+    }
+
+    public static PendingIntent createPendingIntent(Context context, int appWidgetId) {
+        Intent intent = new Intent(context, GetPlanWidget.class);
+        intent.setAction("com.vintro.wsplanner.ACTION_CLICK");
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+        Logger.d("GetPlanWidget.createPendingIntent()", "Intent created: " + intent);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context,
+                appWidgetId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        Logger.d("GetPlanWidget.createPendingIntent()", "PendingIntent created: " + pendingIntent);
+
+        return pendingIntent;
     }
 
     @Override

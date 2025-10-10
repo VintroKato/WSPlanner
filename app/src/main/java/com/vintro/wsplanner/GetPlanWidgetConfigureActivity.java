@@ -1,38 +1,58 @@
 package com.vintro.wsplanner;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ArgbEvaluator;
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.appwidget.AppWidgetManager;
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
+import android.content.res.Resources;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.GridLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.ComponentActivity;
-import androidx.activity.EdgeToEdge;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.transition.ChangeBounds;
+import androidx.transition.Transition;
+import androidx.transition.TransitionManager;
 
-import com.vintro.wsplanner.databinding.GetPlanWidgetConfigureBinding;
+import com.google.android.material.card.MaterialCardView;
 
 
 public class GetPlanWidgetConfigureActivity extends Activity {
+    ConstraintLayout layout;
     EditText loginInput;
     EditText passwordInput;
     ProgressBar progressBar;
     TextView errorLabel;
+    MaterialCardView courseCard1, courseCard2, courseCard3, courseCard4;
     Button confirmButton;
+    Handler handler = new Handler(Looper.getMainLooper());
+    Resources res;
+
+    enum InputState {
+        NORMAL,
+        OK,
+        ERROR
+    }
+
+    private InputState loginInputState = InputState.NORMAL;
+    private InputState passwordInputState = InputState.NORMAL;
+    private int course = 3;
 
     @Override
     public void onCreate(Bundle icicle) {
@@ -46,118 +66,148 @@ public class GetPlanWidgetConfigureActivity extends Activity {
 
         Logger.init(this);
 
+        res = getResources();
+
         setResult(RESULT_CANCELED);
+
+        layout = findViewById(R.id.main);
 
         loginInput = findViewById(R.id.login_input);
         passwordInput = findViewById(R.id.password_input);
         progressBar = findViewById(R.id.progress_bar);
         errorLabel = findViewById(R.id.error_label);
+        courseCard1 = findViewById(R.id.course_card_1);
+        courseCard2 = findViewById(R.id.course_card_2);
+        courseCard3 = findViewById(R.id.course_card_3);
+        courseCard4 = findViewById(R.id.course_card_4);
         confirmButton = findViewById(R.id.confirm_button);
 
-        Utils.animateAlpha(confirmButton, 0.7f);
+        selectCard(courseCard3, course);
+
         confirmButton.setEnabled(false);
+        Utils.animateAlpha(confirmButton, 0.7f);
 
-        confirmButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String login = loginInput.getText().toString();
-                String password = passwordInput.getText().toString();
+        confirmButton.setOnClickListener(v -> handleBtnClick(v));
 
-                int widgetId;
+        loginInput.addTextChangedListener(onChangeHandler(loginInput, this::updateLoginState));
 
-                Intent intent = getIntent();
-                Bundle extras = intent.getExtras();
+        passwordInput.addTextChangedListener(onChangeHandler(passwordInput, this::updatePasswordState));
 
-                if (extras == null) {
-                    finishAndRemoveTask();
-                    return;
-                }
+        loginInput.setOnFocusChangeListener((v, hasFocus) -> updateInputBackgrounds());
+        passwordInput.setOnFocusChangeListener((v, hasFocus) -> updateInputBackgrounds());
 
-                widgetId = extras.getInt(
-                        AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
+        courseCard1.setOnClickListener(v -> selectCard(courseCard1, 1));
+        courseCard2.setOnClickListener(v -> selectCard(courseCard2, 2));
+        courseCard3.setOnClickListener(v -> selectCard(courseCard3, 3));
+        courseCard4.setOnClickListener(v -> selectCard(courseCard4, 4));
+    }
 
-                if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-                    finishAndRemoveTask();
-                    return;
-                }
+    private void updateLoginState() {
+        boolean isEmpty = loginInput.getText().toString().isBlank();
+        setLoginState(isEmpty ? InputState.ERROR : InputState.NORMAL);
+    }
 
-                Utils.savePrefs(GetPlanWidgetConfigureActivity.this, widgetId, login, password);
+    private void updatePasswordState() {
+        boolean isEmpty = passwordInput.getText().toString().isBlank();
+        setPasswordState(isEmpty ? InputState.ERROR : InputState.NORMAL);
+    }
 
-                Intent resultValue = new Intent();
-                resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
+    private void updateInputBackgrounds() {
+        Utils.animateInputBackground(this, loginInput, loginInputState, loginInputState);
+        Utils.animateInputBackground(this, passwordInput, passwordInputState, passwordInputState);
+    }
 
-                AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(GetPlanWidgetConfigureActivity.this);
-                GetPlanWidget.updateAppWidget(GetPlanWidgetConfigureActivity.this, appWidgetManager, widgetId);
+    private void handleBtnClick(View v) {
+        String login = loginInput.getText().toString();
+        String password = passwordInput.getText().toString();
 
-                setResult(RESULT_OK, resultValue);
-                finishAndRemoveTask();
-            }
-        });
+        int widgetId;
 
-        Handler handler = new Handler(Looper.getMainLooper());
+        Intent intent = getIntent();
+        Bundle extras = intent.getExtras();
 
-        loginInput.addTextChangedListener(new TextWatcher() {
+        if (extras == null) {
+            finishAndRemoveTask();
+            return;
+        }
+
+        widgetId = extras.getInt(
+                AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
+
+        if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
+            finishAndRemoveTask();
+            return;
+        }
+
+        Utils.savePrefs(GetPlanWidgetConfigureActivity.this, widgetId, login, password, course);
+
+        Intent resultValue = new Intent();
+        resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
+
+        AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(GetPlanWidgetConfigureActivity.this);
+        GetPlanWidget.updateAppWidget(GetPlanWidgetConfigureActivity.this, appWidgetManager, widgetId);
+
+        setResult(RESULT_OK, resultValue);
+        finishAndRemoveTask();
+    }
+
+    private TextWatcher onChangeHandler(EditText input, Runnable stateUpdater) {
+        return new TextWatcher() {
             @Override
             public void afterTextChanged(Editable editable) {
-                resetFields();
+                setConfirmButtonEnabled(false);
                 handler.removeCallbacksAndMessages(null);
-                if (editable.length() == 0) {
-                    Utils.animateAlpha(confirmButton, 0.7f);
-                    confirmButton.setEnabled(false);
-                    loginInput.setBackgroundResource(R.drawable.shape_input_error);
-                } else {
+                resetFields();
+                stateUpdater.run();
+
+                if (!editable.toString().isBlank()) {
                     handler.postDelayed(() -> checkData(), 500);
                 }
             }
 
             @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-        });
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+        };
+    }
 
-        passwordInput.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void afterTextChanged(Editable editable) {
-                resetFields();
-                handler.removeCallbacksAndMessages(null);
-                if (editable.length() == 0) {
-                    passwordInput.setBackgroundResource(R.drawable.shape_input_error);
-                } else {
-                    handler.postDelayed(() -> checkData(), 500);
-                }
-            }
+    private void selectCard(MaterialCardView selectedCard, int newCourse) {
+        course = newCourse;
 
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
+        GridLayout cardLayout = (GridLayout) selectedCard.getParent();
 
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+        if (selectedCard.isChecked()) {
+            return;
+        }
+
+        for (int i = 0; i < cardLayout.getChildCount(); i++) {
+            MaterialCardView card = (MaterialCardView) cardLayout.getChildAt(i);
+            if (card != selectedCard) {
+                Utils.animateCardSelection(this, card, false);
             }
-        });
+        }
+
+        Utils.animateCardSelection(this, selectedCard, true);
     }
 
     private void checkData() {
-        confirmButton.setEnabled(false);
-        Utils.animateAlpha(confirmButton, 0.5f);
+        setConfirmButtonEnabled(false);
 
         String login = loginInput.getText().toString();
         String password = passwordInput.getText().toString();
 
-        if (login.length() == 0 || password.length() == 0) {
+        if (login.isBlank() || password.isBlank()) {
             return;
         }
 
         resetFields();
+
         progressBar.setVisibility(View.VISIBLE);
         errorLabel.setVisibility(View.VISIBLE);
         errorLabel.setText("Проверка данных");
-        errorLabel.setTextColor(getResources().getColor(R.color.text_dark));
-
+        errorLabel.setTextColor(res.getColor(R.color.text_dark));
 
         new Thread(() -> {
             int result = Utils.checkLogin(login, password);
@@ -170,15 +220,9 @@ public class GetPlanWidgetConfigureActivity extends Activity {
                     Logger.e("ConfigActivity.checkData", "Got -1 from checkLogin");
                     Toast.makeText(this, "Произошла ошибка, обратитесь к разрабу", Toast.LENGTH_SHORT).show();
                 } else if (result == 0) {
-                    setError();
+                    setCheckingError();
                 } else if (result == 1) {
-                    confirmButton.setEnabled(true);
-                    Utils.animateAlpha(confirmButton, 1f);
-                    loginInput.setBackgroundResource(R.drawable.shape_input_ok);
-                    passwordInput.setBackgroundResource(R.drawable.shape_input_ok);
-                    progressBar.setVisibility(View.GONE);
-                    errorLabel.setText("Данные верны");
-                    errorLabel.setTextColor(getResources().getColor(R.color.input_border_ok_dark));
+                    setCheckingOk();
                 } else {
                     Toast.makeText(this, "Произошла совершенно непонятная ошибка, которая физически не могла случиться, обратитесь к разрабу", Toast.LENGTH_LONG).show();
                     Logger.wtf("ConfigActivity.checkData", "Got strange result from checkLogin: " + result);
@@ -187,25 +231,129 @@ public class GetPlanWidgetConfigureActivity extends Activity {
         }).start();
     }
 
-    private void setError() {
+    private void setCheckingOk() {
+        setConfirmButtonEnabled(true);
+
+        setLoginState(InputState.OK);
+        setPasswordState(InputState.OK);
+
         progressBar.setVisibility(View.GONE);
+        errorLabel.setText("Данные верны");
+        errorLabel.setTextColor(res.getColor(R.color.input_border_ok_dark));
+    }
+
+    private void setCheckingError() {
+        progressBar.setVisibility(View.GONE);
+
         errorLabel.setText("Неверный логин или пароль");
-        errorLabel.setTextColor(getResources().getColor(R.color.input_border_error_dark));
-        loginInput.setBackgroundResource(R.drawable.shape_input_error);
-        passwordInput.setBackgroundResource(R.drawable.shape_input_error);
+        errorLabel.setTextColor(res.getColor(R.color.input_border_error_dark));
+
+        setLoginState(InputState.ERROR);
+        setPasswordState(InputState.ERROR);
     }
 
     private void resetFields() {
-        confirmButton.setEnabled(false);
-        Utils.animateAlpha(confirmButton, 0.5f);
+        Transition transition = new ChangeBounds();
+        transition.excludeTarget(errorLabel, true);
+        transition.excludeTarget(progressBar, true);
+        transition.setDuration(200);
+        TransitionManager.beginDelayedTransition(layout, transition);
+
         progressBar.setVisibility(View.GONE);
         errorLabel.setVisibility(View.GONE);
-        passwordInput.setBackgroundResource(passwordInput.isFocused() ?
-                R.drawable.shape_input_focused :
-                R.drawable.shape_input_default);
-        loginInput.setBackgroundResource(loginInput.isFocused() ?
-                R.drawable.shape_input_focused :
-                R.drawable.shape_input_default);
+
+        setLoginState(InputState.NORMAL);
+        setPasswordState(InputState.NORMAL);
     }
 
+//    private void setInputBackground(EditText input, InputState state, InputState startState) {
+//        GradientDrawable drawable = (GradientDrawable) input.getBackground().mutate();
+//
+//        int startBg = drawable.getColor().getDefaultColor();
+//
+//        int startBorder;
+//        switch (startState) {
+//            case NORMAL:
+//                startBorder = startBg == res.getColor(R.color.card_checked_background_dark) ?
+//                        res.getColor(R.color.input_border_active_dark) :
+//                        res.getColor(R.color.input_border_dark);
+//                break;
+//            case OK:
+//                startBorder = res.getColor(R.color.input_border_ok_dark);
+//                break;
+//            case ERROR:
+//                startBorder = res.getColor(R.color.input_border_error_dark);
+//                break;
+//            default:
+//                Logger.wtf("ConfigActivity.setInputBackground", "Unknown start state: " + state);
+//                Toast.makeText(this, "Unknown start state: " + state, Toast.LENGTH_SHORT).show();
+//                return;
+//        }
+//
+//        int endBg = input.isFocused() ?
+//                res.getColor(R.color.card_checked_background_dark) :
+//                res.getColor(R.color.input_bg_dark);
+//
+//        int endBorder;
+//        switch (state) {
+//            case NORMAL:
+//                endBorder = input.isFocused() ?
+//                        res.getColor(R.color.input_border_active_dark) :
+//                        res.getColor(R.color.input_border_dark);
+//                break;
+//            case OK:
+//                endBorder = res.getColor(R.color.input_border_ok_dark);
+//                break;
+//            case ERROR:
+//                endBorder = res.getColor(R.color.input_border_error_dark);
+//                break;
+//            default:
+//                Logger.wtf("ConfigActivity.setInputBackground", "Unknown state: " + state);
+//                Toast.makeText(this, "Unknown state: " + state, Toast.LENGTH_SHORT).show();
+//                return;
+//        }
+//
+//        if (startBg == endBg && startBorder == endBorder) {
+//            return;
+//        }
+//
+//        ValueAnimator bgAnim = ValueAnimator.ofObject(
+//                new ArgbEvaluator(),
+//                startBg,
+//                endBg
+//        );
+//        bgAnim.addUpdateListener(animator ->
+//                drawable.setColor((int) animator.getAnimatedValue())
+//        );
+//
+//        ValueAnimator borderAnim = ValueAnimator.ofObject(
+//                new ArgbEvaluator(),
+//                startBorder,
+//                endBorder
+//        );
+//        int borderWidth = (int) (2 * res.getDisplayMetrics().density);
+//        borderAnim.addUpdateListener(animator ->
+//                drawable.setStroke(borderWidth, (int) animator.getAnimatedValue())
+//        );
+//
+//        bgAnim.setDuration(300);
+//        borderAnim.setDuration(300);
+//        bgAnim.start();
+//        borderAnim.start();
+//    }
+
+    private void setLoginState(InputState state) {
+        Utils.animateInputBackground(this, loginInput, state, loginInputState);
+        loginInputState = state;
+    }
+
+    private void setPasswordState(InputState state) {
+        Utils.animateInputBackground(this, passwordInput, state, passwordInputState);
+        passwordInputState = state;
+    }
+
+    private void setConfirmButtonEnabled(boolean enabled) {
+        confirmButton.setEnabled(enabled);
+        Utils.animateAlpha(confirmButton, enabled ? 1f : 0.5f);
+    }
 }
