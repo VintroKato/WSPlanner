@@ -1,15 +1,14 @@
 package com.vintro.wsplanner;
 
+import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.Uri;
-import android.util.Log;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -21,11 +20,9 @@ import okhttp3.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class GetPlanService extends JobIntentService {
+    private Intent workIntent;
     public GetPlanService() {
     }
 
@@ -43,7 +40,9 @@ public class GetPlanService extends JobIntentService {
 
     @Override
     protected void onHandleWork(Intent intent) {
-        Logger.d("GetPlanService", "GetPlanService.onHandleWork, intent: " + intent);
+        Logger.d("GetPlanService", "GetPlanService.onHandleWork, course: " + Utils.getCoursePref(this, intent) + ", intent: " + intent);
+
+        workIntent = intent;
 
         if (!isNetworkAvailable()) {
             Logger.w("GetPlanService", "No network connection");
@@ -54,7 +53,7 @@ public class GetPlanService extends JobIntentService {
         updateWidget(true);
 
         try {
-            ResponseBody fileResponse = downloadFile(intent);
+            ResponseBody fileResponse = downloadFile();
             if (fileResponse == null) {
                 endService();
                 return;
@@ -75,18 +74,20 @@ public class GetPlanService extends JobIntentService {
         endService();
     }
 
-    private ResponseBody downloadFile(Intent intent) {
-        OkHttpClient client = Utils.login(intent, this);
+    private ResponseBody downloadFile() {
+        OkHttpClient client = Utils.login(workIntent, this);
         if (client == null) {
-            Logger.e("GetPlanService", "Downloading file error: got null from Utils.login, intent: " + intent);
+            Logger.e("GetPlanService", "Downloading file error: got null from Utils.login, intent: " + workIntent);
             return null;
         }
 
+        String fileUrl = Utils.getFileUrl(this, workIntent);
         Request fileRequest = new Request.Builder()
-                .url(Utils.fileUrl)
+                .url(fileUrl)
                 .build();
 
         try {
+            Logger.d("GetPlanService", "Downloading file: " + fileUrl);
             Response fileResponse = client.newCall(fileRequest).execute();
 
             if (!fileResponse.isSuccessful()) {
@@ -113,7 +114,7 @@ public class GetPlanService extends JobIntentService {
     }
 
     private File saveToCache(ResponseBody fileResponse) {
-        File outputFile = new File(getCacheDir(), Utils.outputFileName);
+        File outputFile = new File(getCacheDir(), Utils.outputFileName + Utils.getCoursePref(this, workIntent) + ".xlsx");
         try (InputStream in = fileResponse.byteStream();
              FileOutputStream out = new FileOutputStream(outputFile)
         ) {
@@ -153,6 +154,13 @@ public class GetPlanService extends JobIntentService {
 
         views.setViewVisibility(R.id.widget_progress_bar, loading ? View.VISIBLE : View.GONE);
         views.setBoolean(R.id.widget_download_button, "setEnabled", !loading);
+
+        int appWidgetId = workIntent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
+
+        PendingIntent pendingIntent = GetPlanWidget.createPendingIntent(this, appWidgetId);
+
+        views.setImageViewResource(R.id.widget_download_button, R.drawable.icon_download);
+        views.setOnClickPendingIntent(R.id.widget_download_button, pendingIntent);
 
         ComponentName widget = new ComponentName(this, GetPlanWidget.class);
         appWidgetManager.updateAppWidget(widget, views);

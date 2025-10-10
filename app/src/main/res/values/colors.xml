@@ -23,4 +23,6 @@
     <color name="widget_icon">#3075FF </color>
     <color name="widget_ripple">#4D4D4D</color>
     <color name="widget_button_bg">#2F2F2F</color>
+    <color name="card_checked_background_light">#D8D8FB</color>
+    <color name="card_checked_background_dark">#313140</color>
 </resources>

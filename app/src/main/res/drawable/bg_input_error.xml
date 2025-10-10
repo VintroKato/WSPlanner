@@ -3,6 +3,6 @@
     android:enterFadeDuration="500"
     android:exitFadeDuration="500">
 
-    <item android:state_focused="true" android:drawable="@drawable/shape_input_focused"/>
-    <item android:drawable="@drawable/shape_input_default"/>
+    <item android:state_focused="true" android:drawable="@drawable/shape_input_error_focused"/>
+    <item android:drawable="@drawable/shape_input_error_default"/>
 </selector>
