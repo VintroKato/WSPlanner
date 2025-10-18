@@ -33,7 +33,6 @@ public class GetPlanService extends JobIntentService {
     @Override
     public void onCreate() {
         super.onCreate();
-        Logger.init(this);
         Logger.d("GetPlanService", "GetPlanService started");
 
     }
@@ -53,7 +52,7 @@ public class GetPlanService extends JobIntentService {
         updateWidget(true);
 
         try {
-            ResponseBody fileResponse = downloadFile();
+            ResponseBody fileResponse = PUW.downloadFile(workIntent, this);
             if (fileResponse == null) {
                 endService();
                 return;
@@ -72,45 +71,6 @@ public class GetPlanService extends JobIntentService {
             Logger.e("GetPlanService", "Error: " + e.getMessage());
         }
         endService();
-    }
-
-    private ResponseBody downloadFile() {
-        OkHttpClient client = Utils.login(workIntent, this);
-        if (client == null) {
-            Logger.e("GetPlanService", "Downloading file error: got null from Utils.login, intent: " + workIntent);
-            return null;
-        }
-
-        String fileUrl = Utils.getFileUrl(this, workIntent);
-        Request fileRequest = new Request.Builder()
-                .url(fileUrl)
-                .build();
-
-        try {
-            Logger.d("GetPlanService", "Downloading file: " + fileUrl);
-            Response fileResponse = client.newCall(fileRequest).execute();
-
-            if (!fileResponse.isSuccessful()) {
-                Logger.e("GetPlanService", "Downloading error: " + fileResponse.code());
-                fileResponse.close();
-                return null;
-            }
-
-            ResponseBody file = fileResponse.body();
-
-            if (file == null || file.contentLength() == 0) {
-                Logger.e("GetPlanService", "File body is null");
-                fileResponse.close();
-                return null;
-            }
-
-            Logger.d("GetPlanService", "File downloaded, size: " + file.contentLength());
-            return file;
-
-        } catch (Exception e) {
-            Logger.e("GetPlanService", "Downloading error: " + e.getMessage());
-            return null;
-        }
     }
 
     private File saveToCache(ResponseBody fileResponse) {
@@ -152,18 +112,23 @@ public class GetPlanService extends JobIntentService {
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
         RemoteViews views = new RemoteViews(getPackageName(), R.layout.get_plan_widget);
 
+        int appWidgetId = workIntent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
+        if (appWidgetId == -1) {
+            Logger.e("GetPlanService.updateWidget", "Invalid widget ID in intent: " + workIntent);
+            return;
+        }
+
+        Logger.d("GetPlanService.updateWidget", "Updating widget " + appWidgetId + " with loading state: " + loading);
+
         views.setViewVisibility(R.id.widget_progress_bar, loading ? View.VISIBLE : View.GONE);
         views.setBoolean(R.id.widget_download_button, "setEnabled", !loading);
-
-        int appWidgetId = workIntent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
 
         PendingIntent pendingIntent = GetPlanWidget.createPendingIntent(this, appWidgetId);
 
         views.setImageViewResource(R.id.widget_download_button, R.drawable.icon_download);
         views.setOnClickPendingIntent(R.id.widget_download_button, pendingIntent);
 
-        ComponentName widget = new ComponentName(this, GetPlanWidget.class);
-        appWidgetManager.updateAppWidget(widget, views);
+        appWidgetManager.updateAppWidget(appWidgetId, views);
     }
 
     private void endService() {

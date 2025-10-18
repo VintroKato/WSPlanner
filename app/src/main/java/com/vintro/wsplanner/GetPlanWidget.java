@@ -10,7 +10,7 @@ import android.widget.RemoteViews;
 public class GetPlanWidget extends AppWidgetProvider {
 
     static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
-        Logger.init(context);
+        Logger.d("GetPlanWidget.updateAppWidget", "Updating widget " + appWidgetId);
         PendingIntent pendingIntent = GetPlanWidget.createPendingIntent(context, appWidgetId);
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.get_plan_widget);
@@ -23,8 +23,7 @@ public class GetPlanWidget extends AppWidgetProvider {
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
-        Logger.init(context);
-        Logger.w("GetPlanWidget", "onUpdate called, ids count: " + appWidgetIds.length);
+        Logger.d("GetPlanWidget", "onUpdate called, ids count: " + appWidgetIds.length);
 
         for (int appWidgetId : appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId);
@@ -36,26 +35,26 @@ public class GetPlanWidget extends AppWidgetProvider {
         intent.setAction("com.vintro.wsplanner.ACTION_CLICK");
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-        Logger.d("GetPlanWidget.createPendingIntent()", "Intent created: " + intent);
+        Logger.d("GetPlanWidget.createPendingIntent()", "Intent created for widget " + appWidgetId + ": " + intent);
 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 context,
                 appWidgetId,
                 intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_IMMUTABLE
         );
-        Logger.d("GetPlanWidget.createPendingIntent()", "PendingIntent created: " + pendingIntent);
+        Logger.d("GetPlanWidget.createPendingIntent()", "PendingIntent created for widget " + appWidgetId + ": " + pendingIntent);
 
         return pendingIntent;
     }
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Logger.init(context);
         Logger.d("GetPlanWidget", "onReceive called, action: " + intent.getAction());
         super.onReceive(context, intent);
         if ("com.vintro.wsplanner.ACTION_CLICK".equals(intent.getAction())) {
             int appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
+            Logger.d("GetPlanWidget.onReceive", "Click received from widget " + appWidgetId);
             Intent serviceIntent = new Intent(context, GetPlanService.class);
             serviceIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
             GetPlanService.enqueueWork(context, serviceIntent);
@@ -65,6 +64,7 @@ public class GetPlanWidget extends AppWidgetProvider {
     @Override
     public void onDeleted(Context context, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) {
+            Logger.d("GetPlanWidget.onDeleted", "Deleting widget " + appWidgetId);
             Utils.deletePrefs(context, appWidgetId);
         }
     }

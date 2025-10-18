@@ -1,14 +1,9 @@
 package com.vintro.wsplanner;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.animation.ArgbEvaluator;
-import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.appwidget.AppWidgetManager;
 import android.content.Intent;
 import android.content.res.Resources;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -64,8 +59,6 @@ public class GetPlanWidgetConfigureActivity extends Activity {
             return insets;
         });
 
-        Logger.init(this);
-
         res = getResources();
 
         setResult(RESULT_CANCELED);
@@ -113,8 +106,8 @@ public class GetPlanWidgetConfigureActivity extends Activity {
     }
 
     private void updateInputBackgrounds() {
-        Utils.animateInputBackground(this, loginInput, loginInputState, loginInputState);
-        Utils.animateInputBackground(this, passwordInput, passwordInputState, passwordInputState);
+        AnimationHelper.animateInputBackground(this, loginInput, loginInputState, loginInputState);
+        AnimationHelper.animateInputBackground(this, passwordInput, passwordInputState, passwordInputState);
     }
 
     private void handleBtnClick(View v) {
@@ -185,11 +178,11 @@ public class GetPlanWidgetConfigureActivity extends Activity {
         for (int i = 0; i < cardLayout.getChildCount(); i++) {
             MaterialCardView card = (MaterialCardView) cardLayout.getChildAt(i);
             if (card != selectedCard) {
-                Utils.animateCardSelection(this, card, false);
+                AnimationHelper.animateCardSelection(this, card, false);
             }
         }
 
-        Utils.animateCardSelection(this, selectedCard, true);
+        AnimationHelper.animateCardSelection(this, selectedCard, true);
     }
 
     private void checkData() {
@@ -210,7 +203,7 @@ public class GetPlanWidgetConfigureActivity extends Activity {
         errorLabel.setTextColor(res.getColor(R.color.text_dark));
 
         new Thread(() -> {
-            int result = Utils.checkLogin(login, password);
+            int result = PUW.checkLogin(login, password);
             Logger.d("ConfigActivity.checkData", "Checking data in thread, result: " + result);
 
 
@@ -266,89 +259,13 @@ public class GetPlanWidgetConfigureActivity extends Activity {
         setPasswordState(InputState.NORMAL);
     }
 
-//    private void setInputBackground(EditText input, InputState state, InputState startState) {
-//        GradientDrawable drawable = (GradientDrawable) input.getBackground().mutate();
-//
-//        int startBg = drawable.getColor().getDefaultColor();
-//
-//        int startBorder;
-//        switch (startState) {
-//            case NORMAL:
-//                startBorder = startBg == res.getColor(R.color.card_checked_background_dark) ?
-//                        res.getColor(R.color.input_border_active_dark) :
-//                        res.getColor(R.color.input_border_dark);
-//                break;
-//            case OK:
-//                startBorder = res.getColor(R.color.input_border_ok_dark);
-//                break;
-//            case ERROR:
-//                startBorder = res.getColor(R.color.input_border_error_dark);
-//                break;
-//            default:
-//                Logger.wtf("ConfigActivity.setInputBackground", "Unknown start state: " + state);
-//                Toast.makeText(this, "Unknown start state: " + state, Toast.LENGTH_SHORT).show();
-//                return;
-//        }
-//
-//        int endBg = input.isFocused() ?
-//                res.getColor(R.color.card_checked_background_dark) :
-//                res.getColor(R.color.input_bg_dark);
-//
-//        int endBorder;
-//        switch (state) {
-//            case NORMAL:
-//                endBorder = input.isFocused() ?
-//                        res.getColor(R.color.input_border_active_dark) :
-//                        res.getColor(R.color.input_border_dark);
-//                break;
-//            case OK:
-//                endBorder = res.getColor(R.color.input_border_ok_dark);
-//                break;
-//            case ERROR:
-//                endBorder = res.getColor(R.color.input_border_error_dark);
-//                break;
-//            default:
-//                Logger.wtf("ConfigActivity.setInputBackground", "Unknown state: " + state);
-//                Toast.makeText(this, "Unknown state: " + state, Toast.LENGTH_SHORT).show();
-//                return;
-//        }
-//
-//        if (startBg == endBg && startBorder == endBorder) {
-//            return;
-//        }
-//
-//        ValueAnimator bgAnim = ValueAnimator.ofObject(
-//                new ArgbEvaluator(),
-//                startBg,
-//                endBg
-//        );
-//        bgAnim.addUpdateListener(animator ->
-//                drawable.setColor((int) animator.getAnimatedValue())
-//        );
-//
-//        ValueAnimator borderAnim = ValueAnimator.ofObject(
-//                new ArgbEvaluator(),
-//                startBorder,
-//                endBorder
-//        );
-//        int borderWidth = (int) (2 * res.getDisplayMetrics().density);
-//        borderAnim.addUpdateListener(animator ->
-//                drawable.setStroke(borderWidth, (int) animator.getAnimatedValue())
-//        );
-//
-//        bgAnim.setDuration(300);
-//        borderAnim.setDuration(300);
-//        bgAnim.start();
-//        borderAnim.start();
-//    }
-
     private void setLoginState(InputState state) {
-        Utils.animateInputBackground(this, loginInput, state, loginInputState);
+        AnimationHelper.animateInputBackground(this, loginInput, state, loginInputState);
         loginInputState = state;
     }
 
     private void setPasswordState(InputState state) {
-        Utils.animateInputBackground(this, passwordInput, state, passwordInputState);
+        AnimationHelper.animateInputBackground(this, passwordInput, state, passwordInputState);
         passwordInputState = state;
     }
 
