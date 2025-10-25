@@ -196,7 +196,7 @@ public class GetPlanWidgetConfigureActivity extends Activity {
         progressBar.setVisibility(View.VISIBLE);
         errorLabel.setVisibility(View.VISIBLE);
         errorLabel.setText("Проверка данных");
-        errorLabel.setTextColor(ThemeUtils.getThemeColor(this, R.attr.app_text));
+        errorLabel.setTextColor(Utils.getThemeColor(this, R.attr.app_text));
 
         new Thread(() -> {
             int result = PUW.checkLogin(login, password);
@@ -228,14 +228,14 @@ public class GetPlanWidgetConfigureActivity extends Activity {
 
         progressBar.setVisibility(View.GONE);
         errorLabel.setText("Данные верны");
-        errorLabel.setTextColor(ThemeUtils.getThemeColor(this, R.attr.input_border_ok));
+        errorLabel.setTextColor(Utils.getThemeColor(this, R.attr.input_border_ok));
     }
 
     private void setCheckingError() {
         progressBar.setVisibility(View.GONE);
 
         errorLabel.setText("Неверный логин или пароль");
-        errorLabel.setTextColor(ThemeUtils.getThemeColor(this, R.attr.input_border_error));
+        errorLabel.setTextColor(Utils.getThemeColor(this, R.attr.input_border_error));
 
         setLoginState(InputState.ERROR);
         setPasswordState(InputState.ERROR);

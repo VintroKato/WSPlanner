@@ -18,8 +18,8 @@ class AnimationHelper {
         int startBorderColor = getInputBorderColor(activity, oldState, startBgColor);
 
         int endBgColor = input.isFocused() ?
-                ThemeUtils.getThemeColor(activity, R.attr.input_bg_active) :
-                ThemeUtils.getThemeColor(activity, R.attr.input_bg);
+                Utils.getThemeColor(activity, R.attr.input_bg_active) :
+                Utils.getThemeColor(activity, R.attr.input_bg);
 
         int endBorderColor = getEndBorderColor(activity, state, input.isFocused());
 
@@ -32,18 +32,18 @@ class AnimationHelper {
 
     static void animateCardSelection(Activity activity, MaterialCardView card, boolean checked) {
         int startBorderColor = card.isChecked() ?
-                ThemeUtils.getThemeColor(activity, R.attr.card_checked_border) :
-                ThemeUtils.getThemeColor(activity, R.attr.card_border);
+                Utils.getThemeColor(activity, R.attr.card_checked_border) :
+                Utils.getThemeColor(activity, R.attr.card_border);
         int startBgColor = card.isChecked() ?
-                ThemeUtils.getThemeColor(activity, R.attr.card_checked_bg) :
-                ThemeUtils.getThemeColor(activity, R.attr.card_bg);
+                Utils.getThemeColor(activity, R.attr.card_checked_bg) :
+                Utils.getThemeColor(activity, R.attr.card_bg);
 
         int endBorderColor = checked ?
-                ThemeUtils.getThemeColor(activity, R.attr.card_checked_border) :
-                ThemeUtils.getThemeColor(activity, R.attr.card_border);
+                Utils.getThemeColor(activity, R.attr.card_checked_border) :
+                Utils.getThemeColor(activity, R.attr.card_border);
         int endBgColor = checked ?
-                ThemeUtils.getThemeColor(activity, R.attr.card_checked_bg) :
-                ThemeUtils.getThemeColor(activity, R.attr.card_bg);
+                Utils.getThemeColor(activity, R.attr.card_checked_bg) :
+                Utils.getThemeColor(activity, R.attr.card_bg);
 
         if (startBorderColor == endBorderColor && startBgColor == endBgColor) {
             card.setChecked(checked);
@@ -56,15 +56,15 @@ class AnimationHelper {
     private static int getInputBorderColor(Context context, GetPlanWidgetConfigureActivity.InputState state, int bgColor) {
         switch (state) {
             case NORMAL:
-                return bgColor == ThemeUtils.getThemeColor(context, R.attr.input_bg_active) ?
-                        ThemeUtils.getThemeColor(context, R.attr.input_border_active) :
-                        ThemeUtils.getThemeColor(context, R.attr.input_border);
+                return bgColor == Utils.getThemeColor(context, R.attr.input_bg_active) ?
+                        Utils.getThemeColor(context, R.attr.input_border_active) :
+                        Utils.getThemeColor(context, R.attr.input_border);
             case OK:
-                return ThemeUtils.getThemeColor(context, R.attr.input_border_ok);
+                return Utils.getThemeColor(context, R.attr.input_border_ok);
             case ERROR:
-                return ThemeUtils.getThemeColor(context, R.attr.input_border_error);
+                return Utils.getThemeColor(context, R.attr.input_border_error);
             default:
-                return ThemeUtils.getThemeColor(context, R.attr.input_border);
+                return Utils.getThemeColor(context, R.attr.input_border);
         }
     }
 
@@ -72,14 +72,14 @@ class AnimationHelper {
         switch (state) {
             case NORMAL:
                 return isFocused ?
-                        ThemeUtils.getThemeColor(context, R.attr.input_border_active) :
-                        ThemeUtils.getThemeColor(context, R.attr.input_border);
+                        Utils.getThemeColor(context, R.attr.input_border_active) :
+                        Utils.getThemeColor(context, R.attr.input_border);
             case OK:
-                return ThemeUtils.getThemeColor(context, R.attr.input_border_ok);
+                return Utils.getThemeColor(context, R.attr.input_border_ok);
             case ERROR:
-                return ThemeUtils.getThemeColor(context, R.attr.input_border_error);
+                return Utils.getThemeColor(context, R.attr.input_border_error);
             default:
-                return ThemeUtils.getThemeColor(context, R.attr.input_border);
+                return Utils.getThemeColor(context, R.attr.input_border);
         }
     }
 

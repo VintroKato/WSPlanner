@@ -14,6 +14,7 @@ import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.drawable.GradientDrawable;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.EditText;
 
@@ -82,5 +83,11 @@ class Utils {
         prefs.remove(prefKeyPassword + widgetId);
         prefs.remove(prefKeyCourse + widgetId);
         prefs.apply();
+    }
+
+    static int getThemeColor(Context context, int colorAttr) {
+        TypedValue typedValue = new TypedValue();
+        context.getTheme().resolveAttribute(colorAttr, typedValue, true);
+        return typedValue.data;
     }
 }
