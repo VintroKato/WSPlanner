@@ -1,7 +1,31 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.WSPlanner" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:colorBackground">@color/bg_dark</item>
+        <item name="android:textColor">@color/text_dark</item>
+        <item name="android:autofilledHighlight">@drawable/shape_input_autofilled</item>
+
+        <item name="app_background">@color/bg_dark</item>
+        <item name="app_text">@color/text_dark</item>
+        <item name="input_bg">@color/input_bg_dark</item>
+        <item name="input_bg_active">@color/input_bg_active_dark</item>
+        <item name="input_border">@color/input_border_dark</item>
+        <item name="input_border_active">@color/input_border_active_dark</item>
+        <item name="input_hint">@color/input_hint_dark</item>
+        <item name="input_border_ok">@color/input_border_ok_dark</item>
+        <item name="input_border_error">@color/input_border_error_dark</item>
+
+        <item name="btn_bg">@color/btn_bg</item>
+        <item name="input_bg_autofilled">@color/input_bg_autofilled</item>
+        <item name="widget_icon_blue">@color/widget_icon_blue</item>
+        <item name="widget_ripple">@color/widget_ripple_dark</item>
+        <item name="widget_button_bg">@color/widget_button_bg_dark</item>
+        <item name="widget_bg">@color/widget_bg_dark</item>
+
+        <item name="card_checked_bg">@color/card_checked_bg_dark</item>
+        <item name="card_bg">@color/card_bg_dark</item>
+        <item name="card_border">@color/card_border_dark</item>
+        <item name="card_checked_border">@color/card_checked_border_dark</item>
     </style>
 </resources>

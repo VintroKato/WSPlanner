@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:id="@+id/main"
-    android:background="@color/bg_dark">
+    android:background="?attr/app_background">
 
     <TextView
         android:id="@+id/title_label"
@@ -76,7 +76,7 @@
         android:layout_height="24dp"
         android:layout_marginStart="16dp"
         android:layout_marginTop="8dp"
-        android:indeterminateTint="@color/text_dark"
+        android:indeterminateTint="?attr/app_text"
         android:indeterminateTintMode="src_atop"
         android:indeterminate="true"
         android:visibility="gone"

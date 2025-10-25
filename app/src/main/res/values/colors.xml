@@ -9,7 +9,9 @@
     <color name="btn_bg">#1700E4</color>
     <color name="input_bg_dark">#1F232C</color>
     <color name="input_bg_light">#F4F4FF</color>
-    <color name="input_bg_autofilled_dark">#2B001EFF</color>
+    <color name="input_bg_active_dark">#313140</color>
+    <color name="input_bg_active_light">#D8D8FB</color>
+    <color name="input_bg_autofilled">#2B001EFF</color>
     <color name="input_border_dark">#2B313C</color>
     <color name="input_border_light">#84A0D3</color>
     <color name="input_border_active_dark">#5E76AF</color>
@@ -20,9 +22,17 @@
     <color name="input_border_ok_light">#30FF37</color>
     <color name="input_border_error_dark">#D51313</color>
     <color name="input_border_error_light">#FF3030</color>
-    <color name="widget_icon">#3075FF </color>
-    <color name="widget_ripple">#4D4D4D</color>
-    <color name="widget_button_bg">#2F2F2F</color>
-    <color name="card_checked_background_light">#D8D8FB</color>
-    <color name="card_checked_background_dark">#313140</color>
+    <color name="widget_icon_blue">#3075FF </color>
+    <color name="widget_ripple_dark">#4D4D4D</color>
+    <color name="widget_button_bg_dark">#2F2F2F</color>
+    <color name="card_checked_bg_light">#D8D8FB</color>
+    <color name="card_checked_bg_dark">#313140</color>
+    <color name="widget_bg_dark">#242424</color>
+
+    <color name="card_bg_light">#F4F4FF</color>
+    <color name="card_bg_dark">#1F232C</color>
+    <color name="card_border_light">#84A0D3</color>
+    <color name="card_border_dark">#2B313C</color>
+    <color name="card_checked_border_light">#3050FF</color>
+    <color name="card_checked_border_dark">#5E76AF</color>
 </resources>

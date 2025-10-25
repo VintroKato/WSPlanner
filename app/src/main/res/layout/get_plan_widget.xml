@@ -24,7 +24,7 @@
         android:indeterminate="true"
         android:visibility="gone"
         android:elevation="100dp"
-        android:indeterminateTint="@color/widget_icon"
+        android:indeterminateTint="@color/widget_icon_blue"
         android:indeterminateTintMode="src_atop"
         />
 </RelativeLayout>

@@ -1,7 +1,30 @@
 <resources>
-    <declare-styleable name="AppWidgetAttrs">
-        <attr name="appWidgetPadding" format="dimension" />
-        <attr name="appWidgetInnerRadius" format="dimension" />
-        <attr name="appWidgetRadius" format="dimension" />
-    </declare-styleable>
+        <attr name="app_widget_padding" format="dimension" />
+        <attr name="app_widget_inner_radius" format="dimension" />
+        <attr name="app_widget_radius" format="dimension" />
+
+        <attr name="app_background" format="color" />
+        <attr name="app_text" format="color" />
+
+        <attr name="btn_bg" format="color" />
+
+        <attr name="input_bg" format="color" />
+        <attr name="input_bg_active" format="color" />
+        <attr name="input_bg_autofilled" format="color" />
+        <attr name="input_border" format="color" />
+        <attr name="input_border_active" format="color" />
+        <attr name="input_hint" format="color" />
+
+        <attr name="input_border_ok" format="color" />
+        <attr name="input_border_error" format="color" />
+
+        <attr name="widget_icon_blue" format="color" />
+        <attr name="widget_ripple" format="color" />
+        <attr name="widget_button_bg" format="color" />
+        <attr name="widget_bg" format="color" />
+
+        <attr name="card_checked_bg" format="color" />
+        <attr name="card_bg" format="color" />
+        <attr name="card_border" format="color" />
+        <attr name="card_checked_border" format="color" />
 </resources>

@@ -3,7 +3,6 @@ package com.vintro.wsplanner;
 import android.app.Activity;
 import android.appwidget.AppWidgetManager;
 import android.content.Intent;
-import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -37,7 +36,6 @@ public class GetPlanWidgetConfigureActivity extends Activity {
     MaterialCardView courseCard1, courseCard2, courseCard3, courseCard4;
     Button confirmButton;
     Handler handler = new Handler(Looper.getMainLooper());
-    Resources res;
 
     enum InputState {
         NORMAL,
@@ -58,8 +56,6 @@ public class GetPlanWidgetConfigureActivity extends Activity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-
-        res = getResources();
 
         setResult(RESULT_CANCELED);
 
@@ -200,7 +196,7 @@ public class GetPlanWidgetConfigureActivity extends Activity {
         progressBar.setVisibility(View.VISIBLE);
         errorLabel.setVisibility(View.VISIBLE);
         errorLabel.setText("Проверка данных");
-        errorLabel.setTextColor(res.getColor(R.color.text_dark));
+        errorLabel.setTextColor(ThemeUtils.getThemeColor(this, R.attr.app_text));
 
         new Thread(() -> {
             int result = PUW.checkLogin(login, password);
@@ -232,14 +228,14 @@ public class GetPlanWidgetConfigureActivity extends Activity {
 
         progressBar.setVisibility(View.GONE);
         errorLabel.setText("Данные верны");
-        errorLabel.setTextColor(res.getColor(R.color.input_border_ok_dark));
+        errorLabel.setTextColor(ThemeUtils.getThemeColor(this, R.attr.input_border_ok));
     }
 
     private void setCheckingError() {
         progressBar.setVisibility(View.GONE);
 
         errorLabel.setText("Неверный логин или пароль");
-        errorLabel.setTextColor(res.getColor(R.color.input_border_error_dark));
+        errorLabel.setTextColor(ThemeUtils.getThemeColor(this, R.attr.input_border_error));
 
         setLoginState(InputState.ERROR);
         setPasswordState(InputState.ERROR);
