@@ -1,8 +1,7 @@
-package com.vintro.wsplanner;
+package com.vintro.wsplanner.services;
 
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
@@ -15,16 +14,21 @@ import android.widget.RemoteViews;
 import androidx.core.app.JobIntentService;
 import androidx.core.content.FileProvider;
 
-import okhttp3.*;
+import com.vintro.wsplanner.R;
+import com.vintro.wsplanner.data.preferences.PreferencesManager;
+import com.vintro.wsplanner.network.PUW;
+import com.vintro.wsplanner.ui.widgets.GetPlanWidget;
+import com.vintro.wsplanner.utils.Logger;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 
+import okhttp3.ResponseBody;
+
 public class GetPlanService extends JobIntentService {
+    public static final String outputFileName = "plan";
     private Intent workIntent;
-    public GetPlanService() {
-    }
 
     public static void enqueueWork(Context context, Intent work) {
         enqueueWork(context, GetPlanService.class, 1000, work);
@@ -34,12 +38,11 @@ public class GetPlanService extends JobIntentService {
     public void onCreate() {
         super.onCreate();
         Logger.d("GetPlanService", "GetPlanService started");
-
     }
 
     @Override
     protected void onHandleWork(Intent intent) {
-        Logger.d("GetPlanService", "GetPlanService.onHandleWork, course: " + Utils.getCoursePref(this, intent) + ", intent: " + intent);
+        Logger.d("GetPlanService", "GetPlanService.onHandleWork, course: " + PreferencesManager.getCoursePref(this, intent) + ", intent: " + intent);
 
         workIntent = intent;
 
@@ -74,7 +77,7 @@ public class GetPlanService extends JobIntentService {
     }
 
     private File saveToCache(ResponseBody fileResponse) {
-        File outputFile = new File(getCacheDir(), Utils.outputFileName + Utils.getCoursePref(this, workIntent) + ".xlsx");
+        File outputFile = new File(getCacheDir(), outputFileName + PreferencesManager.getCoursePref(this, workIntent) + ".xlsx");
         try (InputStream in = fileResponse.byteStream();
              FileOutputStream out = new FileOutputStream(outputFile)
         ) {
@@ -149,6 +152,4 @@ public class GetPlanService extends JobIntentService {
                         capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
         );
     }
-
-
 }

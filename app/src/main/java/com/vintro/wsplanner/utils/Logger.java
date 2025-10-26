@@ -1,4 +1,4 @@
-package com.vintro.wsplanner;
+package com.vintro.wsplanner.utils;
 
 import android.content.Context;
 import android.util.Log;

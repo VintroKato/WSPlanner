@@ -1,4 +1,4 @@
-package com.vintro.wsplanner;
+package com.vintro.wsplanner.ui.activities;
 
 import android.app.Activity;
 import android.appwidget.AppWidgetManager;
@@ -25,7 +25,12 @@ import androidx.transition.Transition;
 import androidx.transition.TransitionManager;
 
 import com.google.android.material.card.MaterialCardView;
-
+import com.vintro.wsplanner.R;
+import com.vintro.wsplanner.data.preferences.PreferencesManager;
+import com.vintro.wsplanner.network.PUW;
+import com.vintro.wsplanner.ui.helpers.AnimationHelper;
+import com.vintro.wsplanner.ui.widgets.GetPlanWidget;
+import com.vintro.wsplanner.utils.Logger;
 
 public class GetPlanWidgetConfigureActivity extends Activity {
     ConstraintLayout layout;
@@ -37,7 +42,7 @@ public class GetPlanWidgetConfigureActivity extends Activity {
     Button confirmButton;
     Handler handler = new Handler(Looper.getMainLooper());
 
-    enum InputState {
+    public enum InputState {
         NORMAL,
         OK,
         ERROR
@@ -74,9 +79,9 @@ public class GetPlanWidgetConfigureActivity extends Activity {
         selectCard(courseCard3, course);
 
         confirmButton.setEnabled(false);
-        Utils.animateAlpha(confirmButton, 0.7f);
+        AnimationHelper.animateAlpha(confirmButton, 0.7f);
 
-        confirmButton.setOnClickListener(v -> handleBtnClick(v));
+        confirmButton.setOnClickListener(this::handleBtnClick);
 
         loginInput.addTextChangedListener(onChangeHandler(loginInput, this::updateLoginState));
 
@@ -128,7 +133,7 @@ public class GetPlanWidgetConfigureActivity extends Activity {
             return;
         }
 
-        Utils.savePrefs(GetPlanWidgetConfigureActivity.this, widgetId, login, password, course);
+        PreferencesManager.savePrefs(GetPlanWidgetConfigureActivity.this, widgetId, login, password, course);
 
         Intent resultValue = new Intent();
         resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
@@ -150,7 +155,7 @@ public class GetPlanWidgetConfigureActivity extends Activity {
                 stateUpdater.run();
 
                 if (!editable.toString().isBlank()) {
-                    handler.postDelayed(() -> checkData(), 500);
+                    handler.postDelayed(GetPlanWidgetConfigureActivity.this::checkData, 500);
                 }
             }
 
@@ -196,7 +201,7 @@ public class GetPlanWidgetConfigureActivity extends Activity {
         progressBar.setVisibility(View.VISIBLE);
         errorLabel.setVisibility(View.VISIBLE);
         errorLabel.setText("Проверка данных");
-        errorLabel.setTextColor(Utils.getThemeColor(this, R.attr.app_text));
+        errorLabel.setTextColor(AnimationHelper.getThemeColor(this, R.attr.app_text));
 
         new Thread(() -> {
             int result = PUW.checkLogin(login, password);
@@ -228,14 +233,14 @@ public class GetPlanWidgetConfigureActivity extends Activity {
 
         progressBar.setVisibility(View.GONE);
         errorLabel.setText("Данные верны");
-        errorLabel.setTextColor(Utils.getThemeColor(this, R.attr.input_border_ok));
+        errorLabel.setTextColor(AnimationHelper.getThemeColor(this, R.attr.input_border_ok));
     }
 
     private void setCheckingError() {
         progressBar.setVisibility(View.GONE);
 
         errorLabel.setText("Неверный логин или пароль");
-        errorLabel.setTextColor(Utils.getThemeColor(this, R.attr.input_border_error));
+        errorLabel.setTextColor(AnimationHelper.getThemeColor(this, R.attr.input_border_error));
 
         setLoginState(InputState.ERROR);
         setPasswordState(InputState.ERROR);
@@ -267,6 +272,6 @@ public class GetPlanWidgetConfigureActivity extends Activity {
 
     private void setConfirmButtonEnabled(boolean enabled) {
         confirmButton.setEnabled(enabled);
-        Utils.animateAlpha(confirmButton, enabled ? 1f : 0.5f);
+        AnimationHelper.animateAlpha(confirmButton, enabled ? 1f : 0.5f);
     }
 }

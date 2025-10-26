@@ -29,13 +29,13 @@
         </provider>
 
         <service
-            android:name=".GetPlanService"
+            android:name=".services.GetPlanService"
             android:enabled="true"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE"/>
 
         <receiver
-            android:name=".GetPlanWidget"
+            android:name=".ui.widgets.GetPlanWidget"
             android:exported="false"
             android:label="Расписание">
             <intent-filter>
@@ -49,14 +49,14 @@
         </receiver>
 
         <activity
-            android:name=".GetPlanWidgetConfigureActivity"
+            android:name=".ui.activities.GetPlanWidgetConfigureActivity"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.activities.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

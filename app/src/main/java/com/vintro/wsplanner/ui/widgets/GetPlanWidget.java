@@ -1,4 +1,4 @@
-package com.vintro.wsplanner;
+package com.vintro.wsplanner.ui.widgets;
 
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
@@ -7,9 +7,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.widget.RemoteViews;
 
-public class GetPlanWidget extends AppWidgetProvider {
+import com.vintro.wsplanner.R;
+import com.vintro.wsplanner.data.preferences.PreferencesManager;
+import com.vintro.wsplanner.services.GetPlanService;
+import com.vintro.wsplanner.utils.Logger;
 
-    static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+public class GetPlanWidget extends AppWidgetProvider {
+    public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         Logger.d("GetPlanWidget.updateAppWidget", "Updating widget " + appWidgetId);
         PendingIntent pendingIntent = GetPlanWidget.createPendingIntent(context, appWidgetId);
 
@@ -37,15 +41,12 @@ public class GetPlanWidget extends AppWidgetProvider {
         intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
         Logger.d("GetPlanWidget.createPendingIntent()", "Intent created for widget " + appWidgetId + ": " + intent);
 
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+        return PendingIntent.getBroadcast(
                 context,
                 appWidgetId,
                 intent,
                 PendingIntent.FLAG_IMMUTABLE
         );
-        Logger.d("GetPlanWidget.createPendingIntent()", "PendingIntent created for widget " + appWidgetId + ": " + pendingIntent);
-
-        return pendingIntent;
     }
 
     @Override
@@ -65,7 +66,7 @@ public class GetPlanWidget extends AppWidgetProvider {
     public void onDeleted(Context context, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) {
             Logger.d("GetPlanWidget.onDeleted", "Deleting widget " + appWidgetId);
-            Utils.deletePrefs(context, appWidgetId);
+            PreferencesManager.deletePrefs(context, appWidgetId);
         }
     }
 

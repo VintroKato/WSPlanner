@@ -1,10 +1,12 @@
-package com.vintro.wsplanner;
+package com.vintro.wsplanner.network;
 
-import static android.content.Context.MODE_PRIVATE;
-
-import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.Intent;
+import android.appwidget.AppWidgetManager;
+
+import com.vintro.wsplanner.data.preferences.PreferencesManager;
+import com.vintro.wsplanner.utils.Logger;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,21 +21,21 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
-class PUW {
-    static final String baseUrl = "https://puw.wspa.pl/";
-    static final String loginUrl = baseUrl + "login/index.php";
-    static final String homeUrl = baseUrl + "my/";
-    static final String fileUrlStart = "https://puw.wspa.pl/pluginfile.php/249798/mod_folder/content/0/Informatyka%20-%20studia%20I%20stopnia%20-%20st%20";
-    static final String fileUrlEnd = "%20-%20semestr%20zimowy.xlsx?forcedownload=1";
+public class PUW {
+    public static final String baseUrl = "https://puw.wspa.pl/";
+    public static final String loginUrl = baseUrl + "login/index.php";
+    public static final String homeUrl = baseUrl + "my/";
+    public static final String fileUrlStart = "https://puw.wspa.pl/pluginfile.php/249798/mod_folder/content/0/Informatyka%20-%20studia%20I%20stopnia%20-%20st%20";
+    public static final String fileUrlEnd = "%20-%20semestr%20zimowy.xlsx?forcedownload=1";
 
-    static String getFileUrl(Context context, Intent intent) {
+    public static String getFileUrl(Context context, Intent intent) {
         int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
-        int course = Utils.getCoursePref(context, intent);
+        int course = PreferencesManager.getCoursePref(context, intent);
         String url = fileUrlStart + "I".repeat(course) + fileUrlEnd;
         Logger.d("PUW.getFileUrl", "Getting file url for widget " + widgetId + ", url: " + url);
         return url;
     }
-    
+
     private static OkHttpClient getClient() {
         Map<String, List<Cookie>> cookieStore = new HashMap<>();
 
@@ -54,20 +56,20 @@ class PUW {
         return client;
     }
 
-    static OkHttpClient login(Intent intent, Context context) {
+    public static OkHttpClient login(Intent intent, Context context) {
         int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
         Logger.d("PUW.login", "Logging in for widget " + widgetId);
 
         OkHttpClient client = getClient();
 
-        String login = Utils.getLoginPref(context, widgetId);
-        String password = Utils.getPasswordPref(context, widgetId);
+        String login = PreferencesManager.getLoginPref(context, widgetId);
+        String password = PreferencesManager.getPasswordPref(context, widgetId);
 
         int response = loginWithClient(client, login, password);
         return response == 1 ? client : null;
     }
 
-    static int checkLogin(String login, String password) {
+    public static int checkLogin(String login, String password) {
         OkHttpClient client = getClient();
         return loginWithClient(client, login, password);
     }
@@ -105,7 +107,7 @@ class PUW {
         return 1;
     }
 
-    static ResponseBody downloadFile(Intent workIntent, Context context) {
+    public static ResponseBody downloadFile(Intent workIntent, Context context) {
         OkHttpClient client = PUW.login(workIntent, context);
         if (client == null) {
             Logger.e("PUW.downloadFile", "Downloading file error: got null from PUW.login, intent: " + workIntent);
@@ -143,5 +145,4 @@ class PUW {
             return null;
         }
     }
-    
 }
