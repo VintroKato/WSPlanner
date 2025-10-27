@@ -5,18 +5,23 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 
+import com.vintro.wsplanner.enums.Language;
+import com.vintro.wsplanner.enums.Theme;
 import com.vintro.wsplanner.utils.Logger;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.Locale;
 
 import dev.spght.encryptedprefs.*;
 
 public class PreferencesManager {
     private static final String prefs_name = "wsplanner_prefs";
-    private static final String key_login = "login_";
-    private static final String key_password = "password_";
-    private static final String key_course = "course_";
+    private static final String key_login = "data_login_";
+    private static final String key_password = "data_password_";
+    private static final String key_course = "data_course_";
+    private static final String key_theme = "settings_theme";
+    private static final String key_language = "settings_language";
 
     private static SharedPreferences getEncryptedPreferences(Context context) {
         try {
@@ -78,6 +83,32 @@ public class PreferencesManager {
                 .remove(key_login + widgetId)
                 .remove(key_password + widgetId)
                 .remove(key_course + widgetId)
+                .apply();
+    }
+
+    public static Theme getThemePref(Context context) {
+        SharedPreferences prefs = getEncryptedPreferences(context);
+        int pref = prefs.getInt(key_theme, Theme.AUTO.value);
+        return Theme.getEnum(pref);
+    }
+
+    public static void setThemePref(Context context, Theme theme) {
+        SharedPreferences prefs = getEncryptedPreferences(context);
+        prefs.edit()
+                .putInt(key_theme, theme.value)
+                .apply();
+    }
+
+    public static Language getLanguagePref(Context context) {
+        SharedPreferences prefs = getEncryptedPreferences(context);
+        String pref = prefs.getString(key_language, Locale.getDefault().getLanguage());
+        return Language.getEnum(pref);
+    }
+
+    public static void setLanguagePref(Context context, Language language) {
+        SharedPreferences prefs = getEncryptedPreferences(context);
+        prefs.edit()
+                .putString(key_language, language.code)
                 .apply();
     }
 }

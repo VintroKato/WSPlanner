@@ -3,51 +3,57 @@ package com.vintro.wsplanner.ui.helpers;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
-import android.app.Activity;
 import android.content.Context;
 import android.graphics.drawable.GradientDrawable;
-import android.util.TypedValue;
 import android.view.View;
 import android.widget.EditText;
 
 import com.google.android.material.card.MaterialCardView;
 import com.vintro.wsplanner.R;
-import com.vintro.wsplanner.ui.activities.GetPlanWidgetConfigureActivity;
+import com.vintro.wsplanner.enums.InputState;
 
 public class AnimationHelper {
-    public static void animateInputBackground(Activity activity, EditText input, GetPlanWidgetConfigureActivity.InputState state, GetPlanWidgetConfigureActivity.InputState oldState) {
+
+    private static final int animation_duration = 500;
+
+    public static void animateInputBackground(Context context, EditText input, InputState state, InputState oldState) {
         GradientDrawable drawable = (GradientDrawable) input.getBackground().mutate();
 
-        int startBgColor = drawable.getColor().getDefaultColor();
-        int startBorderColor = getInputBorderColor(activity, oldState, startBgColor);
+        int startBgColor = input.isFocused() ?
+                UIHelper.getThemeColor(context, R.attr.input_bg_active) :
+                UIHelper.getThemeColor(context, R.attr.input_bg);
+        int startBorderColor = getInputBorderColor(context, oldState, startBgColor);
 
         int endBgColor = input.isFocused() ?
-                AnimationHelper.getThemeColor(activity, R.attr.input_bg_active) :
-                AnimationHelper.getThemeColor(activity, R.attr.input_bg);
+                UIHelper.getThemeColor(context, R.attr.input_bg_active) :
+                UIHelper.getThemeColor(context, R.attr.input_bg);
 
-        int endBorderColor = getEndBorderColor(activity, state, input.isFocused());
+        int endBorderColor = getEndBorderColor(context, state, input.isFocused());
 
         if (startBgColor == endBgColor && startBorderColor == endBorderColor) {
             return;
         }
 
-        animateColors(activity, drawable, startBgColor, endBgColor, startBorderColor, endBorderColor);
+        animateColors(context, drawable, startBgColor, endBgColor, startBorderColor, endBorderColor);
     }
 
-    public static void animateCardSelection(Activity activity, MaterialCardView card, boolean checked) {
-        int startBorderColor = card.isChecked() ?
-                AnimationHelper.getThemeColor(activity, R.attr.card_checked_border) :
-                AnimationHelper.getThemeColor(activity, R.attr.card_border);
-        int startBgColor = card.isChecked() ?
-                AnimationHelper.getThemeColor(activity, R.attr.card_checked_bg) :
-                AnimationHelper.getThemeColor(activity, R.attr.card_bg);
+    public static void animateCardSelection(Context context, MaterialCardView card, boolean checked) {
+        if (card.isChecked() == checked) {
+            return;
+        }
+        int startBorderColor = checked ?
+                UIHelper.getThemeColor(context, R.attr.card_border) :
+                UIHelper.getThemeColor(context, R.attr.card_checked_border);
+        int startBgColor = checked ?
+                 UIHelper.getThemeColor(context, R.attr.card_bg) :
+                UIHelper.getThemeColor(context, R.attr.card_checked_bg);
 
         int endBorderColor = checked ?
-                AnimationHelper.getThemeColor(activity, R.attr.card_checked_border) :
-                AnimationHelper.getThemeColor(activity, R.attr.card_border);
+                UIHelper.getThemeColor(context, R.attr.card_checked_border) :
+                UIHelper.getThemeColor(context, R.attr.card_border);
         int endBgColor = checked ?
-                AnimationHelper.getThemeColor(activity, R.attr.card_checked_bg) :
-                AnimationHelper.getThemeColor(activity, R.attr.card_bg);
+                UIHelper.getThemeColor(context, R.attr.card_checked_bg) :
+                UIHelper.getThemeColor(context, R.attr.card_bg);
 
         if (startBorderColor == endBorderColor && startBgColor == endBgColor) {
             card.setChecked(checked);
@@ -57,33 +63,33 @@ public class AnimationHelper {
         animateCardColors(card, startBorderColor, endBorderColor, startBgColor, endBgColor, checked);
     }
 
-    private static int getInputBorderColor(Context context, GetPlanWidgetConfigureActivity.InputState state, int bgColor) {
+    private static int getInputBorderColor(Context context, InputState state, int bgColor) {
         switch (state) {
             case NORMAL:
-                return bgColor == AnimationHelper.getThemeColor(context, R.attr.input_bg_active) ?
-                        AnimationHelper.getThemeColor(context, R.attr.input_border_active) :
-                        AnimationHelper.getThemeColor(context, R.attr.input_border);
+                return bgColor == UIHelper.getThemeColor(context, R.attr.input_bg_active) ?
+                        UIHelper.getThemeColor(context, R.attr.input_border_active) :
+                        UIHelper.getThemeColor(context, R.attr.input_border);
             case OK:
-                return AnimationHelper.getThemeColor(context, R.attr.input_border_ok);
+                return UIHelper.getThemeColor(context, R.attr.input_border_ok);
             case ERROR:
-                return AnimationHelper.getThemeColor(context, R.attr.input_border_error);
+                return UIHelper.getThemeColor(context, R.attr.input_border_error);
             default:
-                return AnimationHelper.getThemeColor(context, R.attr.input_border);
+                return UIHelper.getThemeColor(context, R.attr.input_border);
         }
     }
 
-    private static int getEndBorderColor(Context context, GetPlanWidgetConfigureActivity.InputState state, boolean isFocused) {
+    private static int getEndBorderColor(Context context, InputState state, boolean isFocused) {
         switch (state) {
             case NORMAL:
                 return isFocused ?
-                        AnimationHelper.getThemeColor(context, R.attr.input_border_active) :
-                        AnimationHelper.getThemeColor(context, R.attr.input_border);
+                        UIHelper.getThemeColor(context, R.attr.input_border_active) :
+                        UIHelper.getThemeColor(context, R.attr.input_border);
             case OK:
-                return AnimationHelper.getThemeColor(context, R.attr.input_border_ok);
+                return UIHelper.getThemeColor(context, R.attr.input_border_ok);
             case ERROR:
-                return AnimationHelper.getThemeColor(context, R.attr.input_border_error);
+                return UIHelper.getThemeColor(context, R.attr.input_border_error);
             default:
-                return AnimationHelper.getThemeColor(context, R.attr.input_border);
+                return UIHelper.getThemeColor(context, R.attr.input_border);
         }
     }
 
@@ -122,18 +128,12 @@ public class AnimationHelper {
     private static ValueAnimator createColorAnimator(int startColor, int endColor, ColorUpdateListener listener) {
         ValueAnimator animator = ValueAnimator.ofObject(new ArgbEvaluator(), startColor, endColor);
         animator.addUpdateListener(anim -> listener.onColorUpdate((int) anim.getAnimatedValue()));
-        animator.setDuration(300);
+        animator.setDuration(animation_duration);
         return animator;
     }
 
     public static void animateAlpha(View v, float alpha) {
-        v.animate().alpha(alpha).setDuration(300).start();
-    }
-
-    public static int getThemeColor(Context context, int colorAttr) {
-        TypedValue typedValue = new TypedValue();
-        context.getTheme().resolveAttribute(colorAttr, typedValue, true);
-        return typedValue.data;
+        v.animate().alpha(alpha).setDuration(animation_duration).start();
     }
 
     @FunctionalInterface

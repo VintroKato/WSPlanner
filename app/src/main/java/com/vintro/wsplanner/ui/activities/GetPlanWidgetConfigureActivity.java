@@ -16,6 +16,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -28,11 +29,13 @@ import com.google.android.material.card.MaterialCardView;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.network.PUW;
+import com.vintro.wsplanner.enums.InputState;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
+import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.ui.widgets.GetPlanWidget;
 import com.vintro.wsplanner.utils.Logger;
 
-public class GetPlanWidgetConfigureActivity extends Activity {
+public class GetPlanWidgetConfigureActivity extends AppCompatActivity {
     ConstraintLayout layout;
     EditText loginInput;
     EditText passwordInput;
@@ -41,12 +44,6 @@ public class GetPlanWidgetConfigureActivity extends Activity {
     MaterialCardView courseCard1, courseCard2, courseCard3, courseCard4;
     Button confirmButton;
     Handler handler = new Handler(Looper.getMainLooper());
-
-    public enum InputState {
-        NORMAL,
-        OK,
-        ERROR
-    }
 
     private InputState loginInputState = InputState.NORMAL;
     private InputState passwordInputState = InputState.NORMAL;
@@ -201,7 +198,7 @@ public class GetPlanWidgetConfigureActivity extends Activity {
         progressBar.setVisibility(View.VISIBLE);
         errorLabel.setVisibility(View.VISIBLE);
         errorLabel.setText("Проверка данных");
-        errorLabel.setTextColor(AnimationHelper.getThemeColor(this, R.attr.app_text));
+        errorLabel.setTextColor(UIHelper.getThemeColor(this, R.attr.app_text));
 
         new Thread(() -> {
             int result = PUW.checkLogin(login, password);
@@ -233,14 +230,14 @@ public class GetPlanWidgetConfigureActivity extends Activity {
 
         progressBar.setVisibility(View.GONE);
         errorLabel.setText("Данные верны");
-        errorLabel.setTextColor(AnimationHelper.getThemeColor(this, R.attr.input_border_ok));
+        errorLabel.setTextColor(UIHelper.getThemeColor(this, R.attr.input_border_ok));
     }
 
     private void setCheckingError() {
         progressBar.setVisibility(View.GONE);
 
         errorLabel.setText("Неверный логин или пароль");
-        errorLabel.setTextColor(AnimationHelper.getThemeColor(this, R.attr.input_border_error));
+        errorLabel.setTextColor(UIHelper.getThemeColor(this, R.attr.input_border_error));
 
         setLoginState(InputState.ERROR);
         setPasswordState(InputState.ERROR);

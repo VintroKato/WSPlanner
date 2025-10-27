@@ -19,7 +19,7 @@
     <color name="input_hint_dark">#40414E</color>
     <color name="input_hint_light">#838383</color>
     <color name="input_border_ok_dark">#379729</color>
-    <color name="input_border_ok_light">#30FF37</color>
+    <color name="input_border_ok_light">#07A80F</color>
     <color name="input_border_error_dark">#D51313</color>
     <color name="input_border_error_light">#FF3030</color>
     <color name="widget_icon_blue">#3075FF </color>
@@ -28,7 +28,6 @@
     <color name="card_checked_bg_light">#D8D8FB</color>
     <color name="card_checked_bg_dark">#313140</color>
     <color name="widget_bg_dark">#242424</color>
-
     <color name="card_bg_light">#F4F4FF</color>
     <color name="card_bg_dark">#1F232C</color>
     <color name="card_border_light">#84A0D3</color>

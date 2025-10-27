@@ -42,7 +42,8 @@ public class GetPlanService extends JobIntentService {
 
     @Override
     protected void onHandleWork(Intent intent) {
-        Logger.d("GetPlanService", "GetPlanService.onHandleWork, course: " + PreferencesManager.getCoursePref(this, intent) + ", intent: " + intent);
+        int course = PreferencesManager.getCoursePref(this, intent);
+        Logger.d("GetPlanService", "GetPlanService.onHandleWork, course: " + course + ", intent: " + intent);
 
         workIntent = intent;
 
@@ -61,7 +62,7 @@ public class GetPlanService extends JobIntentService {
                 return;
             }
 
-            File outputFile = saveToCache(fileResponse);
+            File outputFile = saveToCache(fileResponse, course);
             if (outputFile == null) {
                 endService();
                 return;
@@ -76,8 +77,8 @@ public class GetPlanService extends JobIntentService {
         endService();
     }
 
-    private File saveToCache(ResponseBody fileResponse) {
-        File outputFile = new File(getCacheDir(), outputFileName + PreferencesManager.getCoursePref(this, workIntent) + ".xlsx");
+    private File saveToCache(ResponseBody fileResponse, int course) {
+        File outputFile = new File(getCacheDir(), outputFileName + course + ".xlsx");
         try (InputStream in = fileResponse.byteStream();
              FileOutputStream out = new FileOutputStream(outputFile)
         ) {

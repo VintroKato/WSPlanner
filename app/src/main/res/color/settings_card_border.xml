@@ -2,7 +2,7 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android"
     android:enterFadeDuration="500"
     android:exitFadeDuration="500">
-    <item android:color="@color/input_border_active_dark" android:state_checked="true" />
-    <item android:color="@color/input_border_dark" android:state_checked="false" />
-    <item android:color="@color/input_border_dark" />
+    <item android:color="?attr/card_checked_border" android:state_checked="true" />
+    <item android:color="?attr/card_border" android:state_checked="false" />
+    <item android:color="?attr/card_border" />
 </selector>

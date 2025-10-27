@@ -1,12 +1,4 @@
 <resources>
-
-    <style name="app_bg" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:windowBackground">@color/bg_dark</item>
-        <item name="android:colorBackground">@color/bg_dark</item>
-        <item name="android:textColor">@color/text_dark</item>
-        <item name="android:autofilledHighlight">@drawable/shape_input_autofilled</item>
-    </style>
-
     <style name="button" parent="Widget.Material3.Button">
         <item name="android:backgroundTint">@color/btn_bg</item>
         <item name="android:textColor">@color/text_dark</item>
@@ -26,25 +18,26 @@
         <item name="android:textSize">20sp</item>
         <item name="android:gravity">center</item>
         <item name="android:maxLength">50</item>
-        <item name="android:textColor">@color/text_dark</item>
-        <item name="android:textColorHint">@color/input_hint_dark</item>
+        <item name="android:textColor">?attr/app_text</item>
+        <item name="android:textColorHint">?attr/input_hint</item>
         <item name="android:layout_marginHorizontal">16dp</item>
         <item name="android:elevation">2dp</item>
     </style>
 
     <style name="label" parent="Widget.AppCompat.TextView">>
-        <item name="android:textColor">@color/text_dark</item>
+        <item name="android:textColor">?attr/app_text</item>
         <item name="android:textSize">16sp</item>
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_marginStart">16dp</item>
     </style>
 
-    <style name="course_card" parent="Widget.Material3.CardView.Elevated">
+    <style name="card" parent="Widget.Material3.CardView.Elevated">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">48dp</item>
         <item name="android:layout_weight">1</item>
-        <item name="android:layout_margin">16dp</item>
+        <item name="android:layout_margin">8dp</item>
+        <item name="android:layout_marginTop">12dp</item>
         <item name="cardElevation">2dp</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
@@ -61,8 +54,8 @@
         <item name="cardForegroundColor">@android:color/transparent</item>
     </style>
 
-    <style name="course_card_text">
-        <item name="android:textColor">@color/text_dark</item>
+    <style name="card_text">
+        <item name="android:textColor">?attr/app_text</item>
         <item name="android:textSize">20sp</item>
         <item name="android:layout_height">match_parent</item>
         <item name="android:layout_width">match_parent</item>
