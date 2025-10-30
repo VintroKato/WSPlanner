@@ -19,9 +19,10 @@ public class AnimationHelper {
     public static void animateInputBackground(Context context, EditText input, InputState state, InputState oldState) {
         GradientDrawable drawable = (GradientDrawable) input.getBackground().mutate();
 
-        int startBgColor = input.isFocused() ?
-                UIHelper.getThemeColor(context, R.attr.input_bg_active) :
-                UIHelper.getThemeColor(context, R.attr.input_bg);
+//        int startBgColor = input.isFocused() ?
+//                UIHelper.getThemeColor(context, R.attr.input_bg) :
+//                UIHelper.getThemeColor(context, R.attr.input_bg_active);
+        int startBgColor = drawable.getColor().getDefaultColor();
         int startBorderColor = getInputBorderColor(context, oldState, startBgColor);
 
         int endBgColor = input.isFocused() ?

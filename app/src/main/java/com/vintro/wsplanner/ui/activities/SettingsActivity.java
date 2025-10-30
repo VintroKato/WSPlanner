@@ -48,8 +48,8 @@ public class SettingsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        UIHelper.setSelectedLanguage(this);
         super.onCreate(savedInstanceState);
+        UIHelper.setSelectedLanguage(this);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_settings);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
@@ -150,7 +150,7 @@ public class SettingsActivity extends AppCompatActivity {
         card.setOnClickListener(v -> {
             selectCard(card);
             PreferencesManager.setLanguagePref(this, language);
-            UIHelper.setSelectedLanguage(this);
+//            UIHelper.setSelectedLanguage(this);
             recreate();
         });
     }

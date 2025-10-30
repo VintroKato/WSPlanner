@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Налаштування</string>
+    <string name="settings_theme_label">Тема</string>
+    <string name="settings_theme_option_auto">Авто</string>
+    <string name="settings_theme_option_dark">Темна</string>
+    <string name="settings_theme_option_light">Світла</string>
+    <string name="settings_language_label">Мова</string>
+    <string name="settings_button_done">Готово</string>
+    <string name="configure_title">Налаштування віджету</string>
+    <string name="configure_email_label">Пошта</string>
+    <string name="configure_password_label">Пароль</string>
+    <string name="configure_course_label">Курс</string>
+    <string name="configure_button_confirm">Підтвердити</string>
+    <string name="configure_status_checking">Перевірка ланих</string>
+    <string name="configure_status_ok">Дані правильні</string>
+    <string name="configure_status_error">Неправильна пошта або пароль</string>
+    <string name="widget_name">Розклад</string>
+</resources>

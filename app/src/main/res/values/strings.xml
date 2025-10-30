@@ -1,8 +1,33 @@
 <resources>
-    <string name="app_name">WSPlanner</string>
-    <string name="appwidget_text">EXAMPLE</string>
-    <string name="configure">Configure</string>
-    <string name="add_widget">Add widget</string>
-    <string name="app_widget_description">This is an app widget description</string>
-    <string name="login_hint">example@gmail.com</string>
+    <string name="app_name" translatable="false">WSPlanner</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_theme_label">Theme</string>
+    <string name="settings_theme_option_auto">Auto</string>
+    <string name="settings_theme_option_dark">Dark</string>
+    <string name="settings_theme_option_light">Light</string>
+    <string name="settings_language_label">Language</string>
+    <string name="settings_language_option_english" translatable="false">English</string>
+    <string name="settings_language_option_russian" translatable="false">Русский</string>
+    <string name="settings_language_option_ukrainian" translatable="false">Українська</string>
+    <string name="settings_language_option_polish" translatable="false">Polski</string>
+    <string name="settings_button_done">Done</string>
+
+    <string name="configure_title">Widget settings</string>
+    <string name="configure_email_label">Email</string>
+    <string name="configure_email_hint" translatable="false">example@gmail.com</string>
+    <string name="configure_password_label">Password</string>
+    <string name="configure_password_hint" translatable="false">My_password123</string>
+    <string name="configure_course_label">Year</string>
+    <string name="configure_course_option_1" translatable="false">1</string>
+    <string name="configure_course_option_2" translatable="false">2</string>
+    <string name="configure_course_option_3" translatable="false">3</string>
+    <string name="configure_course_option_4" translatable="false">4</string>
+    <string name="configure_button_confirm">Confirm</string>
+    <string name="configure_status_checking">Checking data</string>
+    <string name="configure_status_ok">Data is correct</string>
+    <string name="configure_status_error">Incorrect email or password</string>
+
+    <string name="widget_name">Schedule</string>
+
 </resources>

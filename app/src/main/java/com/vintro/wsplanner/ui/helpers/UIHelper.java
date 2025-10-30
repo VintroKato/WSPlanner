@@ -28,23 +28,32 @@ public class UIHelper {
         AppCompatDelegate.setDefaultNightMode(theme.value);
     }
 
-    public static void setSelectedLanguage(Context context) {
-        Language language = PreferencesManager.getLanguagePref(context);
+    public static void setSelectedLanguage(Activity activity) {
+        Language language = PreferencesManager.getLanguagePref(activity);
         LocaleListCompat locales = LocaleListCompat.forLanguageTags(language.code);
         Logger.d("UIHelper.setSelectedLanguage", "Changing language to " + language + " with locales " + locales.toLanguageTags());
         AppCompatDelegate.setApplicationLocales(locales);
-    }
 
-    public static void setSelectedLanguage2(Activity activity) {
-        String languageCode = PreferencesManager.getLanguagePref(activity).code;
-
-        Locale locale = new Locale(languageCode);
+        Locale locale = new Locale(language.code);
         Locale.setDefault(locale);
 
-        Configuration config = new Configuration();
+        Configuration config = new Configuration(activity.getResources().getConfiguration());
         config.setLocale(locale);
 
         activity.getResources().updateConfiguration(config,
                 activity.getResources().getDisplayMetrics());
     }
+
+//    public static void setSelectedLanguage2(Activity activity) {
+//        String languageCode = PreferencesManager.getLanguagePref(activity).code;
+//
+//        Locale locale = new Locale(languageCode);
+//        Locale.setDefault(locale);
+//
+//        Configuration config = new Configuration();
+//        config.setLocale(locale);
+//
+//        activity.getResources().updateConfiguration(config,
+//                activity.getResources().getDisplayMetrics());
+//    }
 }

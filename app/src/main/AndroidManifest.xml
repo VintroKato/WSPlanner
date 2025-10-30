@@ -41,7 +41,7 @@
         <receiver
             android:name=".ui.widgets.GetPlanWidget"
             android:exported="false"
-            android:label="Расписание">
+            android:label="@string/widget_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.vintro.wsplanner.ACTION_CLICK" />

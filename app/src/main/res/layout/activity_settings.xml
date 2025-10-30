@@ -12,7 +12,7 @@
         android:layout_width="245dp"
         android:layout_height="48dp"
         android:layout_marginTop="12dp"
-        android:text="Настройки"
+        android:text="@string/settings_title"
         android:textAlignment="center"
         android:textSize="34sp"
         android:textStyle="bold"
@@ -22,13 +22,10 @@
 
     <TextView
         android:id="@+id/theme_header"
-        android:layout_width="245dp"
-        android:layout_height="37dp"
         android:layout_marginStart="16dp"
         android:layout_marginTop="32dp"
-        android:text="Тема"
-        android:textAlignment="textStart"
-        android:textSize="24sp"
+        android:text="@string/settings_theme_label"
+        style="@style/label"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/settings_title_label" />
@@ -52,7 +49,7 @@
 
             <TextView
                 style="@style/card_text"
-                android:text="Авто" />
+                android:text="@string/settings_theme_option_auto" />
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
@@ -61,7 +58,7 @@
 
             <TextView
                 style="@style/card_text"
-                android:text="Темная" />
+                android:text="@string/settings_theme_option_dark" />
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
@@ -70,20 +67,17 @@
 
             <TextView
                 style="@style/card_text"
-                android:text="Светлая" />
+                android:text="@string/settings_theme_option_light" />
         </com.google.android.material.card.MaterialCardView>
 
     </GridLayout>
 
     <TextView
         android:id="@+id/language_header"
-        android:layout_width="245dp"
-        android:layout_height="37dp"
         android:layout_marginStart="16dp"
         android:layout_marginTop="24dp"
-        android:text="Язык"
-        android:textAlignment="textStart"
-        android:textSize="24sp"
+        android:text="@string/settings_language_label"
+        style="@style/label"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/theme_layout" />
@@ -106,7 +100,7 @@
 
             <TextView
                 style="@style/card_text"
-                android:text="English" />
+                android:text="@string/settings_language_option_english" />
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
@@ -115,7 +109,7 @@
 
             <TextView
                 style="@style/card_text"
-                android:text="Русский" />
+                android:text="@string/settings_language_option_russian" />
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
@@ -124,7 +118,7 @@
 
             <TextView
                 style="@style/card_text"
-                android:text="Українська" />
+                android:text="@string/settings_language_option_ukrainian" />
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
@@ -133,7 +127,7 @@
 
             <TextView
                 style="@style/card_text"
-                android:text="Polski" />
+                android:text="@string/settings_language_option_polish" />
         </com.google.android.material.card.MaterialCardView>
     </GridLayout>
 
@@ -142,7 +136,7 @@
         style="@style/button"
         android:layout_width="183dp"
         android:layout_height="57dp"
-        android:text="Готово"
+        android:text="@string/settings_button_done"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_theme_label">Тема</string>
+    <string name="settings_theme_option_auto">Авто</string>
+    <string name="settings_theme_option_dark">Темная</string>
+    <string name="settings_theme_option_light">Светлая</string>
+    <string name="settings_language_label">Язык</string>
+    <string name="settings_button_done">Готово</string>
+    <string name="configure_title">Настройки виджета</string>
+    <string name="configure_email_label">Почта</string>
+    <string name="configure_password_label">Пароль</string>
+    <string name="configure_course_label">Курс</string>
+    <string name="configure_button_confirm">Подтвердить</string>
+    <string name="configure_status_checking">Проверка данных</string>
+    <string name="configure_status_ok">Данные верны</string>
+    <string name="configure_status_error">Неверный логин или пароль</string>
+    <string name="widget_name">Расписание</string>
+</resources>

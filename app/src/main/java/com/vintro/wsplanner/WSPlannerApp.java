@@ -10,7 +10,7 @@ public class WSPlannerApp extends Application {
     public void onCreate() {
         super.onCreate();
         Logger.init(this);
-        UIHelper.setSelectedLanguage(this);
+//        UIHelper.setSelectedLanguage(this);
         UIHelper.setSelectedTheme(this);
     }
 }

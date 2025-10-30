@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Ustawienia</string>
+    <string name="settings_theme_label">Tryb</string>
+    <string name="settings_theme_option_auto">Auto</string>
+    <string name="settings_theme_option_dark">Ciemny</string>
+    <string name="settings_theme_option_light">Jasny</string>
+    <string name="settings_language_label">Język</string>
+    <string name="settings_button_done">Zastosuj</string>
+    <string name="configure_title">Ustawienia widgetu</string>
+    <string name="configure_email_label">Email</string>
+    <string name="configure_password_label">Hasło</string>
+    <string name="configure_course_label">Rok studiów</string>
+    <string name="configure_button_confirm">Zastosuj</string>
+    <string name="configure_status_checking">Sprawdzenie danych</string>
+    <string name="configure_status_ok">Dane poprawne</string>
+    <string name="configure_status_error">Niepoprawny email lub hasło</string>
+    <string name="widget_name">Plan</string>
+</resources>

@@ -197,7 +197,7 @@ public class GetPlanWidgetConfigureActivity extends AppCompatActivity {
 
         progressBar.setVisibility(View.VISIBLE);
         errorLabel.setVisibility(View.VISIBLE);
-        errorLabel.setText("Проверка данных");
+        errorLabel.setText(R.string.configure_status_checking);
         errorLabel.setTextColor(UIHelper.getThemeColor(this, R.attr.app_text));
 
         new Thread(() -> {
@@ -229,14 +229,14 @@ public class GetPlanWidgetConfigureActivity extends AppCompatActivity {
         setPasswordState(InputState.OK);
 
         progressBar.setVisibility(View.GONE);
-        errorLabel.setText("Данные верны");
+        errorLabel.setText(R.string.configure_status_ok);
         errorLabel.setTextColor(UIHelper.getThemeColor(this, R.attr.input_border_ok));
     }
 
     private void setCheckingError() {
         progressBar.setVisibility(View.GONE);
 
-        errorLabel.setText("Неверный логин или пароль");
+        errorLabel.setText(R.string.configure_status_error);
         errorLabel.setTextColor(UIHelper.getThemeColor(this, R.attr.input_border_error));
 
         setLoginState(InputState.ERROR);

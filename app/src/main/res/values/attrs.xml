@@ -7,6 +7,7 @@
         <attr name="app_text" format="color" />
 
         <attr name="btn_bg" format="color" />
+        <attr name="button_text" format="color" />
 
         <attr name="input_bg" format="color" />
         <attr name="input_bg_active" format="color" />
