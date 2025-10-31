@@ -1,32 +1,28 @@
 package com.vintro.wsplanner.ui.activities;
 
-import android.content.Intent;
-import android.graphics.drawable.Animatable;
+import android.content.Context;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.provider.Contacts;
 import android.widget.Button;
 import android.widget.GridLayout;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.transition.TransitionManager;
 
 import com.google.android.material.card.MaterialCardView;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.Language;
-import com.vintro.wsplanner.enums.Theme;
+import com.vintro.wsplanner.enums.AppTheme;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 
 public class SettingsActivity extends AppCompatActivity {
+    ConstraintLayout root;
     TextView titleLabel;
     TextView themeHeader;
     TextView languageHeader;
@@ -58,6 +54,8 @@ public class SettingsActivity extends AppCompatActivity {
             return insets;
         });
 
+        root = findViewById(R.id.main);
+
         titleLabel = findViewById(R.id.settings_title_label);
         themeHeader = findViewById(R.id.theme_header);
         languageHeader = findViewById(R.id.language_header);
@@ -80,7 +78,7 @@ public class SettingsActivity extends AppCompatActivity {
             finish();
         });
 
-        Theme theme = PreferencesManager.getThemePref(this);
+        AppTheme theme = PreferencesManager.getThemePref(this);
         Language language = PreferencesManager.getLanguagePref(this);
 
         switch (theme) {
@@ -110,9 +108,9 @@ public class SettingsActivity extends AppCompatActivity {
                 break;
         }
 
-        bindThemeOnClick(cardAutoTheme, Theme.AUTO);
-        bindThemeOnClick(cardDarkTheme, Theme.DARK);
-        bindThemeOnClick(cardLightTheme, Theme.LIGHT);
+        bindThemeOnClick(cardAutoTheme, AppTheme.AUTO);
+        bindThemeOnClick(cardDarkTheme, AppTheme.DARK);
+        bindThemeOnClick(cardLightTheme, AppTheme.LIGHT);
 
         bindLanguageOnClick(cardEnglish, Language.ENGLISH);
         bindLanguageOnClick(cardRussian, Language.RUSSIAN);
@@ -132,17 +130,27 @@ public class SettingsActivity extends AppCompatActivity {
             if (card != selectedCard) {
                 if (card.isChecked()) {
                     AnimationHelper.animateCardSelection(this, card, false);
+                    card.setChecked(false);
                 }
             }
         }
         AnimationHelper.animateCardSelection(this, selectedCard, true);
+        selectedCard.setChecked(true);
     }
 
-    private void bindThemeOnClick(MaterialCardView card, Theme theme) {
+    private void bindThemeOnClick(MaterialCardView card, AppTheme theme) {
         card.setOnClickListener(v -> {
+            if (card.isChecked()) {
+                return;
+            }
+
             selectCard(card);
             PreferencesManager.setThemePref(this, theme);
+
+            Context oldContext = UIHelper.cloneContext(this);
             UIHelper.setSelectedTheme(this);
+
+            AnimationHelper.animateThemeChange(this, oldContext, root);
         });
     }
 

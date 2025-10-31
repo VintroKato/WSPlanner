@@ -3,14 +3,16 @@ package com.vintro.wsplanner.ui.helpers;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.util.TypedValue;
 
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.os.LocaleListCompat;
 
+import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.Language;
-import com.vintro.wsplanner.enums.Theme;
+import com.vintro.wsplanner.enums.AppTheme;
 import com.vintro.wsplanner.utils.Logger;
 
 import java.util.Locale;
@@ -22,8 +24,21 @@ public class UIHelper {
         return typedValue.data;
     }
 
+    public static int getThemeColor(Resources.Theme theme, int colorAttr) {
+        TypedValue typedValue = new TypedValue();
+        theme.resolveAttribute(colorAttr, typedValue, true);
+        return typedValue.data;
+    }
+
+    public static Context cloneContext(Context context) {
+        Configuration config = new Configuration(context.getResources().getConfiguration());
+        Context newContext = context.createConfigurationContext(config);
+        newContext.setTheme(R.style.Base_Theme_WSPlanner);
+        return newContext;
+    }
+
     public static void setSelectedTheme(Context context) {
-        Theme theme = PreferencesManager.getThemePref(context);
+        AppTheme theme = PreferencesManager.getThemePref(context);
         Logger.d("UIHelper.setSelectedTheme", "Changing theme to " + theme);
         AppCompatDelegate.setDefaultNightMode(theme.value);
     }

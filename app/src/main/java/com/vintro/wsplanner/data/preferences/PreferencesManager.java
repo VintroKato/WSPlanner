@@ -6,7 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 
 import com.vintro.wsplanner.enums.Language;
-import com.vintro.wsplanner.enums.Theme;
+import com.vintro.wsplanner.enums.AppTheme;
 import com.vintro.wsplanner.utils.Logger;
 
 import java.io.IOException;
@@ -86,13 +86,13 @@ public class PreferencesManager {
                 .apply();
     }
 
-    public static Theme getThemePref(Context context) {
+    public static AppTheme getThemePref(Context context) {
         SharedPreferences prefs = getEncryptedPreferences(context);
-        int pref = prefs.getInt(key_theme, Theme.AUTO.value);
-        return Theme.getEnum(pref);
+        int pref = prefs.getInt(key_theme, AppTheme.AUTO.value);
+        return AppTheme.getEnum(pref);
     }
 
-    public static void setThemePref(Context context, Theme theme) {
+    public static void setThemePref(Context context, AppTheme theme) {
         SharedPreferences prefs = getEncryptedPreferences(context);
         prefs.edit()
                 .putInt(key_theme, theme.value)

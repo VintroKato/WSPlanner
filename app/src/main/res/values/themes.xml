@@ -6,7 +6,7 @@
         <item name="android:textColor">@color/text_light</item>
         <item name="android:autofilledHighlight">@drawable/shape_input_autofilled</item>
 
-        <item name="app_background">@color/bg_light</item>
+        <item name="app_bg">@color/bg_light</item>
         <item name="app_text">@color/text_light</item>
         <item name="input_bg">@color/input_bg_light</item>
         <item name="input_bg_active">@color/input_bg_active_light</item>
@@ -16,7 +16,7 @@
         <item name="input_border_ok">@color/input_border_ok_light</item>
         <item name="input_border_error">@color/input_border_error_light</item>
 
-        <item name="btn_bg">@color/btn_bg</item>
+        <item name="button_bg">@color/btn_bg</item>
         <item name="button_text">@color/bg_light</item>
         <item name="input_bg_autofilled">@color/input_bg_autofilled</item>
         <item name="widget_icon_blue">@color/widget_icon_blue</item>

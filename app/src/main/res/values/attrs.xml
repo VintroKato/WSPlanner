@@ -3,10 +3,10 @@
         <attr name="app_widget_inner_radius" format="dimension" />
         <attr name="app_widget_radius" format="dimension" />
 
-        <attr name="app_background" format="color" />
+        <attr name="app_bg" format="color" />
         <attr name="app_text" format="color" />
 
-        <attr name="btn_bg" format="color" />
+        <attr name="button_bg" format="color" />
         <attr name="button_text" format="color" />
 
         <attr name="input_bg" format="color" />

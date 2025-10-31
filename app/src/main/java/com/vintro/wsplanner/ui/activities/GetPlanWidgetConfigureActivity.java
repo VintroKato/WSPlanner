@@ -1,6 +1,5 @@
 package com.vintro.wsplanner.ui.activities;
 
-import android.app.Activity;
 import android.appwidget.AppWidgetManager;
 import android.content.Intent;
 import android.os.Bundle;
@@ -104,8 +103,8 @@ public class GetPlanWidgetConfigureActivity extends AppCompatActivity {
     }
 
     private void updateInputBackgrounds() {
-        AnimationHelper.animateInputBackground(this, loginInput, loginInputState, loginInputState);
-        AnimationHelper.animateInputBackground(this, passwordInput, passwordInputState, passwordInputState);
+        AnimationHelper.animateInputState(this, loginInput, loginInputState, loginInputState);
+        AnimationHelper.animateInputState(this, passwordInput, passwordInputState, passwordInputState);
     }
 
     private void handleBtnClick(View v) {
@@ -258,12 +257,12 @@ public class GetPlanWidgetConfigureActivity extends AppCompatActivity {
     }
 
     private void setLoginState(InputState state) {
-        AnimationHelper.animateInputBackground(this, loginInput, state, loginInputState);
+        AnimationHelper.animateInputState(this, loginInput, state, loginInputState);
         loginInputState = state;
     }
 
     private void setPasswordState(InputState state) {
-        AnimationHelper.animateInputBackground(this, passwordInput, state, passwordInputState);
+        AnimationHelper.animateInputState(this, passwordInput, state, passwordInputState);
         passwordInputState = state;
     }
 
