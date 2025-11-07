@@ -20,6 +20,7 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import com.google.android.material.card.MaterialCardView;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.enums.InputState;
+import com.vintro.wsplanner.utils.Logger;
 
 public class AnimationHelper {
 
@@ -76,7 +77,7 @@ public class AnimationHelper {
         for (int i = 0; i < root.getChildCount(); i++) {
             View child = root.getChildAt(i);
 
-            if (child instanceof Button) { // who made button extends TextView lol
+            if (child instanceof Button) {
                 AnimationHelper.animateButtonThemeChange(context, oldContext, (Button) child);
             } else if (child instanceof TextView) {
                 AnimationHelper.animateTextThemeChange(context, oldContext, (TextView) child);
@@ -94,9 +95,8 @@ public class AnimationHelper {
     private static void animateStatusBarIconsThemeChange(Activity activity) {
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(activity.getWindow(), activity.getWindow().getDecorView());
 
-        int currentTheme = activity.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
         boolean isStatusBarLight /* so icons are dark */
-                = currentTheme == Configuration.UI_MODE_NIGHT_NO;
+                = !UIHelper.isNightMode(activity);
 
         controller.setAppearanceLightStatusBars(isStatusBarLight);
     }

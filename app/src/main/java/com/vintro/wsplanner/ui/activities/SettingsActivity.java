@@ -130,27 +130,43 @@ public class SettingsActivity extends AppCompatActivity {
             if (card != selectedCard) {
                 if (card.isChecked()) {
                     AnimationHelper.animateCardSelection(this, card, false);
-                    card.setChecked(false);
                 }
             }
         }
         AnimationHelper.animateCardSelection(this, selectedCard, true);
+    }
+
+    private void selectInstantCard(MaterialCardView selectedCard) {
+        GridLayout cardLayout = (GridLayout) selectedCard.getParent();
+
+        for (int i = 0; i < cardLayout.getChildCount(); i++) {
+            MaterialCardView card = (MaterialCardView) cardLayout.getChildAt(i);
+            if (card != selectedCard) {
+                if (card.isChecked()) {
+                    card.setChecked(false);
+                }
+            }
+        }
         selectedCard.setChecked(true);
     }
 
+
+
     private void bindThemeOnClick(MaterialCardView card, AppTheme theme) {
         card.setOnClickListener(v -> {
-            if (card.isChecked()) {
-                return;
-            }
+            boolean isOldNight = UIHelper.isNightMode(this);
 
-            selectCard(card);
             PreferencesManager.setThemePref(this, theme);
 
             Context oldContext = UIHelper.cloneContext(this);
             UIHelper.setSelectedTheme(this);
 
-            AnimationHelper.animateThemeChange(this, oldContext, root);
+            if (isOldNight != UIHelper.isNightMode(this)) {
+                selectInstantCard(card);
+                AnimationHelper.animateThemeChange(this, oldContext, root);
+            } else {
+                selectCard(card);
+            }
         });
     }
 
@@ -158,7 +174,6 @@ public class SettingsActivity extends AppCompatActivity {
         card.setOnClickListener(v -> {
             selectCard(card);
             PreferencesManager.setLanguagePref(this, language);
-//            UIHelper.setSelectedLanguage(this);
             recreate();
         });
     }
