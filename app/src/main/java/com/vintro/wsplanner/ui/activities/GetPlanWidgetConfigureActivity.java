@@ -70,6 +70,8 @@ public class GetPlanWidgetConfigureActivity extends AppCompatActivity {
         courseCard2 = findViewById(R.id.course_card_2);
         courseCard3 = findViewById(R.id.course_card_3);
         courseCard4 = findViewById(R.id.course_card_4);
+
+        courseCard4.setEnabled(false);
         confirmButton = findViewById(R.id.confirm_button);
 
         selectCard(courseCard3, course);
@@ -151,7 +153,7 @@ public class GetPlanWidgetConfigureActivity extends AppCompatActivity {
                 stateUpdater.run();
 
                 if (!editable.toString().isBlank()) {
-                    handler.postDelayed(GetPlanWidgetConfigureActivity.this::checkData, 500);
+                    handler.postDelayed(GetPlanWidgetConfigureActivity.this::checkData, 800);
                 }
             }
 

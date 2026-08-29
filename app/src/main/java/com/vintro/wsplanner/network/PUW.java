@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.appwidget.AppWidgetManager;
 
+import androidx.annotation.NonNull;
+
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.utils.Logger;
 
@@ -26,7 +28,7 @@ public class PUW {
     public static final String loginUrl = baseUrl + "login/index.php";
     public static final String homeUrl = baseUrl + "my/";
     public static final String fileUrlStart = "https://puw.wspa.pl/pluginfile.php/249798/mod_folder/content/0/Informatyka%20-%20studia%20I%20stopnia%20-%20st%20";
-    public static final String fileUrlEnd = "%20-%20semestr%20zimowy.xlsx?forcedownload=1";
+    public static final String fileUrlEnd = "%20-%20semestr%20letni.xlsx?forcedownload=1";
 
     public static String getFileUrl(Context context, Intent intent) {
         int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
@@ -42,12 +44,13 @@ public class PUW {
         OkHttpClient client = new OkHttpClient.Builder()
                 .cookieJar(new CookieJar() {
                     @Override
-                    public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
+                    public void saveFromResponse(@NonNull HttpUrl url, @NonNull List<Cookie> cookies) {
                         cookieStore.put(url.host(), cookies);
                     }
 
+                    @NonNull
                     @Override
-                    public List<Cookie> loadForRequest(HttpUrl url) {
+                    public List<Cookie> loadForRequest(@NonNull HttpUrl url) {
                         List<Cookie> cookies = cookieStore.get(url.host());
                         return cookies != null ? cookies : List.of();
                     }
@@ -131,7 +134,7 @@ public class PUW {
 
             ResponseBody file = fileResponse.body();
 
-            if (file == null || file.contentLength() == 0) {
+            if (file.contentLength() == 0) {
                 Logger.e("PUW.downloadFile", "File body is null");
                 fileResponse.close();
                 return null;
