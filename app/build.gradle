@@ -42,6 +42,7 @@ dependencies {
     androidTestImplementation libs.espresso.core
     implementation libs.okhttp
     implementation libs.encryptedprefs.core
+    implementation libs.jsoup
 
     // .xls
     implementation libs.poi
@@ -49,4 +50,10 @@ dependencies {
     // .xlsx
     implementation libs.poi.ooxml
 
+}
+
+tasks.withType(Test) {
+    testLogging {
+        showStandardStreams = true
+    }
 }

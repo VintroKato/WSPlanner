@@ -370,50 +370,71 @@ public class BachelorFullTimeParser implements ScheduleParser {
     private List<Integer> findTargetColumns(Sheet sheet, String studentSurname, String studentSpecialization) {
         List<Integer> cols = new ArrayList<>();
         Row groupRow = sheet.getRow(3);
+        boolean hasAnyGroupsDefined = false;
 
         if (groupRow != null) {
-            for (Cell cell : groupRow) {
-                // skip column A
-                if (cell.getColumnIndex() == 0) {
-                    continue;
-                }
-                String header = dataFormatter.formatCellValue(cell).toLowerCase().replace("\n", " ");
-                if (header.trim().isEmpty()) continue;
+            for (int i = 1; i < groupRow.getLastCellNum(); i++) {
+                Cell cell = groupRow.getCell(i);
+                if (cell == null) continue;
 
+                String rawHeader = dataFormatter.formatCellValue(cell).trim();
+                if (rawHeader.isEmpty()) continue;
+                hasAnyGroupsDefined = true;
+
+                String headerNoNewline = rawHeader.toLowerCase().replace("\n", " ");
                 boolean isTargetColumn = true;
 
-                // check if the column matches the student specialization
-                boolean hasStudentSpec = studentSpecialization != null && !studentSpecialization.isEmpty()
-                        && header.contains(studentSpecialization.toLowerCase());
+                // --- НОВАЯ ЭВРИСТИКА ОПРЕДЕЛЕНИЯ ТИПА КОЛОНКИ ---
+                boolean isCommonGroup = rawHeader.toLowerCase().startsWith("grupa ");
+                boolean isSpecializationColumn = false;
 
-                // keywords to identify if a column belongs to any specialization
-                boolean isSomeSpecialization = header.contains("sp.") || header.contains("specjalność") ||
-                        header.contains("webowe") || header.contains("mobilne") ||
-                        header.contains("grafika") || header.contains("cyberbezpieczeństwo") ||
-                        header.contains("sztuczna inteligencja") || header.contains("data");
+                if (!isCommonGroup) {
+                    // Проверяем явный маркер
+                    if (headerNoNewline.contains("sp.") || headerNoNewline.contains("specjalność")) {
+                        isSpecializationColumn = true;
+                    }
+                    // Проверяем неявный маркер (длинное название специальности на первой строке)
+                    else {
+                        String firstLine = rawHeader.split("\n")[0].toLowerCase().trim();
+                        if (!firstLine.startsWith("gr") && firstLine.length() > 8) {
+                            isSpecializationColumn = true;
+                        }
+                    }
+                }
 
-                if (hasStudentSpec) {
-                    //  student specialization
-                    isTargetColumn = true;
-                } else if (isSomeSpecialization) {
-                    // specialization but not student's
-                    isTargetColumn = false;
+                // --- ЛОГИКА ФИЛЬТРАЦИИ ---
+                boolean hasStudentSpec = studentSpecialization != null && !studentSpecialization.trim().isEmpty();
+
+                if (isSpecializationColumn) {
+                    // Это колонка специализации. Берем ТОЛЬКО если она совпадает с выбором студента.
+                    if (hasStudentSpec && headerNoNewline.contains(studentSpecialization.toLowerCase().trim())) {
+                        isTargetColumn = true;
+                    } else {
+                        isTargetColumn = false;
+                    }
                 } else {
-                    // general subject without specialization
+                    // Это общая колонка ("GRUPA X"). Берем всегда, но дальше проверим фамилию.
                     isTargetColumn = true;
                 }
 
-                // check the surname range
-                if (isTargetColumn && header.contains("nazwisk")) {
-                    isTargetColumn = isSurnameInHeaderRange(studentSurname, header);
+                // --- ПРОВЕРКА ФАМИЛИИ ---
+                if (isTargetColumn && headerNoNewline.contains("nazwisk")) {
+                    isTargetColumn = isSurnameInHeaderRange(studentSurname, headerNoNewline);
                 }
 
-                // add column index if all checks passed
                 if (isTargetColumn) {
                     cols.add(cell.getColumnIndex());
                 }
             }
         }
+
+        if (!hasAnyGroupsDefined && groupRow != null) {
+            for (int i = 1; i <= 5; i++) {
+                Cell cell = groupRow.getCell(i);
+                if (cell != null) cols.add(i);
+            }
+        }
+
         return cols;
     }
 
