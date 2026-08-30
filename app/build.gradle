@@ -43,4 +43,10 @@ dependencies {
     implementation libs.okhttp
     implementation libs.encryptedprefs.core
 
+    // .xls
+    implementation libs.poi
+
+    // .xlsx
+    implementation libs.poi.ooxml
+
 }
