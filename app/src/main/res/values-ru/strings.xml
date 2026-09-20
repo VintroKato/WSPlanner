@@ -16,4 +16,96 @@
     <string name="configure_status_ok">Данные верны</string>
     <string name="configure_status_error">Неверный логин или пароль</string>
     <string name="widget_name">Расписание</string>
+
+    <string name="onboarding_login_title">Вход в PUW</string>
+    <string name="onboarding_button_next">Далее</string>
+    <string name="onboarding_course_title">Параметры обучения</string>
+    <string name="onboarding_level_label">Степень</string>
+    <string name="onboarding_mode_label">Форма обучения</string>
+    <string name="onboarding_year_label">Курс</string>
+    <string name="onboarding_english_switch">Есть занятия по английскому</string>
+    <string name="onboarding_english_hint">Номер группы</string>
+    <string name="onboarding_specialty_title">Специализация</string>
+    <string name="onboarding_specialty_subtitle">Выберите вашу специализацию</string>
+    <string name="onboarding_no_specialties">Специализации для этого курса не найдены</string>
+    <string name="onboarding_manual_specialty_switch">Ввести специализацию вручную</string>
+    <string name="onboarding_manual_specialty_hint">Название специализации</string>
+    <string name="onboarding_surname_title">Фамилия студента</string>
+    <string name="onboarding_surname_hint">Фамилия (напр. Kowalski)</string>
+    <string name="onboarding_surname_subtitle">Необходимо, если группы разделены по фамилиям (напр. A-J, K-Ł)</string>
+    <string name="onboarding_button_skip">Пропустить</string>
+    <string name="onboarding_button_finish">Завершить</string>
+    <string name="onboarding_additional_title">Дополнительно</string>
+    <string name="onboarding_additional_subtitle">Необязательные настройки английского, семинара и фамилии</string>
+
+    <string name="onboarding_major_label">Направление</string>
+    <string name="onboarding_loading_courses">Загрузка доступных программ обучения…</string>
+    <string name="onboarding_loading_specialties">Поиск специализаций в расписании…</string>
+    <string name="degree_level_bachelors">I stopień</string>
+    <string name="degree_level_masters">II stopień</string>
+    <string name="degree_level_long_masters">Jednolite</string>
+    <string name="study_mode_full_time">Дневное</string>
+    <string name="study_mode_part_time">Заочное</string>
+    <string name="study_mode_online">PUW</string>
+    <string name="button_back">Назад</string>
+
+    <string name="onboarding_seminar_switch">У меня дипломный семинар</string>
+    <string name="onboarding_seminar_hint">Руководитель / преподаватель</string>
+    <string name="onboarding_seminar_subtitle">Необходимо для отображения вашей группы семинара</string>
+    <string name="settings_seminar_teacher_label">Преподаватель семинара</string>
+    <string name="settings_seminar_teacher_hint">Фамилия преподавателя</string>
+
+    <string name="location_uczelnia">Универ</string>
+    <string name="location_online">Онлайн</string>
+    <string name="location_w_terenie">Выезд</string>
+
+    <string name="schedule_badge_now">СЕЙЧАС</string>
+    <string name="schedule_badge_next">СЛЕДУЮЩИЙ</string>
+    <string name="schedule_break_gap">Окно</string>
+    <string name="schedule_time_left">Ещё %1$s</string>
+    <string name="schedule_time_until">Через %1$s</string>
+    <string name="schedule_progress_format">Пройдено: %1$d из %2$d (%3$d%%)</string>
+
+    <string name="menu_refresh_schedule">Обновить расписание</string>
+    <string name="menu_change_group">Сменить группу / курс</string>
+    <string name="menu_settings">Настройки</string>
+
+    <string name="schedule_empty_title">В этот день пар нет</string>
+    <string name="schedule_empty_subtitle">Можно отдохнуть или выбрать другую дату</string>
+    <string name="schedule_updated_prefix">Обновлено: %1$s</string>
+    <string name="schedule_updated_today">сегодня, %1$s</string>
+    <string name="schedule_updated_yesterday">вчера, %1$s</string>
+    <string name="schedule_gap_format">Окно: %1$s</string>
+    <string name="schedule_cooldown_message">Подождите %1$d сек. перед следующим обновлением</string>
+    <string name="schedule_opening_file">Открытие файла расписания…</string>
+    <string name="schedule_downloading_file">Загрузка актуального расписания…</string>
+    <string name="schedule_open_file_error">Не удалось открыть файл расписания</string>
+    <string name="hours_short">%1$d ч</string>
+    <string name="minutes_short">%1$d мин</string>
+    <string name="hours_and_minutes_short">%1$d ч %2$d мин</string>
+
+    <string name="subject_details_title">Детали предмета</string>
+    <string name="subject_open_puw_course">Открыть курс в PUW</string>
+    <string name="subject_my_notes">Мои заметки</string>
+    <string name="subject_notes_local_hint">Хранятся локально на устройстве</string>
+    <string name="subject_notes_placeholder">Условия зачёта, дедлайны проектов…</string>
+    <string name="subject_notes_saved">Сохранено</string>
+    <string name="subject_notes_save">Сохранить</string>
+    <string name="subject_timeline_title">Даты занятий</string>
+    <string name="subject_status_completed">Пройдено</string>
+    <string name="subject_status_upcoming">Запланировано</string>
+    <string name="subject_status_next">БЛИЖАЙШЕЕ</string>
+    <string name="subject_room_format">Аудитория %1$s</string>
+    <string name="subject_copy_teacher_email_placeholder"></string>
+    <string name="teacher_email_searching">Поиск email…</string>
+    <string name="teacher_email_not_found">Email не найден</string>
+    <string name="teacher_email_copied">Email скопирован в буфер обмена</string>
+    <string name="teacher_email_copy_desc">Скопировать email преподавателя</string>
+    <string name="subject_opening_puw_course">Поиск курса на PUW…</string>
+    <string name="subject_course_not_found">Курс не найден на PUW. Открываем дашборд…</string>
+    <string name="maps_hint_format">(Google Maps: %1$s ↗)</string>
+    <string name="maps_hint_wspa">(Google Maps: WSPA Lublin, ul. Bursaki 12 ↗)</string>
+    <string name="timeline_item_header_format">%1$d. %2$s, %3$s</string>
+    <string name="timeline_time_room_format">%1$s – %2$s · %3$s</string>
+    <string name="common_loading">Загрузка…</string>
 </resources>

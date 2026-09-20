@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="8dp">
+
+    <View
+        android:layout_width="32dp"
+        android:layout_height="1dp"
+        android:background="?attr/card_border" />
+
+    <TextView
+        android:id="@+id/gap_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:alpha="0.65"
+        android:text="Okienko: 1 godz. 15 min"
+        android:textColor="?attr/app_text"
+        android:textSize="12sp"
+        android:textStyle="normal" />
+
+    <View
+        android:layout_width="32dp"
+        android:layout_height="1dp"
+        android:background="?attr/card_border" />
+</LinearLayout>

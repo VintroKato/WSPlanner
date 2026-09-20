@@ -49,32 +49,22 @@ public class UIHelper {
         AppCompatDelegate.setDefaultNightMode(theme.value);
     }
 
-    public static void setSelectedLanguage(Activity activity) {
-        Language language = PreferencesManager.getLanguagePref(activity);
+    public static void setSelectedLanguage(Context context) {
+        Language language = PreferencesManager.getLanguagePref(context);
         LocaleListCompat locales = LocaleListCompat.forLanguageTags(language.code);
         Logger.d("UIHelper.setSelectedLanguage", "Changing language to " + language + " with locales " + locales.toLanguageTags());
         AppCompatDelegate.setApplicationLocales(locales);
 
-        Locale locale = new Locale(language.code);
-        Locale.setDefault(locale);
+        if (context instanceof Activity) {
+            Activity activity = (Activity) context;
+            Locale locale = new Locale(language.code);
+            Locale.setDefault(locale);
 
-        Configuration config = new Configuration(activity.getResources().getConfiguration());
-        config.setLocale(locale);
+            Configuration config = new Configuration(activity.getResources().getConfiguration());
+            config.setLocale(locale);
 
-        activity.getResources().updateConfiguration(config,
-                activity.getResources().getDisplayMetrics());
+            activity.getResources().updateConfiguration(config,
+                    activity.getResources().getDisplayMetrics());
+        }
     }
-
-//    public static void setSelectedLanguage2(Activity activity) {
-//        String languageCode = PreferencesManager.getLanguagePref(activity).code;
-//
-//        Locale locale = new Locale(languageCode);
-//        Locale.setDefault(locale);
-//
-//        Configuration config = new Configuration();
-//        config.setLocale(locale);
-//
-//        activity.getResources().updateConfiguration(config,
-//                activity.getResources().getDisplayMetrics());
-//    }
 }

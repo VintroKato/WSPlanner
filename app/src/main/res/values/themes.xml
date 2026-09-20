@@ -28,6 +28,13 @@
         <item name="card_bg">@color/card_bg_light</item>
         <item name="card_border">@color/card_border_light</item>
         <item name="card_checked_border">@color/card_checked_border_light</item>
+
+        <item name="popup_bg">@color/popup_bg_light</item>
+        <item name="popup_border">@color/popup_border_light</item>
+
+        <item name="popupMenuStyle">@style/CustomPopupMenu</item>
+        <item name="android:popupMenuStyle">@style/CustomPopupMenu</item>
+        <item name="actionOverflowMenuStyle">@style/CustomPopupMenu</item>
     </style>
 
 </resources>

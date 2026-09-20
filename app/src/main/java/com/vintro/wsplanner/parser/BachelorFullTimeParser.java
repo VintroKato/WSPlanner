@@ -33,35 +33,95 @@ public class BachelorFullTimeParser implements ScheduleParser {
     // single date: 02.03
     private final Pattern singleDatePattern = Pattern.compile("(\\d{2}\\.\\d{2})");
 
-    // default time in first col: 8:15-9:45 or 815-945
-    private final Pattern defaultRowTimePattern = Pattern.compile("(\\d{1,2}):?(\\d{2})\\s*[-–]\\s*(\\d{1,2}):?(\\d{2})");
+    // default time in first col: 8:15-9:45 or 815-945 or 8.15-9.45
+    private final Pattern defaultRowTimePattern = Pattern.compile("(\\d{1,2})[:.]?(\\d{2})\\s*[-–]\\s*(\\d{1,2})[:.]?(\\d{2})");
 
-    // specific time range override: w godz. 8:15 - 9:45
-    private final Pattern specificTimePattern = Pattern.compile("(?:godz)?\\.?\\s*(\\d{1,2}:\\d{2})\\s*[-–]\\s*(\\d{1,2}:\\d{2})");
+    // specific time range override: w godz. 8:15 - 9:45 or 10.00 - 14:15
+    private final Pattern specificTimePattern = Pattern.compile("(?:godz)?\\.?\\s*(\\d{1,2}[:.]\\d{2})\\s*[-–]\\s*(\\d{1,2}[:.]\\d{2})");
 
-    // specific start time override: od godz. 8:15
-    private final Pattern overrideStartTimePattern = Pattern.compile("od\\s*(?:godz)?\\.?\\s*(\\d{1,2}:\\d{2})");
+    // specific start time override: od godz. 8:15 or od 8.15
+    private final Pattern overrideStartTimePattern = Pattern.compile("od\\s*(?:godz)?\\.?\\s*(\\d{1,2}[:.]\\d{2})");
 
     // lesson duration in hours: 15h or 30h
-    private final Pattern subjectTypeFilter = Pattern.compile("\\s+\\d{1,2}h");
+    private final Pattern subjectTypeFilter = Pattern.compile("\\s*[-–—]?\\s*\\d{1,2}h\\b", Pattern.CASE_INSENSITIVE);
 
-    // room with "sali" prefix: w sali A018
-    private final Pattern roomSalaPattern = Pattern.compile("sali\\s+([a-zA-Z0-9]+)");
+    // additional dates: +17.06 (środa) w godz. 17:00-21:15 or + 02.06 i 16.06 (wtorek)
+    private final Pattern plusDatePattern = Pattern.compile("^\\+\\s*(\\d{2}\\.\\d{2})");
+
+    public static String cleanLessonType(String raw) {
+        if (raw == null) return null;
+        // remove all occurrences of \d{1,2}h (e.g. 15h, 30h)
+        String cleaned = raw.replaceAll("(?i)\\b\\d{1,2}h\\b|\\d{1,2}h", "").trim();
+        // strip any remaining leading or trailing punctuation/dashes
+        cleaned = cleaned.replaceAll("^[-–—\\s,.]+|[-–—\\s,.]+$", "").trim();
+        if (cleaned.isEmpty() || cleaned.equalsIgnoreCase("other") || cleaned.equalsIgnoreCase("inne")) {
+            return null;
+        }
+        return cleaned;
+    }
+
+    private boolean isSeminarTeacherMatch(String line, String seminarTeacher) {
+        if (seminarTeacher == null || seminarTeacher.trim().isEmpty() || line == null) {
+            return false;
+        }
+        String lowerLine = line.toLowerCase().trim();
+        String lowerTeacher = seminarTeacher.toLowerCase().trim();
+
+        // match full teacher name
+        if (lowerLine.contains(lowerTeacher)) {
+            return true;
+        }
+
+        // extract name tokens without academic titles
+        String cleaned = lowerTeacher.replaceAll("[.,]", " ");
+        String[] tokens = cleaned.split("\\s+");
+        List<String> nameTokens = new ArrayList<>();
+        for (String t : tokens) {
+            if (!t.isEmpty() && !t.equals("mgr") && !t.equals("dr") && !t.equals("inz") &&
+                !t.equals("inż") && !t.equals("prof") && !t.equals("hab") &&
+                !t.equals("doc") && !t.equals("lic") && t.length() > 2) {
+                nameTokens.add(t);
+            }
+        }
+
+        // Match if the last name (surname) is present in the line
+        if (!nameTokens.isEmpty()) {
+            String surname = nameTokens.get(nameTokens.size() - 1);
+            if (lowerLine.contains(surname)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // room with "sala" prefix: sala 205, w sali A018, w salach 205
+    private final Pattern roomSalaPattern = Pattern.compile("(?:w\\s+)?sal(?:a|i|ach)\\s+([a-zA-Z0-9]+)");
 
     // room with "s." prefix: w s. 215
     private final Pattern roomSPattern = Pattern.compile("s\\.\\s+([a-zA-Z0-9]+)");
 
     // academic year in header: rok akademicki 2025/2026
-    private final Pattern academicYearPattern = Pattern.compile("rok akademicki (\\d{4})/(\\d{4})");
+    private final Pattern academicYearPattern = Pattern.compile("rok akademicki\\s*(\\d{4})/(\\d{4})", Pattern.CASE_INSENSITIVE);
 
-    // surname range in header: nazwisk: A-Ha
-    private final Pattern surnameRangePattern = Pattern.compile("nazwisk\\s*[:]?\\s*([a-ząćęłńóśźż]+)\\s*-\\s*([a-ząćęłńóśźż]+)");
+    // surname range in header: wg nazwisk: A-Ha or A-J or K-La
+    private final Pattern surnameRangePattern = Pattern.compile("(?:nazwisk\\s*[:]?\\s*|\\b)([a-ząćęłńóśźż]+)\\s*-\\s*([a-ząćęłńóśźż]+)", Pattern.CASE_INSENSITIVE);
 
-    private int academicYearStart = LocalDate.now().getYear();
-    private int academicYearEnd = academicYearStart + 1;
+    int academicYearStart = LocalDate.now().getYear();
+    int academicYearEnd = academicYearStart + 1;
+
+    public void setAcademicYears(int start, int end) {
+        this.academicYearStart = start;
+        this.academicYearEnd = end;
+    }
 
     @Override
     public Schedule parse(InputStream excelStream, String fieldOfStudy, int semester, String studentSurname, String studentSpecialization, String targetLangGroup) {
+        return parse(excelStream, fieldOfStudy, semester, studentSurname, studentSpecialization, targetLangGroup, null);
+    }
+
+    @Override
+    public Schedule parse(InputStream excelStream, String fieldOfStudy, int semester, String studentSurname, String studentSpecialization, String targetLangGroup, String seminarTeacher) {
         Schedule schedule = new Schedule(fieldOfStudy, semester, studentSurname);
 
         try (Workbook workbook = WorkbookFactory.create(excelStream)) {
@@ -71,7 +131,8 @@ public class BachelorFullTimeParser implements ScheduleParser {
             // find which columns belong to the student based on surname and specialization
             List<Integer> targetColumns = findTargetColumns(sheet, studentSurname, studentSpecialization);
             if (targetColumns.isEmpty()) {
-                throw new IllegalArgumentException("Target group columns not found: " + studentSurname);
+                System.out.println("Target group columns not found for: " + studentSurname);
+                return schedule;
             }
 
             // processed merged cells to avoid duplicating lessons
@@ -115,7 +176,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
                     List<String> lessonBlocks = splitIntoBlocks(cellTarget.value);
 
                     for (String block : lessonBlocks) {
-                        List<Lesson> parsedLessons = parseLessonBlock(block, studentSurname, defaultTimes[0], overrideEnd, targetLangGroup);
+                        List<Lesson> parsedLessons = parseLessonBlock(block, studentSurname, defaultTimes[0], overrideEnd, targetLangGroup, seminarTeacher);
                         schedule.addLessons(parsedLessons);
                     }
                 }
@@ -127,21 +188,52 @@ public class BachelorFullTimeParser implements ScheduleParser {
         return schedule;
     }
 
-    private List<Lesson> parseLessonBlock(String block, String targetGroup, LocalTime defaultStart, LocalTime defaultEnd, String targetLangGroup) {
+    public List<Lesson> parseLessonBlock(String block, String targetGroup, LocalTime defaultStart, LocalTime defaultEnd, String targetLangGroup, String seminarTeacher) {
         List<Lesson> lessons = new ArrayList<>();
-        String[] lines = block.split("\\n");
-        if (lines.length == 0) return lessons;
+        String[] rawLines = block.split("\\n");
+        if (rawLines.length == 0) return lessons;
+
+        // Preprocess lines: merge continuation lines (e.g. "... zajęcia w formie" + "on-line")
+        List<String> lines = new ArrayList<>();
+        for (String rawLine : rawLines) {
+            String trimmed = rawLine.trim();
+            if (trimmed.isEmpty()) continue;
+
+            if (!lines.isEmpty()) {
+                String last = lines.get(lines.size() - 1);
+                String lastLower = last.toLowerCase().trim();
+                String curLower = trimmed.toLowerCase();
+
+                boolean isHangingEnd = lastLower.endsWith("w formie") || lastLower.endsWith("formie") ||
+                                       lastLower.endsWith("w") || lastLower.endsWith("godz.") ||
+                                       lastLower.endsWith("godz") || lastLower.endsWith("od") ||
+                                       lastLower.endsWith("sali") || lastLower.endsWith("s.") ||
+                                       lastLower.endsWith(",");
+
+                boolean isContinuationStart = curLower.startsWith("on-line") || curLower.startsWith("online") ||
+                                              curLower.startsWith("w godz") || curLower.startsWith("godz.") ||
+                                              curLower.startsWith("od ") || curLower.startsWith("od godz") ||
+                                              curLower.matches("\\d{1,2}:\\d{2}\\s*[-–]\\s*\\d{1,2}:\\d{2}.*");
+
+                if (isHangingEnd || (lastLower.contains("w dn") && isContinuationStart)) {
+                    lines.set(lines.size() - 1, last + " " + trimmed);
+                    continue;
+                }
+            }
+            lines.add(trimmed);
+        }
+        if (lines.isEmpty()) return lessons;
 
         String subjectName = "Unknown Subject";
-        String lessonType = "Other";
+        String lessonType = null;
         String globalTeacher = "Unknown Teacher";
         String globalRoom = "Unknown Room";
 
-        // merge first two lines
-        String firstLine = lines[0].trim();
-        if (firstLine.endsWith("-") && lines.length > 1) {
-            firstLine = firstLine + " " + lines[1].trim();
-            lines[1] = ""; // clear the second line so it is not parsed again
+        // merge first two lines if subject wraps
+        String firstLine = lines.get(0).trim();
+        if (firstLine.endsWith("-") && lines.size() > 1) {
+            firstLine = firstLine + " " + lines.get(1).trim();
+            lines.set(1, ""); // clear the second line so it is not parsed again
         }
 
         // extract subject name and lesson type from first line
@@ -150,10 +242,14 @@ public class BachelorFullTimeParser implements ScheduleParser {
             int dashIndex = firstLine.lastIndexOf(delimiter);
             subjectName = firstLine.substring(0, dashIndex).trim();
             String lessonTypeRaw = firstLine.substring(dashIndex + delimiter.length()).trim();
-            lessonType = lessonTypeRaw.replaceAll(subjectTypeFilter.pattern(), "").trim();
+            lessonType = cleanLessonType(lessonTypeRaw);
         } else {
             subjectName = firstLine;
+            lessonType = null;
         }
+
+        // Clean subjectName from any trailing duration (e.g. " - 15h" or " 15h")
+        subjectName = subjectName.replaceAll("(?i)\\s*[-–—]?\\s*\\d{1,2}h\\b", "").trim();
 
         LocalTime globalStart = defaultStart;
         LocalTime globalEnd = defaultEnd;
@@ -163,15 +259,33 @@ public class BachelorFullTimeParser implements ScheduleParser {
         Map<String, String> dateRoomOverrides = new HashMap<>();
         List<String> rawDates = new ArrayList<>();
 
-        // state machine flag for english lekrorat
+        // state machine flag for english lektorat and seminar
         boolean readingMyGroup = true;
+        boolean isSeminarSubject = subjectName.toLowerCase().contains("seminarium") || subjectName.toLowerCase().contains("dyplom");
+        boolean seminarFound = false;
 
         for (String line : lines) {
             String lowerLine = line.toLowerCase().trim();
             if (lowerLine.isEmpty()) continue;
 
-            // lektoraty
+            // lektoraty or seminar groups
             if (lowerLine.startsWith("gr.")) {
+                if (isSeminarSubject) {
+                    if (isSeminarTeacherMatch(lowerLine, seminarTeacher)) {
+                        readingMyGroup = true;
+                        seminarFound = true;
+                        String[] parts = line.split("[-–]");
+                        if (parts.length >= 2) globalTeacher = parts[1].trim();
+                        if (parts.length >= 3) {
+                            String room = extractRoomInfo(parts[2]);
+                            if (room != null) globalRoom = room;
+                        }
+                    } else {
+                        readingMyGroup = false;
+                    }
+                    continue;
+                }
+
                 String normalizedLine = lowerLine.replace(" ", "");
                 String targetGr = targetLangGroup != null ? targetLangGroup.replace(" ", "").toLowerCase() : "";
 
@@ -191,6 +305,11 @@ public class BachelorFullTimeParser implements ScheduleParser {
                 continue;
             }
 
+            // dates or global info
+            if (isSeminarSubject && seminarFound) {
+                readingMyGroup = true;
+            }
+
             // dates are parsed only if we are in our group section or global section
             if (!readingMyGroup) continue;
 
@@ -200,8 +319,44 @@ public class BachelorFullTimeParser implements ScheduleParser {
                 continue;
             }
 
-            // overrides to specific dates (w dn.)
-            if (lowerLine.contains("w dn")) {
+            // additional dates (e.g. "+17.06 (środa) w godz. 17:00-21:15" or "+ 02.06 i 16.06 (wtorek)")
+            // Ignore non-specific additions like "+4h w terminie uzgodnionym z prowadzącym"
+            if (lowerLine.startsWith("+") && plusDatePattern.matcher(lowerLine).find()) {
+                List<String> additionalDates = new ArrayList<>();
+                Matcher m = singleDatePattern.matcher(lowerLine);
+                while (m.find()) {
+                    String d = m.group(1);
+                    rawDates.add(d);
+                    additionalDates.add(d);
+                }
+
+                // override start and end time if specified on this line
+                Matcher tm = specificTimePattern.matcher(lowerLine);
+                if (tm.find()) {
+                    LocalTime s = parseTime(tm.group(1));
+                    LocalTime e = parseTime(tm.group(2));
+                    if (s != null && e != null) {
+                        for (String d : additionalDates) dateTimeOverrides.put(d, new LocalTime[]{s, e});
+                    }
+                } else if (lowerLine.contains("od")) {
+                    Matcher odTm = overrideStartTimePattern.matcher(lowerLine);
+                    if (odTm.find()) {
+                        LocalTime s = parseTime(odTm.group(1));
+                        if (s != null) {
+                            for (String d : additionalDates) dateTimeOverrides.put(d, new LocalTime[]{s, defaultEnd});
+                        }
+                    }
+                }
+
+                String roomOverride = extractRoomInfo(line);
+                if (roomOverride != null) {
+                    for (String d : additionalDates) dateRoomOverrides.put(d, roomOverride);
+                }
+                continue;
+            }
+
+            // overrides to specific dates (w dn. / w dniu / na zj.)
+            if (lowerLine.contains("w dn") || lowerLine.contains("w dniu") || lowerLine.contains("na zj")) {
                 List<String> specificDates = new ArrayList<>();
                 Matcher m = singleDatePattern.matcher(lowerLine);
                 while (m.find()) specificDates.add(m.group(1));
@@ -211,12 +366,16 @@ public class BachelorFullTimeParser implements ScheduleParser {
                 if (tm.find()) {
                     LocalTime s = parseTime(tm.group(1));
                     LocalTime e = parseTime(tm.group(2));
-                    for (String d : specificDates) dateTimeOverrides.put(d, new LocalTime[]{s, e});
+                    if (s != null && e != null) {
+                        for (String d : specificDates) dateTimeOverrides.put(d, new LocalTime[]{s, e});
+                    }
                 } else if (lowerLine.contains("od")) {
                     Matcher odTm = overrideStartTimePattern.matcher(lowerLine);
                     if (odTm.find()) {
                         LocalTime s = parseTime(odTm.group(1));
-                        for (String d : specificDates) dateTimeOverrides.put(d, new LocalTime[]{s, defaultEnd});
+                        if (s != null) {
+                            for (String d : specificDates) dateTimeOverrides.put(d, new LocalTime[]{s, defaultEnd});
+                        }
                     }
                 }
 
@@ -231,7 +390,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
             boolean hasSingleTime = overrideStartTimePattern.matcher(lowerLine).find();
 
             // global time overrides
-            if (!lowerLine.contains("w dn") && (lowerLine.contains("godz") || hasTime || hasSingleTime)) {
+            if (!lowerLine.contains("w dn") && !lowerLine.contains("w dniu") && (lowerLine.contains("godz") || hasTime || hasSingleTime)) {
                 Matcher tm = specificTimePattern.matcher(lowerLine);
                 Matcher odTm = overrideStartTimePattern.matcher(lowerLine);
                 if (tm.find()) {
@@ -249,16 +408,27 @@ public class BachelorFullTimeParser implements ScheduleParser {
                 } else if (lowerLine.startsWith("sala") || lowerLine.contains("on-line") || lowerLine.contains("online") || lowerLine.contains("ul.") || lowerLine.contains("lublin")) {
                     String potentialRoom = extractRoomInfo(line);
                     if (potentialRoom != null) {
-                        if (globalRoom.equals("Unknown Room")) globalRoom = potentialRoom;
-                        else if (!globalRoom.contains(potentialRoom)) globalRoom += ", " + potentialRoom;
+                        if (globalRoom.equals("Unknown Room")) {
+                            globalRoom = potentialRoom;
+                        } else if (globalRoom.equals("online") && potentialRoom.startsWith("sala")) {
+                            // If global room was tentatively online, a concrete physical room is the base room
+                            globalRoom = potentialRoom;
+                        } else if (!potentialRoom.equals("online") && !globalRoom.contains(potentialRoom)) {
+                            globalRoom += ", " + potentialRoom;
+                        }
                     }
                 } else if (!lowerLine.startsWith("+") && !lowerLine.contains("zajęcia") && globalRoom.equals("Unknown Room")) {
-                    // fallback to capture custom locations like fitness clubs and clear it from the subject name
+                    // capture custom location from line
                     if (!line.contains(subjectName)) {
                         globalRoom = line.trim();
                     }
                 }
             }
+        }
+
+        // skip seminar if teacher not matched
+        if (isSeminarSubject && !seminarFound) {
+            return lessons;
         }
 
         // create lesson objects
@@ -348,20 +518,30 @@ public class BachelorFullTimeParser implements ScheduleParser {
     }
 
     private void extractAcademicYear(Sheet sheet) {
-        Row row = sheet.getRow(0);
-        if (row != null) {
-            String header = dataFormatter.formatCellValue(row.getCell(0));
-            Matcher yMatcher = academicYearPattern.matcher(header);
-            if (yMatcher.find()) {
-                academicYearStart = Integer.parseInt(yMatcher.group(1));
-                academicYearEnd = Integer.parseInt(yMatcher.group(2));
+        for (int r = 0; r <= 3; r++) {
+            Row row = sheet.getRow(r);
+            if (row != null) {
+                for (int c = 0; c < row.getLastCellNum(); c++) {
+                    Cell cell = row.getCell(c);
+                    if (cell != null) {
+                        String header = dataFormatter.formatCellValue(cell);
+                        Matcher yMatcher = academicYearPattern.matcher(header);
+                        if (yMatcher.find()) {
+                            academicYearStart = Integer.parseInt(yMatcher.group(1));
+                            academicYearEnd = Integer.parseInt(yMatcher.group(2));
+                            return;
+                        }
+                    }
+                }
             }
         }
     }
 
     private LocalTime parseTime(String timeRaw) {
+        if (timeRaw == null) return LocalTime.of(0, 0);
         try {
-            return LocalTime.parse(timeRaw, DateTimeFormatter.ofPattern("H:mm"));
+            String normalized = timeRaw.trim().replace('.', ':');
+            return LocalTime.parse(normalized, DateTimeFormatter.ofPattern("H:mm"));
         } catch (DateTimeParseException e) {
             return LocalTime.of(0, 0);
         }
@@ -369,111 +549,166 @@ public class BachelorFullTimeParser implements ScheduleParser {
 
     private List<Integer> findTargetColumns(Sheet sheet, String studentSurname, String studentSpecialization) {
         List<Integer> cols = new ArrayList<>();
-        Row groupRow = sheet.getRow(3);
+        
+        int headerRowIdx = 3;
+        for (int r = 1; r <= 4; r++) {
+            Row row = sheet.getRow(r);
+            if (row != null) {
+                for (int c = 1; c < row.getLastCellNum(); c++) {
+                    Cell cell = row.getCell(c);
+                    if (cell != null) {
+                        String text = dataFormatter.formatCellValue(cell).toLowerCase();
+                        if (text.contains("gr.") || text.contains("grupa") || text.contains("nazwisk") || text.contains("sp.")) {
+                            headerRowIdx = r;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        Row groupRow = sheet.getRow(headerRowIdx);
         boolean hasAnyGroupsDefined = false;
 
         if (groupRow != null) {
-            for (int i = 1; i < groupRow.getLastCellNum(); i++) {
-                Cell cell = groupRow.getCell(i);
-                if (cell == null) continue;
-
-                String rawHeader = dataFormatter.formatCellValue(cell).trim();
+            int lastCellNum = groupRow.getLastCellNum();
+            for (int i = 1; i < lastCellNum; i++) {
+                CellTarget ct = getMergedCellValue(sheet, headerRowIdx, i);
+                String rawHeader = ct.value != null ? ct.value.trim() : "";
+                if (rawHeader.isEmpty()) {
+                    for (int r = 1; r <= 3; r++) {
+                        CellTarget altCt = getMergedCellValue(sheet, r, i);
+                        if (altCt.value != null && !altCt.value.trim().isEmpty()) {
+                            rawHeader = altCt.value.trim();
+                            break;
+                        }
+                    }
+                }
                 if (rawHeader.isEmpty()) continue;
                 hasAnyGroupsDefined = true;
 
                 String headerNoNewline = rawHeader.toLowerCase().replace("\n", " ");
                 boolean isTargetColumn = true;
 
-                // --- НОВАЯ ЭВРИСТИКА ОПРЕДЕЛЕНИЯ ТИПА КОЛОНКИ ---
-                boolean isCommonGroup = rawHeader.toLowerCase().startsWith("grupa ");
+                boolean isCommonGroup = headerNoNewline.startsWith("grupa ") || headerNoNewline.startsWith("gr.") || headerNoNewline.startsWith("gr ");
                 boolean isSpecializationColumn = false;
 
-                if (!isCommonGroup) {
-                    // Проверяем явный маркер
-                    if (headerNoNewline.contains("sp.") || headerNoNewline.contains("specjalność")) {
+                if (headerNoNewline.contains("sp.") || headerNoNewline.contains("specjalność") || headerNoNewline.contains("spec.")) {
+                    isSpecializationColumn = true;
+                } else if (!isCommonGroup) {
+                    String firstLine = rawHeader.split("\n")[0].toLowerCase().trim();
+                    if (!firstLine.startsWith("gr") && firstLine.length() > 8) {
                         isSpecializationColumn = true;
-                    }
-                    // Проверяем неявный маркер (длинное название специальности на первой строке)
-                    else {
-                        String firstLine = rawHeader.split("\n")[0].toLowerCase().trim();
-                        if (!firstLine.startsWith("gr") && firstLine.length() > 8) {
-                            isSpecializationColumn = true;
-                        }
                     }
                 }
 
-                // --- ЛОГИКА ФИЛЬТРАЦИИ ---
                 boolean hasStudentSpec = studentSpecialization != null && !studentSpecialization.trim().isEmpty();
 
                 if (isSpecializationColumn) {
-                    // Это колонка специализации. Берем ТОЛЬКО если она совпадает с выбором студента.
                     if (hasStudentSpec && headerNoNewline.contains(studentSpecialization.toLowerCase().trim())) {
                         isTargetColumn = true;
                     } else {
                         isTargetColumn = false;
                     }
                 } else {
-                    // Это общая колонка ("GRUPA X"). Берем всегда, но дальше проверим фамилию.
                     isTargetColumn = true;
                 }
 
-                // --- ПРОВЕРКА ФАМИЛИИ ---
-                if (isTargetColumn && headerNoNewline.contains("nazwisk")) {
-                    isTargetColumn = isSurnameInHeaderRange(studentSurname, headerNoNewline);
+                if (isTargetColumn && (headerNoNewline.contains("nazwisk") || headerNoNewline.matches(".*\\b[a-ząćęłńóśźż]+-[a-ząćęłńóśźż]+\\b.*"))) {
+                    if (studentSurname != null && !studentSurname.trim().isEmpty()) {
+                        isTargetColumn = isSurnameInHeaderRange(studentSurname, headerNoNewline);
+                    } else {
+                        // default to group 1 if no surname
+                        isTargetColumn = headerNoNewline.contains("gr.1") || headerNoNewline.contains("gr 1") || headerNoNewline.contains("grupa 1") || headerNoNewline.contains("a-");
+                    }
                 }
 
                 if (isTargetColumn) {
-                    cols.add(cell.getColumnIndex());
+                    cols.add(i);
                 }
             }
         }
 
-        if (!hasAnyGroupsDefined && groupRow != null) {
-            for (int i = 1; i <= 5; i++) {
-                Cell cell = groupRow.getCell(i);
-                if (cell != null) cols.add(i);
+        if (cols.isEmpty() && groupRow != null) {
+            for (int i = 1; i < groupRow.getLastCellNum(); i++) {
+                CellTarget ct = getMergedCellValue(sheet, headerRowIdx, i);
+                String raw = ct.value != null ? ct.value.toLowerCase() : "";
+                if (raw.contains("gr.1") || raw.contains("gr 1") || raw.contains("grupa 1") || raw.contains("a-")) {
+                    cols.add(i);
+                }
+            }
+        }
+
+        if (cols.isEmpty() && groupRow != null) {
+            for (int i = 1; i <= Math.min(20, (int) groupRow.getLastCellNum()); i++) {
+                cols.add(i);
             }
         }
 
         return cols;
     }
 
-    private boolean isSurnameInHeaderRange(String surname, String headerText) {
-        if (surname == null || surname.trim().isEmpty()) return false;
+    private boolean isSurnameInHeaderRange(String surnameOrFullName, String headerText) {
+        if (surnameOrFullName == null || surnameOrFullName.trim().isEmpty()) return false;
 
         Matcher matcher = surnameRangePattern.matcher(headerText.toLowerCase());
 
         if (matcher.find()) {
             String startBound = matcher.group(1);
             String endBound = matcher.group(2);
-            return isAlphabeticallyBetween(surname, startBound, endBound);
+
+            String candidate = extractCandidateSurname(surnameOrFullName);
+            if (!candidate.isEmpty()) {
+                return isAlphabeticallyBetween(candidate, startBound, endBound);
+            }
+            return false;
         }
 
-        // fallback to true if range cannot be parsed to avoid leaving the student without a schedule
-        System.out.println("Warning: Unable to parse surname range from header: " + headerText);
         return true;
     }
 
+    public static String extractCandidateSurname(String text) {
+        if (text == null) return "";
+        String trimmed = text.trim();
+        if (trimmed.isEmpty() || trimmed.matches("(?i)s?\\d+")) return "";
+
+        String[] tokens = trimmed.split("\\s+");
+        if (tokens.length == 1) {
+            return tokens[0].replaceAll("[^a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ-]", "");
+        }
+
+        // uppercase token indicates surname
+        for (String t : tokens) {
+            String clean = t.replaceAll("[^a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ-]", "");
+            if (clean.length() > 1 && clean.equals(clean.toUpperCase(new Locale("pl", "PL")))) {
+                return clean;
+            }
+        }
+
+        // fallback to last word as surname
+        return tokens[tokens.length - 1].replaceAll("[^a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ-]", "");
+    }
+
     private boolean isAlphabeticallyBetween(String surname, String startBound, String endBound) {
+        if (surname == null || startBound == null || endBound == null) return false;
         surname = surname.toLowerCase().trim();
         startBound = startBound.toLowerCase().trim();
         endBound = endBound.toLowerCase().trim();
+        if (surname.isEmpty() || startBound.isEmpty() || endBound.isEmpty()) return false;
 
-        // use polish collator to ensure correct alphabetical sorting of special characters
-        Collator plCollator = Collator.getInstance(new Locale("pl", "PL"));
-        // ignore case differences
-        plCollator.setStrength(Collator.PRIMARY);
-
-        // quick check for exact match with boundaries
         if (surname.startsWith(startBound) || surname.startsWith(endBound)) {
             return true;
         }
 
+        Collator plCollator = Collator.getInstance(new Locale("pl", "PL"));
+        plCollator.setStrength(Collator.PRIMARY);
+
         int compareStart = plCollator.compare(surname, startBound);
 
-        //  append maximum unicode value to include names starting with the bound letter
-        // if bounds are A-L, and surname is 'La...'
-        // by default 'La' > 'L', but 'La\uFFFF' < 'L', and it will fit
+        if (endBound.equals("z") || endBound.equals("ż") || endBound.equals("ź")) {
+            return compareStart >= 0;
+        }
+
         String paddedEndBound = endBound + "\uFFFF";
         int compareEnd = plCollator.compare(surname, paddedEndBound);
 

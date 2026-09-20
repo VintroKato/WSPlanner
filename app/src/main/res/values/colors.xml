@@ -34,4 +34,48 @@
     <color name="card_border_dark">#2B313C</color>
     <color name="card_checked_border_light">#3050FF</color>
     <color name="card_checked_border_dark">#5E76AF</color>
+
+    <!-- Popup Menu Colors -->
+    <color name="popup_bg_dark">#1F2A3F</color>
+    <color name="popup_border_dark">#334668</color>
+    <color name="popup_bg_light">#EDF3FF</color>
+    <color name="popup_border_light">#9CB8EC</color>
+
+    <!-- Schedule badge & card colors -->
+    <color name="badge_wspa_bg">#22F43F5E</color>
+    <color name="badge_wspa_border">#99FB7185</color>
+    <color name="badge_wspa_text">#FDA4AF</color>
+
+    <color name="badge_puw_bg">#2210B981</color>
+    <color name="badge_puw_border">#9934D399</color>
+    <color name="badge_puw_text">#6EE7B7</color>
+
+    <color name="badge_field_bg">#22F59E0B</color>
+    <color name="badge_field_border">#99FBBF24</color>
+    <color name="badge_field_text">#FCD34D</color>
+
+    <!-- Active (NOW) lesson -->
+    <color name="badge_now_bg">#263B82F6</color>
+    <color name="badge_now_border">#9993C5FD</color>
+    <color name="badge_now_text">#93C5FD</color>
+    <color name="active_lesson_border">#3B82F6</color>
+
+    <!-- Upcoming (NEXT) lesson -->
+    <color name="badge_next_bg">#26818CF8</color>
+    <color name="badge_next_border">#99A5B4FC</color>
+    <color name="badge_next_text">#C7D2FE</color>
+    <color name="next_lesson_border">#818CF8</color>
+
+    <!-- Top status banner for active and next lessons (slightly lighter, neutral grey, less blue) -->
+    <color name="banner_status_bg">#252830</color>
+
+    <!-- Subject details timeline & notes -->
+    <color name="timeline_line_completed">#3B82F6</color>
+    <color name="timeline_line_upcoming">#27272A</color>
+    <color name="badge_lab_bg">#223B82F6</color>
+    <color name="badge_lab_border">#9993C5FD</color>
+    <color name="badge_lab_text">#93C5FD</color>
+    <color name="notes_saved_green">#34D399</color>
+    <color name="timeline_card_border_highlight">#803B82F6</color>
+    <color name="hero_card_bg">#12151E</color>
 </resources>

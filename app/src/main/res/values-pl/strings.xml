@@ -16,4 +16,96 @@
     <string name="configure_status_ok">Dane poprawne</string>
     <string name="configure_status_error">Niepoprawny email lub hasło</string>
     <string name="widget_name">Plan</string>
+
+    <string name="onboarding_login_title">Logowanie do PUW</string>
+    <string name="onboarding_button_next">Dalej</string>
+    <string name="onboarding_course_title">Ustawienia studiów</string>
+    <string name="onboarding_level_label">Stopień studiów</string>
+    <string name="onboarding_mode_label">Tryb studiów</string>
+    <string name="onboarding_year_label">Rok studiów</string>
+    <string name="onboarding_english_switch">Mam zajęcia z języka angielskiego</string>
+    <string name="onboarding_english_hint">Numer grupy</string>
+    <string name="onboarding_specialty_title">Wybór specjalności</string>
+    <string name="onboarding_specialty_subtitle">Wybierz swoją specjalność do planu</string>
+    <string name="onboarding_no_specialties">Nie znaleziono specjalności dla tego roku</string>
+    <string name="onboarding_manual_specialty_switch">Wpisz specjalność ręcznie</string>
+    <string name="onboarding_manual_specialty_hint">Nazwa specjalności</string>
+    <string name="onboarding_surname_title">Nazwisko studenta</string>
+    <string name="onboarding_surname_hint">Nazwisko (np. Kowalski)</string>
+    <string name="onboarding_surname_subtitle">Potrzebne, gdy grupy są dzielone wg nazwisk (np. A-J, K-Ł)</string>
+    <string name="onboarding_button_skip">Pomiń</string>
+    <string name="onboarding_button_finish">Zakończ</string>
+    <string name="onboarding_additional_title">Dodatkowe opcje</string>
+    <string name="onboarding_additional_subtitle">Opcjonalne ustawienia lektoratu, seminarium i nazwiska</string>
+
+    <string name="onboarding_major_label">Kierunek</string>
+    <string name="onboarding_loading_courses">Pobieranie dostępnych kierunków studiów…</string>
+    <string name="onboarding_loading_specialties">Wyszukiwanie specjalności w planie…</string>
+    <string name="degree_level_bachelors">I stopień</string>
+    <string name="degree_level_masters">II stopień</string>
+    <string name="degree_level_long_masters">Jednolite</string>
+    <string name="study_mode_full_time">Stacjonarne</string>
+    <string name="study_mode_part_time">Niestacjonarne</string>
+    <string name="study_mode_online">PUW</string>
+    <string name="button_back">Wstecz</string>
+
+    <string name="onboarding_seminar_switch">Mam seminarium dyplomowe</string>
+    <string name="onboarding_seminar_hint">Promotor / prowadzący</string>
+    <string name="onboarding_seminar_subtitle">Wymagane do wyświetlania grupy seminaryjnej</string>
+    <string name="settings_seminar_teacher_label">Prowadzący seminarium</string>
+    <string name="settings_seminar_teacher_hint">Nazwisko promotora</string>
+
+    <string name="location_uczelnia">Uczelnia</string>
+    <string name="location_online">Online</string>
+    <string name="location_w_terenie">W terenie</string>
+
+    <string name="schedule_badge_now">TERAZ</string>
+    <string name="schedule_badge_next">NASTĘPNY</string>
+    <string name="schedule_break_gap">Okienko</string>
+    <string name="schedule_time_left">Jeszcze %1$s</string>
+    <string name="schedule_time_until">Za %1$s</string>
+    <string name="schedule_progress_format">Postęp: %1$d z %2$d (%3$d%%)</string>
+
+    <string name="menu_refresh_schedule">Odśwież plan</string>
+    <string name="menu_change_group">Wybierz grupę</string>
+    <string name="menu_settings">Ustawienia</string>
+
+    <string name="schedule_empty_title">Brak zajęć w tym dniu</string>
+    <string name="schedule_empty_subtitle">Możesz odpocząć lub sprawdzić inny termin</string>
+    <string name="schedule_updated_prefix">Zaktualizowano: %1$s</string>
+    <string name="schedule_updated_today">dzisiaj, %1$s</string>
+    <string name="schedule_updated_yesterday">wczoraj, %1$s</string>
+    <string name="schedule_gap_format">Okienko: %1$s</string>
+    <string name="schedule_cooldown_message">Poczekaj %1$d s przed ponownym odświeżeniem</string>
+    <string name="schedule_opening_file">Otwieranie pliku planu…</string>
+    <string name="schedule_downloading_file">Pobieranie aktualnego planu…</string>
+    <string name="schedule_open_file_error">Nie można otworzyć pliku planu</string>
+    <string name="hours_short">%1$d godz.</string>
+    <string name="minutes_short">%1$d min</string>
+    <string name="hours_and_minutes_short">%1$d godz. %2$d min</string>
+
+    <string name="subject_details_title">Szczegóły przedmiotu</string>
+    <string name="subject_open_puw_course">Otwórz kurs w Teams / PUW</string>
+    <string name="subject_my_notes">Moje notatki</string>
+    <string name="subject_notes_local_hint">Lokalnie w telefonie</string>
+    <string name="subject_notes_placeholder">Wpisz warunki zaliczenia, terminy oddania projektów…</string>
+    <string name="subject_notes_saved">Zapisano</string>
+    <string name="subject_notes_save">Zapisz</string>
+    <string name="subject_timeline_title">Terminy spotkań</string>
+    <string name="subject_status_completed">Zrealizowane</string>
+    <string name="subject_status_upcoming">Zaplanowane</string>
+    <string name="subject_status_next">NAJBLIŻSZE</string>
+    <string name="subject_room_format">Sala %1$s</string>
+    <string name="subject_copy_teacher_email_placeholder"></string>
+    <string name="teacher_email_searching">Wyszukiwanie adresu e-mail…</string>
+    <string name="teacher_email_not_found">Brak adresu e-mail</string>
+    <string name="teacher_email_copied">Skopiowano adres e-mail</string>
+    <string name="teacher_email_copy_desc">Skopiuj adres e-mail</string>
+    <string name="subject_opening_puw_course">Szukanie kursu na PUW…</string>
+    <string name="subject_course_not_found">Nie znaleziono kursu. Otwieranie PUW…</string>
+    <string name="maps_hint_format">(Google Maps: %1$s ↗)</string>
+    <string name="maps_hint_wspa">(Google Maps: WSPA Lublin, ul. Bursaki 12 ↗)</string>
+    <string name="timeline_item_header_format">%1$d. %2$s, %3$s</string>
+    <string name="timeline_time_room_format">%1$s – %2$s · %3$s</string>
+    <string name="common_loading">Ładowanie…</string>
 </resources>

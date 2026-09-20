@@ -28,4 +28,7 @@
         <attr name="card_bg" format="color" />
         <attr name="card_border" format="color" />
         <attr name="card_checked_border" format="color" />
+
+        <attr name="popup_bg" format="color" />
+        <attr name="popup_border" format="color" />
 </resources>

@@ -30,4 +30,95 @@
 
     <string name="widget_name">Schedule</string>
 
+    <string name="onboarding_login_title">Login to PUW</string>
+    <string name="onboarding_button_next">Next</string>
+    <string name="onboarding_course_title">Course Settings</string>
+    <string name="onboarding_level_label">Degree Level</string>
+    <string name="onboarding_mode_label">Study Mode</string>
+    <string name="onboarding_year_label">Year</string>
+    <string name="onboarding_english_switch">I have English classes</string>
+    <string name="onboarding_english_hint">Group number</string>
+    <string name="onboarding_specialty_title">Select Specialty</string>
+    <string name="onboarding_specialty_subtitle">Choose your specialization for schedule</string>
+    <string name="onboarding_no_specialties">No specialties found for this course</string>
+    <string name="onboarding_manual_specialty_switch">Enter specialty manually</string>
+    <string name="onboarding_manual_specialty_hint">Specialty name</string>
+    <string name="onboarding_surname_title">Student surname</string>
+    <string name="onboarding_surname_hint">Surname (e.g. Kowalski)</string>
+    <string name="onboarding_surname_subtitle">Needed if classes are divided by surname (e.g. A-J, K-Ł)</string>
+    <string name="onboarding_button_skip">Skip</string>
+    <string name="onboarding_button_finish">Finish</string>
+    <string name="onboarding_additional_title">Additional Options</string>
+    <string name="onboarding_additional_subtitle">Optional settings for language group, seminar and surname</string>
+
+    <string name="onboarding_major_label">Field of Study</string>
+    <string name="onboarding_loading_courses">Fetching available study programs…</string>
+    <string name="onboarding_loading_specialties">Searching for specializations in schedule…</string>
+    <string name="degree_level_bachelors">I stopień</string>
+    <string name="degree_level_masters">II stopień</string>
+    <string name="degree_level_long_masters">Jednolite</string>
+    <string name="study_mode_full_time">Stacjonarne</string>
+    <string name="study_mode_part_time">Niestacjonarne</string>
+    <string name="study_mode_online">PUW</string>
+    <string name="button_back">Back</string>
+
+    <string name="onboarding_seminar_switch">I have a diploma seminar</string>
+    <string name="onboarding_seminar_hint">Thesis advisor / teacher</string>
+    <string name="onboarding_seminar_subtitle">Required to display your diploma seminar group</string>
+    <string name="settings_seminar_teacher_label">Diploma seminar advisor</string>
+    <string name="settings_seminar_teacher_hint">Teacher surname</string>
+
+    <string name="location_uczelnia">Onsite</string>
+    <string name="location_online">Online</string>
+    <string name="location_w_terenie">Offsite</string>
+
+    <string name="schedule_badge_now">NOW</string>
+    <string name="schedule_badge_next">NEXT</string>
+    <string name="schedule_break_gap">Break</string>
+    <string name="schedule_time_left">Left %1$s</string>
+    <string name="schedule_time_until">In %1$s</string>
+    <string name="schedule_progress_format">Progress: %1$d of %2$d (%3$d%%)</string>
+
+    <string name="menu_refresh_schedule">Refresh schedule</string>
+    <string name="menu_change_group">Change group / course</string>
+    <string name="menu_settings">Settings</string>
+
+    <string name="schedule_empty_title">No classes on this day</string>
+    <string name="schedule_empty_subtitle">You can take a rest or check another date</string>
+    <string name="schedule_updated_prefix">Updated: %1$s</string>
+    <string name="schedule_updated_today">today, %1$s</string>
+    <string name="schedule_updated_yesterday">yesterday, %1$s</string>
+    <string name="schedule_gap_format">Break: %1$s</string>
+    <string name="schedule_cooldown_message">Please wait %1$d seconds before refreshing again</string>
+    <string name="schedule_opening_file">Opening schedule file…</string>
+    <string name="schedule_downloading_file">Downloading latest schedule…</string>
+    <string name="schedule_open_file_error">Cannot open schedule file</string>
+    <string name="hours_short">%1$d h</string>
+    <string name="minutes_short">%1$d min</string>
+    <string name="hours_and_minutes_short">%1$d h %2$d min</string>
+
+    <string name="subject_details_title">Subject Details</string>
+    <string name="subject_open_puw_course">Open course in PUW</string>
+    <string name="subject_my_notes">My notes</string>
+    <string name="subject_notes_local_hint">Saved locally on device</string>
+    <string name="subject_notes_placeholder">Write passing requirements, deadlines…</string>
+    <string name="subject_notes_saved">Saved</string>
+    <string name="subject_notes_save">Save</string>
+    <string name="subject_timeline_title">Class meetings</string>
+    <string name="subject_status_completed">Completed</string>
+    <string name="subject_status_upcoming">Scheduled</string>
+    <string name="subject_status_next">UPCOMING</string>
+    <string name="subject_room_format">Room %1$s</string>
+    <string name="subject_copy_teacher_email_placeholder"></string>
+    <string name="teacher_email_searching">Searching email…</string>
+    <string name="teacher_email_not_found">E-mail not found</string>
+    <string name="teacher_email_copied">Email copied to clipboard</string>
+    <string name="teacher_email_copy_desc">Copy teacher email</string>
+    <string name="subject_opening_puw_course">Searching for course on PUW…</string>
+    <string name="subject_course_not_found">Course not found on PUW. Opening dashboard…</string>
+    <string name="maps_hint_format">(Google Maps: %1$s ↗)</string>
+    <string name="maps_hint_wspa">(Google Maps: WSPA Lublin, ul. Bursaki 12 ↗)</string>
+    <string name="timeline_item_header_format">%1$d. %2$s, %3$s</string>
+    <string name="timeline_time_room_format">%1$s – %2$s · %3$s</string>
+    <string name="common_loading">Loading…</string>
 </resources>

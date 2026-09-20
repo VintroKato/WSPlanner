@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/popup_bg" />
+    <corners android:radius="16dp" />
+    <stroke
+        android:width="1dp"
+        android:color="?attr/popup_border" />
+    <padding
+        android:left="6dp"
+        android:top="8dp"
+        android:right="6dp"
+        android:bottom="8dp" />
+</shape>

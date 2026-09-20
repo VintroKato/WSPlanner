@@ -7,11 +7,10 @@ import java.util.Map;
 
 public class ParsedCourse {
     public String fieldOfStudy;
-    public DegreeLevel degreeLevel; // Из DegreeLevel.java
+    public DegreeLevel degreeLevel;
     public String courseUrl;
 
-    // Ключ: тип обучения ("st", "nst", "nst puw")
-    // Значение: список доступных годов обучения (1, 2, 3...)
+    // mode ("st", "nst", "nst puw") to study years
     public Map<String, List<Integer>> availableModesAndYears = new HashMap<>();
 
     @Override

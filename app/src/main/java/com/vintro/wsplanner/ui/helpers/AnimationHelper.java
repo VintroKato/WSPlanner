@@ -95,8 +95,8 @@ public class AnimationHelper {
     private static void animateStatusBarIconsThemeChange(Activity activity) {
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(activity.getWindow(), activity.getWindow().getDecorView());
 
-        boolean isStatusBarLight /* so icons are dark */
-                = !UIHelper.isNightMode(activity);
+        // dark icons for light status bar
+        boolean isStatusBarLight = !UIHelper.isNightMode(activity);
 
         controller.setAppearanceLightStatusBars(isStatusBarLight);
     }
@@ -193,18 +193,13 @@ public class AnimationHelper {
 
     private static void animateCardColors(MaterialCardView card, int startBorder, int endBorder,
                                           int startBg, int endBg, boolean checked) {
+        card.setChecked(checked);
+
         ValueAnimator borderAnimator = createColorAnimator(startBorder, endBorder,
                 card::setStrokeColor);
 
         ValueAnimator bgAnimator = createColorAnimator(startBg, endBg,
                 card::setCardBackgroundColor);
-
-        borderAnimator.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(android.animation.Animator animation) {
-                card.setChecked(checked);
-            }
-        });
 
         borderAnimator.start();
         bgAnimator.start();

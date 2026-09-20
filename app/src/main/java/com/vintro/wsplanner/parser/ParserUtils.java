@@ -14,11 +14,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import com.vintro.wsplanner.utils.Logger;
 
 public class ParserUtils {
-    /**
-     * Сканирует шапку и возвращает список уникальных специализаций для выбора в UI.
-     */
+    // get unique specializations from header
     public static List<String> extractSpecializations(InputStream excelStream) {
         Set<String> specializations = new HashSet<>();
         DataFormatter formatter = new DataFormatter();
@@ -35,7 +35,7 @@ public class ParserUtils {
 
                 String lowerText = fullText.toLowerCase();
 
-                // 1. Явная специализация ("Sp.: ...")
+                // explicit specialization (sp.: ...)
                 Matcher m = Pattern.compile("(?i)(?:sp\\.|specjalno[śs][ćc])\\s*:?\\s*([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ\\s]+)").matcher(fullText);
                 if (m.find()) {
                     String spec = m.group(1).trim();
@@ -44,12 +44,12 @@ public class ParserUtils {
                     continue;
                 }
 
-                // 2. Если это не явная "GRUPA 1", и первая строка длинная - это скрытая специализация
+                // non-group column with long first line
                 if (!lowerText.startsWith("grupa ")) {
                     String[] lines = fullText.split("\n");
                     String firstLine = lines[0].trim();
 
-                    // Если первая строчка не похожа на "gr. 2" и достаточно длинная
+                    // skip group labels and check length
                     if (!firstLine.toLowerCase().startsWith("gr") && firstLine.length() > 8) {
                         String specFallback = firstLine.replaceAll("(?i)grupa.*|podzia[lł].*|nazwisk.*", "").trim();
                         if (!specFallback.isEmpty()) {
@@ -59,8 +59,10 @@ public class ParserUtils {
                 }
             }
         } catch (Exception e) {
+            Logger.e("ParserUtils.extractSpecializations", e.getMessage());
             e.printStackTrace();
         }
+        Logger.d("ParserUtils.extractSpecializations", specializations.stream().map(Object::toString).collect(Collectors.joining(", ")));
         return new ArrayList<>(specializations);
     }
 }

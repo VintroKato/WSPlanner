@@ -21,6 +21,21 @@
             android:exported="false"
             android:configChanges="locale|layoutDirection|uiMode"
             />
+        <activity
+            android:name=".ui.activities.LoginActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.activities.SetupCourseActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.activities.SetupSpecialtyActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.activities.SetupAdditionalActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.activities.SubjectDetailsActivity"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

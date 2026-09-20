@@ -8,6 +8,7 @@ appcompat = "1.7.1"
 material = "1.13.0"
 activity = "1.11.0"
 constraintlayout = "2.2.1"
+swiperefreshlayout = "1.1.0"
 okhttp = "5.2.1"
 encryptedprefs = "1.1.0"
 poi = "5.5.1"
@@ -21,6 +22,7 @@ appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "a
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefreshlayout" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 encryptedprefs-core = { group = "dev.spght", name = "encryptedprefs-core", version.ref = "encryptedprefs" }
 poi = { module = "org.apache.poi:poi", version.ref = "poi" }
@@ -28,4 +30,3 @@ poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-

@@ -10,16 +10,12 @@ import org.junit.runner.RunWith;
 
 import static org.junit.Assert.*;
 
-/**
- * Instrumented test, which will execute on an Android device.
- *
- * @see <a href="http://d.android.com/tools/testing">Testing documentation</a>
- */
+// basic instrumented test
 @RunWith(AndroidJUnit4.class)
 public class ExampleInstrumentedTest {
     @Test
     public void useAppContext() {
-        // Context of the app under test.
+        // verify package name
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         assertEquals("com.vintro.wsplanner", appContext.getPackageName());
     }

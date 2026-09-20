@@ -16,4 +16,96 @@
     <string name="configure_status_ok">Дані правильні</string>
     <string name="configure_status_error">Неправильна пошта або пароль</string>
     <string name="widget_name">Розклад</string>
+
+    <string name="onboarding_login_title">Вхід до PUW</string>
+    <string name="onboarding_button_next">Далі</string>
+    <string name="onboarding_course_title">Параметри навчання</string>
+    <string name="onboarding_level_label">Ступінь</string>
+    <string name="onboarding_mode_label">Форма навчання</string>
+    <string name="onboarding_year_label">Курс</string>
+    <string name="onboarding_english_switch">Є заняття з англійської</string>
+    <string name="onboarding_english_hint">Номер групи</string>
+    <string name="onboarding_specialty_title">Спеціалізація</string>
+    <string name="onboarding_specialty_subtitle">Оберіть вашу спеціалізацію для розкладу</string>
+    <string name="onboarding_no_specialties">Спеціалізацій для цього курсу не знайдено</string>
+    <string name="onboarding_manual_specialty_switch">Ввести спеціалізацію вручну</string>
+    <string name="onboarding_manual_specialty_hint">Назва спеціалізації</string>
+    <string name="onboarding_surname_title">Прізвище студента</string>
+    <string name="onboarding_surname_hint">Прізвище (напр. Kowalski)</string>
+    <string name="onboarding_surname_subtitle">Потрібно, якщо групи розділені за прізвищами (напр. A-J, K-Ł)</string>
+    <string name="onboarding_button_skip">Пропустити</string>
+    <string name="onboarding_button_finish">Завершити</string>
+    <string name="onboarding_additional_title">Додатково</string>
+    <string name="onboarding_additional_subtitle">Необовʼязкові налаштування англійської, семінару та прізвища</string>
+
+    <string name="onboarding_major_label">Напрям</string>
+    <string name="onboarding_loading_courses">Завантаження доступних програм навчання…</string>
+    <string name="onboarding_loading_specialties">Пошук спеціалізацій у розкладі…</string>
+    <string name="degree_level_bachelors">I stopień</string>
+    <string name="degree_level_masters">II stopień</string>
+    <string name="degree_level_long_masters">Jednolite</string>
+    <string name="study_mode_full_time">Денна</string>
+    <string name="study_mode_part_time">Заочна</string>
+    <string name="study_mode_online">PUW</string>
+    <string name="button_back">Назад</string>
+
+    <string name="onboarding_seminar_switch">У мене дипломний семінар</string>
+    <string name="onboarding_seminar_hint">Керівник / викладач </string>
+    <string name="onboarding_seminar_subtitle">Необхідно для відображення вашої групи семінару</string>
+    <string name="settings_seminar_teacher_label">Викладач семінару</string>
+    <string name="settings_seminar_teacher_hint">Прізвище викладача</string>
+
+    <string name="location_uczelnia">Універ</string>
+    <string name="location_online">Онлайн</string>
+    <string name="location_w_terenie">Виїзд</string>
+
+    <string name="schedule_badge_now">ЗАРАЗ</string>
+    <string name="schedule_badge_next">НАСТУПНИЙ</string>
+    <string name="schedule_break_gap">Вікно</string>
+    <string name="schedule_time_left">Ще %1$s</string>
+    <string name="schedule_time_until">Через %1$s</string>
+    <string name="schedule_progress_format">Пройдено: %1$d з %2$d (%3$d%%)</string>
+
+    <string name="menu_refresh_schedule">Оновити розклад</string>
+    <string name="menu_change_group">Змінити групу / курс</string>
+    <string name="menu_settings">Налаштування</string>
+
+    <string name="schedule_empty_title">У цей день занять немає</string>
+    <string name="schedule_empty_subtitle">Можна відпочити або перевірити іншу дату</string>
+    <string name="schedule_updated_prefix">Оновлено: %1$s</string>
+    <string name="schedule_updated_today">сьогодні, %1$s</string>
+    <string name="schedule_updated_yesterday">вчора, %1$s</string>
+    <string name="schedule_gap_format">Вікно: %1$s</string>
+    <string name="schedule_cooldown_message">Зачекайте %1$d с перед наступним оновленням</string>
+    <string name="schedule_opening_file">Відкриття файлу розкладу…</string>
+    <string name="schedule_downloading_file">Завантаження актуального розкладу…</string>
+    <string name="schedule_open_file_error">Не вдалося відкрити файл розкладу</string>
+    <string name="hours_short">%1$d год</string>
+    <string name="minutes_short">%1$d хв</string>
+    <string name="hours_and_minutes_short">%1$d год %2$d хв</string>
+
+    <string name="subject_details_title">Деталі предмета</string>
+    <string name="subject_open_puw_course">Відкрити курс у PUW</string>
+    <string name="subject_my_notes">Мої нотатки</string>
+    <string name="subject_notes_local_hint">Збережено локально на телефоні</string>
+    <string name="subject_notes_placeholder">Умови заліку, дедлайни проєктів…</string>
+    <string name="subject_notes_saved">Збережено</string>
+    <string name="subject_notes_save">Зберегти</string>
+    <string name="subject_timeline_title">Дати занять</string>
+    <string name="subject_status_completed">Пройдено</string>
+    <string name="subject_status_upcoming">Заплановано</string>
+    <string name="subject_status_next">НАЙБЛИЖЧЕ</string>
+    <string name="subject_room_format">Аудиторія %1$s</string>
+    <string name="subject_copy_teacher_email_placeholder"></string>
+    <string name="teacher_email_searching">Пошук email…</string>
+    <string name="teacher_email_not_found">Email не знайдено</string>
+    <string name="teacher_email_copied">Email скопійовано</string>
+    <string name="teacher_email_copy_desc">Скопіювати email викладача</string>
+    <string name="subject_opening_puw_course">Пошук курсу на PUW…</string>
+    <string name="subject_course_not_found">Курс не знайдено на PUW. Відкриваємо головну…</string>
+    <string name="maps_hint_format">(Google Maps: %1$s ↗)</string>
+    <string name="maps_hint_wspa">(Google Maps: WSPA Lublin, ul. Bursaki 12 ↗)</string>
+    <string name="timeline_item_header_format">%1$d. %2$s, %3$s</string>
+    <string name="timeline_time_room_format">%1$s – %2$s · %3$s</string>
+    <string name="common_loading">Завантаження…</string>
 </resources>

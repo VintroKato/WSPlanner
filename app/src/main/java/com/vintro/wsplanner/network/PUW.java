@@ -7,6 +7,8 @@ import android.appwidget.AppWidgetManager;
 import androidx.annotation.NonNull;
 
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
+import com.vintro.wsplanner.enums.DegreeLevel;
+import com.vintro.wsplanner.enums.StudyMode;
 import com.vintro.wsplanner.utils.Logger;
 
 import org.jsoup.Jsoup;
@@ -32,15 +34,20 @@ public class PUW {
     public static final String loginUrl = baseUrl + "login/index.php";
     public static final String homeUrl = baseUrl + "my/";
     public static final String privateFilesUrl = baseUrl + "user/files.php";
-    public static final String fileUrlStart = "https://puw.wspa.pl/pluginfile.php/249798/mod_folder/content/0/Informatyka%20-%20studia%20I%20stopnia%20-%20st%20";
-    public static final String fileUrlEnd = "%20-%20semestr%20letni.xlsx?forcedownload=1";
-
-    public static String getFileUrl(Context context, Intent intent) {
+    public static String getFileUrl(Context context, Intent intent, OkHttpClient client) {
         int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
-        int course = PreferencesManager.getCoursePref(context, intent);
-        String url = fileUrlStart + "I".repeat(course) + fileUrlEnd;
-        // Logger.d("PUW.getFileUrl", "Getting file url for widget " + widgetId + ", url: " + url);
-        System.out.println("PUW.getFileUrl: Getting file url for widget " + widgetId + ", url: " + url);
+        String major = PreferencesManager.getMajorPref(context, widgetId);
+        DegreeLevel degreeLevel = PreferencesManager.getDegreeLevelPref(context, widgetId);
+        StudyMode studyMode = PreferencesManager.getStudyModePref(context, widgetId);
+        int year = PreferencesManager.getYearPref(context, widgetId);
+
+        if (major == null || degreeLevel == null || studyMode == null) {
+            System.out.println("PUW.getFileUrl: Missing preferences for widget " + widgetId);
+            return null;
+        }
+
+        String url = StudyPlanScraper.getScheduleFileUrl(client, major, degreeLevel, studyMode, year);
+        System.out.println("PUW.getFileUrl: Getting dynamic file url for widget " + widgetId + ", url: " + url);
         return url;
     }
 
@@ -65,10 +72,18 @@ public class PUW {
         return client;
     }
 
+    public static OkHttpClient globalLogin(Context context) {
+        OkHttpClient client = getClient();
+        String login = PreferencesManager.getGlobalLoginPref(context);
+        String password = PreferencesManager.getGlobalPasswordPref(context);
+        int response = loginWithClient(client, login, password);
+        return response == 1 ? client : null;
+    }
+
     public static OkHttpClient login(Intent intent, Context context) {
         int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
-        // Logger.d("PUW.login", "Logging in for widget " + widgetId);
-        System.out.println("PUW.login: Logging in for widget " + widgetId);
+        Logger.d("PUW.login", "Logging in for widget " + widgetId);
+        // System.out.println("PUW.login: Logging in for widget " + widgetId);
 
         OkHttpClient client = getClient();
 
@@ -86,8 +101,8 @@ public class PUW {
 
     private static int loginWithClient(OkHttpClient client, String login, String password) {
         if (login == null || password == null) {
-            // Logger.e("PUW.loginWithClient", "Login or password is null");
-            System.out.println("PUW.loginWithClient: Login or password is null");
+            Logger.e("PUW.loginWithClient", "Login or password is null");
+            // System.out.println("PUW.loginWithClient: Login or password is null");
             return -1;
         }
 
@@ -102,21 +117,21 @@ public class PUW {
                 .build();
 
         try (Response loginResponse = client.newCall(loginRequest).execute()) {
-            // Logger.d("PUW.loginWithClient", "Logging in, answer: " + loginResponse.toString());
-            System.out.println("PUW.loginWithClient: Logging in, answer: " + loginResponse.toString());
+            Logger.d("PUW.loginWithClient", "Logging in, answer: " + loginResponse.toString());
+            // System.out.println("PUW.loginWithClient: Logging in, answer: " + loginResponse.toString());
             if (!loginResponse.isSuccessful()) {
-                // Logger.e("PUW.loginWithClient", "Logging in not 200, code: " + loginResponse.code());
-                System.out.println("PUW.loginWithClient: Logging in not 200, code: " + loginResponse.code());
+                Logger.e("PUW.loginWithClient", "Logging in not 200, code: " + loginResponse.code());
+                // System.out.println("PUW.loginWithClient: Logging in not 200, code: " + loginResponse.code());
                 return -1;
             }
             if (!loginResponse.request().url().toString().equals(PUW.homeUrl)) {
-                // Logger.w("PUW.loginWithClient", "Logging in not successful, response: " + loginResponse.toString());
-                System.out.println("PUW.loginWithClient: Logging in not successful, response: " + loginResponse.toString());
+                Logger.w("PUW.loginWithClient", "Logging in not successful, response: " + loginResponse.toString());
+                // System.out.println("PUW.loginWithClient: Logging in not successful, response: " + loginResponse.toString());
                 return 0;
             }
         } catch (Exception e) {
-            // Logger.e("PUW.loginWithClient", "Logging in error, client: " + client + ", error:" + e.toString());
-            System.out.println("PUW.loginWithClient: Logging in error, client: " + client + ", error:" + e.toString());
+            Logger.e("PUW.loginWithClient", "Logging in error, client: " + client + ", error:" + e.toString());
+            // System.out.println("PUW.loginWithClient: Logging in error, client: " + client + ", error:" + e.toString());
             return -1;
         }
         return 1;
@@ -125,24 +140,29 @@ public class PUW {
     public static ResponseBody downloadFile(Intent workIntent, Context context) {
         OkHttpClient client = PUW.login(workIntent, context);
         if (client == null) {
-            // Logger.e("PUW.downloadFile", "Downloading file error: got null from PUW.login, intent: " + workIntent);
-            System.out.println("PUW.downloadFile: Downloading file error: got null from PUW.login, intent: " + workIntent);
+            Logger.e("PUW.downloadFile", "Downloading file error: got null from PUW.login, intent: " + workIntent);
+            // System.out.println("PUW.downloadFile: Downloading file error: got null from PUW.login, intent: " + workIntent);
             return null;
         }
 
-        String fileUrl = PUW.getFileUrl(context, workIntent);
+        String fileUrl = PUW.getFileUrl(context, workIntent, client);
+        if (fileUrl == null) {
+            Logger.e("PUW.downloadFile", "File URL could not be resolved");
+            return null;
+        }
+
         Request fileRequest = new Request.Builder()
                 .url(fileUrl)
                 .build();
 
         try {
-            // Logger.d("PUW.downloadFile", "Downloading file: " + fileUrl);
-            System.out.println("PUW.downloadFile: Downloading file: " + fileUrl);
+            Logger.d("PUW.downloadFile", "Downloading file: " + fileUrl);
+            // System.out.println("PUW.downloadFile: Downloading file: " + fileUrl);
             Response fileResponse = client.newCall(fileRequest).execute();
 
             if (!fileResponse.isSuccessful()) {
-                // Logger.e("PUW.downloadFile", "Downloading error: " + fileResponse.toString());
-                System.out.println("PUW.downloadFile: Downloading error: " + fileResponse.toString());
+                Logger.e("PUW.downloadFile", "Downloading error: " + fileResponse.toString());
+                // System.out.println("PUW.downloadFile: Downloading error: " + fileResponse.toString());
                 fileResponse.close();
                 return null;
             }
@@ -150,27 +170,27 @@ public class PUW {
             ResponseBody file = fileResponse.body();
 
             if (file.contentLength() == 0) {
-                // Logger.e("PUW.downloadFile", "File body is null");
-                System.out.println("PUW.downloadFile: File body is null");
+                Logger.e("PUW.downloadFile", "File body is null");
+                // System.out.println("PUW.downloadFile: File body is null");
                 fileResponse.close();
                 return null;
             }
 
-            // Logger.d("PUW.downloadFile", "File downloaded, size: " + file.contentLength());
-            System.out.println("PUW.downloadFile: File downloaded, size: " + file.contentLength());
+            Logger.d("PUW.downloadFile", "File downloaded, size: " + file.contentLength());
+            // System.out.println("PUW.downloadFile: File downloaded, size: " + file.contentLength());
             return file;
 
         } catch (Exception e) {
-            // Logger.e("PUW.downloadFile", "Downloading error: " + e.getMessage());
-            System.out.println("PUW.downloadFile: Downloading error: " + e.getMessage());
+            Logger.e("PUW.downloadFile", "Downloading error: " + e.getMessage());
+            // System.out.println("PUW.downloadFile: Downloading error: " + e.getMessage());
             return null;
         }
     }
 
     public static String getStudentFullName(OkHttpClient client) {
         if (client == null) {
-            // Logger.e("PUW.getStudentFullName", "OkHttpClient is null");
-            System.out.println("PUW.getStudentFullName: OkHttpClient is null");
+            Logger.e("PUW.getStudentFullName", "OkHttpClient is null");
+            // System.out.println("PUW.getStudentFullName: OkHttpClient is null");
             return null;
         }
 
@@ -188,17 +208,17 @@ public class PUW {
 
                 if (userDropdown != null && userDropdown.hasAttr("aria-label")) {
                     String fullName = userDropdown.attr("aria-label").trim();
-                    // Logger.d("PUW.getStudentFullName", "Name extracted from dashboard: " + fullName);
-                    System.out.println("PUW.getStudentFullName: Name extracted from dashboard: " + fullName);
+                    Logger.d("PUW.getStudentFullName", "Name extracted from dashboard: " + fullName);
+                    // System.out.println("PUW.getStudentFullName: Name extracted from dashboard: " + fullName);
                     return fullName;
                 } else {
-                    // Logger.w("PUW.getStudentFullName", "Dropdown element or aria-label not found on dashboard");
-                    System.out.println("PUW.getStudentFullName: Dropdown element or aria-label not found on dashboard");
+                    Logger.w("PUW.getStudentFullName", "Dropdown element or aria-label not found on dashboard");
+                    // System.out.println("PUW.getStudentFullName: Dropdown element or aria-label not found on dashboard");
                 }
             }
         } catch (Exception e) {
-            // Logger.e("PUW.getStudentFullName", "Error fetching home page: " + e.getMessage());
-            System.out.println("PUW.getStudentFullName: Error fetching home page: " + e.getMessage());
+            Logger.e("PUW.getStudentFullName", "Error fetching home page: " + e.getMessage());
+            // System.out.println("PUW.getStudentFullName: Error fetching home page: " + e.getMessage());
         }
 
         // option 2: if aria-label not found
@@ -215,17 +235,17 @@ public class PUW {
 
                 if (h1Element != null) {
                     String fullName = h1Element.text().trim();
-                    // Logger.d("PUW.getStudentFullName", "Name extracted from files.php: " + fullName);
-                    System.out.println("PUW.getStudentFullName: Name extracted from files.php: " + fullName);
+                    Logger.d("PUW.getStudentFullName", "Name extracted from files.php: " + fullName);
+                    // System.out.println("PUW.getStudentFullName: Name extracted from files.php: " + fullName);
                     return fullName;
                 } else {
-                    // Logger.w("PUW.getStudentFullName", "H1 element not found on files.php");
-                    System.out.println("PUW.getStudentFullName: H1 element not found on files.php");
+                    Logger.w("PUW.getStudentFullName", "H1 element not found on files.php");
+                    // System.out.println("PUW.getStudentFullName: H1 element not found on files.php");
                 }
             }
         } catch (Exception e) {
-            // Logger.e("PUW.getStudentFullName", "Error fetching files page: " + e.getMessage());
-            System.out.println("PUW.getStudentFullName: Error fetching files page: " + e.getMessage());
+            Logger.e("PUW.getStudentFullName", "Error fetching files page: " + e.getMessage());
+            // System.out.println("PUW.getStudentFullName: Error fetching files page: " + e.getMessage());
         }
 
         return null;

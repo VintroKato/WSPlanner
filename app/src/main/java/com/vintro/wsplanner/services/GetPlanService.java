@@ -42,7 +42,7 @@ public class GetPlanService extends JobIntentService {
 
     @Override
     protected void onHandleWork(Intent intent) {
-        int course = PreferencesManager.getCoursePref(this, intent);
+        int course = PreferencesManager.getYearPref(this, intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1));
         Logger.d("GetPlanService", "GetPlanService.onHandleWork, course: " + course + ", intent: " + intent);
 
         workIntent = intent;

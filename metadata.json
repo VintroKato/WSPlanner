@@ -1,0 +1,6 @@
+{
+  "name": "WSPlanner",
+  "description": "Schedule planner and widget for WS students",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

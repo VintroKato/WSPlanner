@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:baselineAligned="false"
+    android:orientation="horizontal">
+
+    <!-- Timeline Column (Dot + Top Line + Bottom Line) -->
+    <RelativeLayout
+        android:id="@+id/timeline_column"
+        android:layout_width="20dp"
+        android:layout_height="match_parent"
+        android:layout_marginEnd="12dp">
+
+        <!-- Line to previous node -->
+        <View
+            android:id="@+id/timeline_line_top"
+            android:layout_width="2dp"
+            android:layout_height="0dp"
+            android:layout_alignParentTop="true"
+            android:layout_above="@id/timeline_dot_container"
+            android:layout_centerHorizontal="true"
+            android:background="@color/timeline_line_upcoming" />
+
+        <!-- Dot Container (Height 20dp, aligned with the first line of content) -->
+        <FrameLayout
+            android:id="@+id/timeline_dot_container"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_alignParentTop="true"
+            android:layout_centerHorizontal="true">
+
+            <!-- 1. Completed state: Blue circle with white checkmark -->
+            <FrameLayout
+                android:id="@+id/dot_completed"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:background="@drawable/bg_timeline_dot_completed">
+
+                <ImageView
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_check" />
+            </FrameLayout>
+
+            <!-- 2. Upcoming state: Dark circle with number -->
+            <TextView
+                android:id="@+id/dot_upcoming_number"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:background="@drawable/bg_timeline_dot_upcoming"
+                android:gravity="center"
+                android:text="4"
+                android:textColor="#A1A1AA"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <!-- 3. Current / Nearest state: Highlighted circle with number -->
+            <TextView
+                android:id="@+id/dot_current_number"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:background="@drawable/bg_timeline_dot_current"
+                android:gravity="center"
+                android:text="3"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- Line to next node -->
+        <View
+            android:id="@+id/timeline_line_bottom"
+            android:layout_width="2dp"
+            android:layout_height="match_parent"
+            android:layout_below="@id/timeline_dot_container"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp"
+            android:background="@color/timeline_line_upcoming" />
+    </RelativeLayout>
+
+    <!-- Content Column -->
+    <LinearLayout
+        android:id="@+id/timeline_content_container"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingBottom="16dp">
+
+        <!-- Standard view for Completed / Upcoming meetings -->
+        <LinearLayout
+            android:id="@+id/standard_content_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- First line: fixed height 20dp matching the 20dp dot container perfectly -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="20dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/timeline_date_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="1. Środa, 02.10"
+                    android:textColor="?attr/app_text"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <!-- Badge for offsite or special location (e.g. W TERENIE) -->
+                <TextView
+                    android:id="@+id/badge_special_location"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_badge_field"
+                    android:paddingStart="6dp"
+                    android:paddingTop="1dp"
+                    android:paddingEnd="6dp"
+                    android:paddingBottom="1dp"
+                    android:text="W TERENIE"
+                    android:textColor="@color/badge_field_text"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <!-- Status label (Zrealizowane / Zaplanowane) -->
+                <TextView
+                    android:id="@+id/timeline_status_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:alpha="0.6"
+                    android:text="Zrealizowane"
+                    android:textColor="?attr/app_text"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <!-- Second line: time & room -->
+            <TextView
+                android:id="@+id/timeline_subtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:alpha="0.65"
+                android:text="08:15 – 09:45 · Sala 204"
+                android:textColor="?attr/app_text"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Highlighted Card view for Nearest / Current meeting -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/nearest_card_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            app:cardBackgroundColor="@color/hero_card_bg"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/timeline_card_border_highlight"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <!-- Header row inside highlighted card -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="20dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/nearest_date_title"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="3. Środa, 30.10"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <!-- Badge: NAJBLIŻSZE -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_badge_next"
+                        android:paddingStart="8dp"
+                        android:paddingTop="2dp"
+                        android:paddingEnd="8dp"
+                        android:paddingBottom="2dp"
+                        android:text="@string/subject_status_next"
+                        android:textColor="@color/badge_next_text"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/nearest_time_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="08:15 – 09:45"
+                    android:textColor="#BFDBFE"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/nearest_room_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:alpha="0.8"
+                    android:text="Sala 204 (Laboratorium)"
+                    android:textColor="?attr/app_text"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -131,7 +131,7 @@ public class GetPlanWidgetConfigureActivity extends AppCompatActivity {
             return;
         }
 
-        PreferencesManager.savePrefs(GetPlanWidgetConfigureActivity.this, widgetId, login, password, course);
+        PreferencesManager.savePrefs(GetPlanWidgetConfigureActivity.this, widgetId, login, password, null, null, null, course, null, null);
 
         Intent resultValue = new Intent();
         resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
