@@ -7,6 +7,11 @@
         app:iconTint="?attr/app_text"
         android:title="@string/menu_refresh_schedule" />
     <item
+        android:id="@+id/action_all_courses"
+        android:icon="@drawable/ic_book_type"
+        app:iconTint="?attr/app_text"
+        android:title="@string/menu_all_courses" />
+    <item
         android:id="@+id/action_change_group"
         android:icon="@drawable/ic_school"
         app:iconTint="?attr/app_text"

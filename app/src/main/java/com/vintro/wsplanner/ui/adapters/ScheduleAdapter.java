@@ -133,6 +133,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         private final TextView subjectName;
         private final View rowLessonType;
         private final TextView lessonTypeText;
+        private final View rowTeacher;
         private final TextView teacherText;
         private final TextView locationText;
         private final ImageView offsiteArrowIcon;
@@ -148,6 +149,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             subjectName = itemView.findViewById(R.id.subject_name);
             rowLessonType = itemView.findViewById(R.id.row_lesson_type);
             lessonTypeText = itemView.findViewById(R.id.lesson_type_text);
+            rowTeacher = itemView.findViewById(R.id.row_teacher);
             teacherText = itemView.findViewById(R.id.teacher_text);
             locationText = itemView.findViewById(R.id.location_text);
             offsiteArrowIcon = itemView.findViewById(R.id.offsite_arrow_icon);
@@ -172,7 +174,13 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             } else {
                 if (rowLessonType != null) rowLessonType.setVisibility(View.GONE);
             }
-            teacherText.setText(!lesson.getTeacherName().isEmpty() ? lesson.getTeacherName() : "—");
+
+            if (lesson.hasTeacher()) {
+                if (rowTeacher != null) rowTeacher.setVisibility(View.VISIBLE);
+                teacherText.setText(lesson.getTeacherName().trim());
+            } else {
+                if (rowTeacher != null) rowTeacher.setVisibility(View.GONE);
+            }
 
             // location
             Location loc = lesson.getLocation();

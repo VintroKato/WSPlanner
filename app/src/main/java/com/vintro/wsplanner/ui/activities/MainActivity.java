@@ -96,7 +96,14 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (!isSpecialtyDone || PreferencesManager.ONBOARDING_STAGE_SPECIALTY.equals(stage)) {
-            startActivity(new Intent(this, SetupSpecialtyActivity.class));
+            if (PreferencesManager.getGlobalYearPref(this) == 1) {
+                PreferencesManager.setGlobalSpecialtyPref(this, null);
+                PreferencesManager.setGlobalSpecialtyConfigured(this, true);
+                PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_ADDITIONAL);
+                startActivity(new Intent(this, SetupAdditionalActivity.class));
+            } else {
+                startActivity(new Intent(this, SetupSpecialtyActivity.class));
+            }
             finish();
             return;
         }
@@ -335,6 +342,10 @@ public class MainActivity extends AppCompatActivity {
             int id = item.getItemId();
             if (id == R.id.action_refresh) {
                 handleManualRefresh(false);
+                return true;
+            } else if (id == R.id.action_all_courses) {
+                Intent coursesIntent = new Intent(this, AllCoursesActivity.class);
+                startActivity(coursesIntent);
                 return true;
             } else if (id == R.id.action_change_group) {
                 Intent setupIntent = new Intent(this, SetupCourseActivity.class);

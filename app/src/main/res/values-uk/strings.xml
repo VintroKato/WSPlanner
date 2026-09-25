@@ -27,7 +27,8 @@
     <string name="onboarding_english_hint">Номер групи</string>
     <string name="onboarding_specialty_title">Спеціалізація</string>
     <string name="onboarding_specialty_subtitle">Оберіть вашу спеціалізацію для розкладу</string>
-    <string name="onboarding_no_specialties">Спеціалізацій для цього курсу не знайдено</string>
+    <string name="onboarding_no_specialties">Спеціалізацій не знайдено</string>
+    <string name="onboarding_no_specialties_desc">Ваш курс може навчатися за спільною програмою, або ви можете вказати спеціалізацію вручну нижче.</string>
     <string name="onboarding_manual_specialty_switch">Ввести спеціалізацію вручну</string>
     <string name="onboarding_manual_specialty_hint">Назва спеціалізації</string>
     <string name="onboarding_surname_title">Прізвище студента</string>
@@ -108,4 +109,15 @@
     <string name="timeline_item_header_format">%1$d. %2$s, %3$s</string>
     <string name="timeline_time_room_format">%1$s – %2$s · %3$s</string>
     <string name="common_loading">Завантаження…</string>
+
+    <string name="menu_all_courses">Усі курси</string>
+    <string name="all_courses_title">Усі курси</string>
+    <string name="all_courses_search_hint">Пошук курсу, типу або викладача…</string>
+    <string name="all_courses_empty_title">Нічого не знайдено</string>
+    <string name="all_courses_empty_desc">Перевірте написання або змініть запит</string>
+    <string name="all_courses_strefa_title">Студентська зона</string>
+    <string name="all_courses_strefa_desc">Розклади, дні без занять, контактні дані декана і представників….</string>
+    <string name="all_courses_progress_format">%1$d з %2$d</string>
+    <string name="all_courses_count_format">%1$d курсів</string>
+    <string name="all_courses_opening_strefa">Відкриття Студентської зони…</string>
 </resources>

@@ -219,11 +219,12 @@
                         </LinearLayout>
                     </LinearLayout>
 
-                    <!-- Room info with Google Maps hint -->
+                    <!-- Room / Location info with Google Maps click -->
                     <LinearLayout
                         android:id="@+id/hero_location_row"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackground"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
@@ -242,16 +243,15 @@
                             android:textColor="?attr/app_text"
                             android:textSize="12sp" />
 
-                        <TextView
-                            android:id="@+id/hero_maps_hint"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:text=""
-                            android:textColor="#60A5FA"
-                            android:textSize="11sp"
+                        <ImageView
+                            android:id="@+id/hero_location_arrow_icon"
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:layout_marginStart="4dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_arrow_outward"
+                            app:tint="?attr/app_text"
+                            android:alpha="0.6"
                             android:visibility="gone" />
                     </LinearLayout>
                 </LinearLayout>

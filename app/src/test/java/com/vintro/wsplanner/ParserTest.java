@@ -304,4 +304,57 @@ public class ParserTest {
         assertEquals("mgr Małgorzata Wieleba", l2704.getTeacherName());
         assertEquals("projekt", l2704.getLessonType());
     }
+
+    @Test
+    public void testPhysicalEducationAddressParsing() {
+        BachelorFullTimeParser parser = new BachelorFullTimeParser();
+        String peBlock = "Wychowanie fizyczne - \n" +
+                "ćwiczenia 30h\n" +
+                "w godz. 13:00-15:15\n" +
+                "daty: 23.03, 30.03, 13.04, 20.04, 27.04, 04.05, 11.05, 18.05, 25.05, 01.06\n" +
+                "7 Fit\n" +
+                "ul. Jana Pawła II 17, 20-535 Lublin";
+
+        List<Lesson> lessons = parser.parseLessonBlock(peBlock, null, LocalTime.of(13, 0), LocalTime.of(15, 15), null, null);
+        assertEquals(10, lessons.size());
+
+        for (Lesson lesson : lessons) {
+            assertEquals("Wychowanie fizyczne", lesson.getSubjectName());
+            assertEquals("ćwiczenia", lesson.getLessonType());
+            assertFalse(lesson.hasTeacher());
+            assertEquals(LocalTime.of(13, 0), lesson.getStartTime());
+            assertEquals(LocalTime.of(15, 15), lesson.getEndTime());
+
+            com.vintro.wsplanner.models.Location loc = lesson.getLocation();
+            assertNotNull(loc);
+            assertTrue(loc.isOffsite());
+            assertFalse(loc.getDisplayText().contains("Sala 535"));
+            assertTrue(loc.getDisplayText().contains("ul. Jana Pawła II 17, 20-535 Lublin"));
+            assertTrue(loc.hasMapLink());
+        }
+    }
+
+    @Test
+    public void testLocationParsing() {
+        com.vintro.wsplanner.models.Location loc1 = new com.vintro.wsplanner.models.Location("7 Fit\nul. Jana Pawła II 17, 20-535 Lublin");
+        assertTrue(loc1.isOffsite());
+        assertFalse(loc1.getDisplayText().contains("Sala 535"));
+        assertTrue(loc1.getDisplayText().contains("20-535 Lublin"));
+        assertNull(loc1.getRoomNumber());
+
+        com.vintro.wsplanner.models.Location loc2 = new com.vintro.wsplanner.models.Location("ul. Jana Pawła II 17, 20-535 Lublin");
+        assertTrue(loc2.isOffsite());
+        assertEquals("ul. Jana Pawła II 17, 20-535 Lublin", loc2.getDisplayText());
+        assertNull(loc2.getRoomNumber());
+
+        com.vintro.wsplanner.models.Location loc3 = new com.vintro.wsplanner.models.Location("sala 211");
+        assertFalse(loc3.isOffsite());
+        assertEquals("Sala 211", loc3.getDisplayText());
+        assertEquals("211", loc3.getRoomNumber());
+
+        com.vintro.wsplanner.models.Location loc4 = new com.vintro.wsplanner.models.Location("206");
+        assertFalse(loc4.isOffsite());
+        assertEquals("Sala 206", loc4.getDisplayText());
+        assertEquals("206", loc4.getRoomNumber());
+    }
 }

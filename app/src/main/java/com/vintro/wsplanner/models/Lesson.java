@@ -128,6 +128,10 @@ public class Lesson implements Serializable {
         return teacherName;
     }
 
+    public boolean hasTeacher() {
+        return teacherName != null && !teacherName.trim().isEmpty() && !teacherName.trim().equals("—") && !teacherName.trim().equalsIgnoreCase("unknown teacher");
+    }
+
     public Location getLocation() {
         return location;
     }

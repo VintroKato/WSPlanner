@@ -321,11 +321,20 @@ public class SetupCourseActivity extends AppCompatActivity {
 
         Logger.d("SetupCourseActivity", "Saved configuration: " + selectedCourse.fieldOfStudy + ", " + selectedLevel + ", " + selectedMode + ", year " + selectedYear);
 
-        // move to specialty step
-        PreferencesManager.setGlobalSpecialtyConfigured(this, false);
-        PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_SPECIALTY);
+        if (selectedYear == 1) {
+            PreferencesManager.setGlobalSpecialtyPref(this, null);
+            PreferencesManager.setGlobalSpecialtyConfigured(this, true);
+            PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_ADDITIONAL);
 
-        Intent intent = new Intent(this, SetupSpecialtyActivity.class);
-        startActivity(intent);
+            Intent intent = new Intent(this, SetupAdditionalActivity.class);
+            startActivity(intent);
+        } else {
+            // move to specialty step
+            PreferencesManager.setGlobalSpecialtyConfigured(this, false);
+            PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_SPECIALTY);
+
+            Intent intent = new Intent(this, SetupSpecialtyActivity.class);
+            startActivity(intent);
+        }
     }
 }

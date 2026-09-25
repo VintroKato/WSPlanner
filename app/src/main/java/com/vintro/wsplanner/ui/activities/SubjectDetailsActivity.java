@@ -15,11 +15,13 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
@@ -79,7 +81,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
     private ProgressBar teacherEmailProgress;
     private ImageButton buttonCopyTeacherEmail;
     private TextView heroRoomText;
-    private TextView heroMapsHint;
+    private ImageView heroLocationArrowIcon;
     private LinearLayout heroLocationRow;
 
     private String loadedTeacherEmail = null;
@@ -102,10 +104,11 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
+        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_subject_details);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.subject_details_root), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
@@ -138,7 +141,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         teacherEmailProgress = findViewById(R.id.teacher_email_progress);
         buttonCopyTeacherEmail = findViewById(R.id.button_copy_teacher_email);
         heroRoomText = findViewById(R.id.hero_room_text);
-        heroMapsHint = findViewById(R.id.hero_maps_hint);
+        heroLocationArrowIcon = findViewById(R.id.hero_location_arrow_icon);
         heroLocationRow = findViewById(R.id.hero_location_row);
 
         // set title right away
@@ -245,8 +248,13 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         }
 
         heroSubjectTitle.setText(details.getSubjectName());
-        String teacher = !details.getTeacherName().isEmpty() ? details.getTeacherName() : "—";
-        heroTeacherName.setText(teacher);
+        if (details.hasTeacher()) {
+            heroTeacherContainer.setVisibility(View.VISIBLE);
+            heroTeacherName.setText(details.getTeacherName().trim());
+            setupTeacherEmail(details.getTeacherName().trim());
+        } else {
+            heroTeacherContainer.setVisibility(View.GONE);
+        }
 
         LessonType type = details.getLessonType();
         String displayTypeName = !details.getRawLessonType().isEmpty() 
@@ -282,9 +290,6 @@ public class SubjectDetailsActivity extends AppCompatActivity {
             dominantLoc = lessons.get(0).getLocation();
         }
         setupHeroLocation(dominantLoc);
-
-        // load teacher email
-        setupTeacherEmail(teacher);
     }
 
     private void setupHeroLocation(Location location) {
@@ -306,8 +311,9 @@ public class SubjectDetailsActivity extends AppCompatActivity {
 
         if (location != null && location.hasMapLink()) {
             heroRoomText.setText(location.getDisplayText());
-            heroMapsHint.setText(getString(R.string.maps_hint_format, location.getDisplayText()));
-            heroMapsHint.setVisibility(View.VISIBLE);
+            if (heroLocationArrowIcon != null) {
+                heroLocationArrowIcon.setVisibility(View.VISIBLE);
+            }
             View.OnClickListener mapsClick = v -> {
                 String query = location.getMapQueryUrl();
                 if (query != null) {
@@ -317,13 +323,13 @@ public class SubjectDetailsActivity extends AppCompatActivity {
                 }
             };
             heroLocationRow.setOnClickListener(mapsClick);
-            heroMapsHint.setOnClickListener(mapsClick);
             heroLocationRow.setClickable(true);
         } else {
             heroRoomText.setText(location != null ? location.getDisplayText() : "Sala —");
-            heroMapsHint.setVisibility(View.GONE);
+            if (heroLocationArrowIcon != null) {
+                heroLocationArrowIcon.setVisibility(View.GONE);
+            }
             heroLocationRow.setOnClickListener(null);
-            heroMapsHint.setOnClickListener(null);
             heroLocationRow.setClickable(false);
         }
     }

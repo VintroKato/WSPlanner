@@ -405,7 +405,10 @@ public class BachelorFullTimeParser implements ScheduleParser {
             else {
                 if (lowerLine.startsWith("mgr") || lowerLine.startsWith("dr") || lowerLine.startsWith("prof") || lowerLine.startsWith("ks.")) {
                     globalTeacher = line.trim();
-                } else if (lowerLine.startsWith("sala") || lowerLine.contains("on-line") || lowerLine.contains("online") || lowerLine.contains("ul.") || lowerLine.contains("lublin")) {
+                } else if (lowerLine.startsWith("sala") || lowerLine.contains("on-line") || lowerLine.contains("online")
+                        || lowerLine.contains("ul.") || lowerLine.contains("al.") || lowerLine.contains("lublin")
+                        || lowerLine.contains("fit") || lowerLine.contains("siłownia") || lowerLine.contains("basen")
+                        || lowerLine.matches(".*\\b\\d{2}-\\d{3}\\b.*")) {
                     String potentialRoom = extractRoomInfo(line);
                     if (potentialRoom != null) {
                         if (globalRoom.equals("Unknown Room")) {
@@ -490,6 +493,13 @@ public class BachelorFullTimeParser implements ScheduleParser {
         String lower = line.toLowerCase().trim();
         if (lower.contains("on-line") || lower.contains("online")) return "online";
 
+        // format addresses and offsite venues by removing unrelated text
+        if (lower.contains("ul.") || lower.contains("al.") || lower.contains("instytut")
+                || lower.contains("lublin") || lower.contains("fit") || lower.contains("siłownia")
+                || lower.contains("basen") || lower.matches(".*\\b\\d{2}-\\d{3}\\b.*")) {
+            return line.replaceAll("(?i)w dn(?:[a-zA-Z]*\\.)?.*?zaj[eę]cia\\s+(?:w\\s+)?", "").trim();
+        }
+
         Matcher mSala = roomSalaPattern.matcher(lower);
         if (mSala.find()) return "sala " + mSala.group(1).toUpperCase();
 
@@ -498,10 +508,6 @@ public class BachelorFullTimeParser implements ScheduleParser {
 
         if (lower.startsWith("sala ")) return line.trim();
 
-        // format addresses by removing unrelated text
-        if (lower.contains("ul.") || lower.contains("instytut") || lower.contains("lublin")) {
-            return line.replaceAll("(?i)w dn(?:[a-zA-Z]*\\.)?.*?zaj[eę]cia\\s+(?:w\\s+)?", "").trim();
-        }
         return null;
     }
 

@@ -37,7 +37,7 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
     private View loadingLayout;
     private LinearLayout contentLayout;
     private LinearLayout specialtiesContainer;
-    private TextView noSpecialtiesLabel;
+    private View noSpecialtiesCard;
     private SwitchMaterial manualSpecialtySwitch;
     private EditText manualSpecialtyInput;
     private Button confirmButton;
@@ -66,7 +66,7 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
         loadingLayout = findViewById(R.id.loading_layout);
         contentLayout = findViewById(R.id.content_layout);
         specialtiesContainer = findViewById(R.id.specialties_container);
-        noSpecialtiesLabel = findViewById(R.id.no_specialties_label);
+        noSpecialtiesCard = findViewById(R.id.no_specialties_card);
         manualSpecialtySwitch = findViewById(R.id.manual_specialty_switch);
         manualSpecialtyInput = findViewById(R.id.manual_specialty_input);
         confirmButton = findViewById(R.id.confirm_button);
@@ -111,17 +111,17 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
         boolean isChosen = isManual || isCard;
 
         if (isChosen) {
-            // specialty selected or entered
+            // specialty selected or entered: show only Confirm/Next
             confirmButton.setVisibility(View.VISIBLE);
             confirmButton.setEnabled(true);
             confirmButton.setAlpha(1.0f);
-            skipButton.setVisibility(View.VISIBLE); // allow skipping if clicked by mistake
+            skipButton.setVisibility(View.GONE);
         } else if (!hasItems) {
-            // no options available
+            // no options available and nothing entered manually: show only Skip
             confirmButton.setVisibility(View.GONE);
             skipButton.setVisibility(View.VISIBLE);
         } else {
-            // options available but not selected
+            // options available but not selected: show both, but Confirm is disabled
             confirmButton.setVisibility(View.VISIBLE);
             confirmButton.setEnabled(false);
             confirmButton.setAlpha(0.5f);
@@ -162,9 +162,9 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
         specialtiesContainer.removeAllViews();
 
         if (availableSpecialties.isEmpty()) {
-            noSpecialtiesLabel.setVisibility(View.VISIBLE);
+            noSpecialtiesCard.setVisibility(View.VISIBLE);
         } else {
-            noSpecialtiesLabel.setVisibility(View.GONE);
+            noSpecialtiesCard.setVisibility(View.GONE);
             for (String spec : availableSpecialties) {
                 MaterialCardView card = createSpecialtyCard(spec);
                 card.setOnClickListener(v -> {

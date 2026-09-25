@@ -40,7 +40,8 @@
     <string name="onboarding_english_hint">Group number</string>
     <string name="onboarding_specialty_title">Select Specialty</string>
     <string name="onboarding_specialty_subtitle">Choose your specialization for schedule</string>
-    <string name="onboarding_no_specialties">No specialties found for this course</string>
+    <string name="onboarding_no_specialties">No specialties found</string>
+    <string name="onboarding_no_specialties_desc">Your course may follow a common curriculum, or you can enter your specialty manually below.</string>
     <string name="onboarding_manual_specialty_switch">Enter specialty manually</string>
     <string name="onboarding_manual_specialty_hint">Specialty name</string>
     <string name="onboarding_surname_title">Student surname</string>
@@ -121,4 +122,15 @@
     <string name="timeline_item_header_format">%1$d. %2$s, %3$s</string>
     <string name="timeline_time_room_format">%1$s – %2$s · %3$s</string>
     <string name="common_loading">Loading…</string>
+
+    <string name="menu_all_courses">All courses</string>
+    <string name="all_courses_title">All Courses</string>
+    <string name="all_courses_search_hint">Search course, type or teacher…</string>
+    <string name="all_courses_empty_title">Nothing found</string>
+    <string name="all_courses_empty_desc">Check spelling or change search query</string>
+    <string name="all_courses_strefa_title">Student Zone</string>
+    <string name="all_courses_strefa_desc">Schedules, non-teaching days, academic leadership contact details…</string>
+    <string name="all_courses_progress_format">%1$d of %2$d</string>
+    <string name="all_courses_count_format">%1$d courses</string>
+    <string name="all_courses_opening_strefa">Opening Student Zone…</string>
 </resources>

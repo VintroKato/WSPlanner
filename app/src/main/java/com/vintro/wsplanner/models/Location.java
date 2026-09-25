@@ -25,12 +25,17 @@ public class Location implements Serializable {
             this.displayText = "Online, PUW";
             this.roomNumber = null;
             this.mapQueryUrl = null;
-        } else if (lower.contains("sala") || lower.matches(".*\\b\\d{3}[a-zA-Z]?\\b.*") || lower.contains("uczelni") || lower.contains("wspa")) {
+        } else if (isOffsiteLocation(lower)) {
+            this.type = LocationType.W_TERENIE;
+            this.displayText = this.rawValue;
+            this.roomNumber = null;
+            this.mapQueryUrl = buildMapQueryUrl(this.rawValue, lower);
+        } else if (lower.contains("sala") || lower.contains("s.") || lower.contains("uczelni") || lower.contains("wspa") || hasStandaloneRoomNumber(lower)) {
             this.type = LocationType.UCZELNIA;
             this.roomNumber = extractRoomNumber(this.rawValue);
             this.displayText = this.roomNumber != null ? "Sala " + this.roomNumber : (!this.rawValue.isEmpty() ? this.rawValue : "WSPA");
             this.mapQueryUrl = null;
-        } else if (this.rawValue.isEmpty()) {
+        } else if (this.rawValue.isEmpty() || this.rawValue.equalsIgnoreCase("Unknown Room")) {
             this.type = LocationType.UCZELNIA;
             this.displayText = "WSPA";
             this.roomNumber = null;
@@ -39,23 +44,58 @@ public class Location implements Serializable {
             this.type = LocationType.W_TERENIE;
             this.displayText = this.rawValue;
             this.roomNumber = null;
-            if (lower.contains("ul.") || lower.contains("lublin") || lower.contains("fit")) {
-                String encoded;
-                try {
-                    encoded = java.net.URLEncoder.encode(this.rawValue, "UTF-8");
-                } catch (Exception e) {
-                    encoded = this.rawValue.replace(" ", "+");
-                }
-                this.mapQueryUrl = "geo:0,0?q=" + encoded;
-            } else {
-                this.mapQueryUrl = null;
-            }
+            this.mapQueryUrl = buildMapQueryUrl(this.rawValue, lower);
+        }
+    }
+
+    private static boolean isOffsiteLocation(String lower) {
+        return lower.contains("ul.")
+                || lower.contains("al.")
+                || lower.contains("aleja")
+                || lower.contains("plac")
+                || lower.contains("lublin")
+                || lower.matches(".*\\b\\d{2}-\\d{3}\\b.*")
+                || lower.contains("fit")
+                || lower.contains("siłownia")
+                || lower.contains("basen")
+                || lower.contains("stadion")
+                || lower.contains("hala sportowa")
+                || lower.contains("w terenie")
+                || lower.contains("teren");
+    }
+
+    private static boolean hasStandaloneRoomNumber(String lower) {
+        return lower.matches(".*(?<![\\d-])\\b\\d{3}[a-zA-Z]?\\b(?![\\d-]).*");
+    }
+
+    private static String buildMapQueryUrl(String raw, String lower) {
+        if (raw == null || raw.trim().isEmpty()) return null;
+        String query = raw.replace("\n", ", ").trim();
+        if (!lower.contains("lublin") && !lower.contains("polska")) {
+            query += ", Lublin";
+        }
+        try {
+            return "geo:0,0?q=" + java.net.URLEncoder.encode(query, "UTF-8");
+        } catch (Exception e) {
+            return "geo:0,0?q=" + query.replace(" ", "+");
         }
     }
 
     private String extractRoomNumber(String text) {
-        Matcher matcher = Pattern.compile("(?i)(?:sala\\s*)?(\\b\\d{3}[a-zA-Z]?\\b)").matcher(text);
-        return matcher.find() ? matcher.group(1) : null;
+        if (text == null || text.trim().isEmpty()) return null;
+        String lower = text.toLowerCase();
+        if (isOffsiteLocation(lower)) return null;
+
+        Matcher explicitMatcher = Pattern.compile("(?i)(?:sal(?:a|i|ach)|s\\.?)\\s*([a-zA-Z0-9]+)").matcher(text);
+        if (explicitMatcher.find()) {
+            return explicitMatcher.group(1).toUpperCase();
+        }
+
+        Matcher numberMatcher = Pattern.compile("(?<![\\d-])\\b(\\d{3}[a-zA-Z]?)\\b(?![\\d-])").matcher(text);
+        if (numberMatcher.find()) {
+            return numberMatcher.group(1).toUpperCase();
+        }
+        return null;
     }
 
     public LocationType getType() {

@@ -26,7 +26,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import okhttp3.OkHttpClient;
@@ -151,6 +153,44 @@ public class ScheduleRepository {
     public SubjectDetails getSubjectDetailsSync(String subjectName, String rawLessonType) {
         ensureScheduleLoaded(false);
         return createSubjectDetails(subjectName, rawLessonType);
+    }
+
+    // get all unique courses in the semester asynchronously
+    public void getAllCourses(boolean forceRefresh, ScheduleCallback<List<SubjectDetails>> callback) {
+        new Thread(() -> {
+            try {
+                ensureScheduleLoaded(forceRefresh);
+                List<SubjectDetails> courses = buildAllCourses();
+                callback.onSuccess(courses);
+            } catch (Exception e) {
+                Logger.e(TAG, "getAllCourses error: " + e.getMessage());
+                callback.onError(e);
+            }
+        }).start();
+    }
+
+    public List<SubjectDetails> buildAllCourses() {
+        if (cachedAllLessons == null || cachedAllLessons.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Map<String, List<Lesson>> grouped = new LinkedHashMap<>();
+        for (Lesson l : cachedAllLessons) {
+            if (l.getSubjectName() == null || l.getSubjectName().trim().isEmpty()) continue;
+            String key = l.getSubjectNoteKey();
+            if (!grouped.containsKey(key)) {
+                grouped.put(key, new ArrayList<>());
+            }
+            grouped.get(key).add(l);
+        }
+        List<SubjectDetails> result = new ArrayList<>();
+        for (List<Lesson> lessons : grouped.values()) {
+            if (lessons.isEmpty()) continue;
+            Lesson first = lessons.get(0);
+            SubjectDetails details = createSubjectDetails(first.getSubjectName(), first.getLessonType());
+            result.add(details);
+        }
+        result.sort((a, b) -> a.getSubjectName().compareToIgnoreCase(b.getSubjectName()));
+        return result;
     }
 
     private DaySchedule createDayScheduleForDate(LocalDate date) {

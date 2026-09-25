@@ -27,7 +27,8 @@
     <string name="onboarding_english_hint">Numer grupy</string>
     <string name="onboarding_specialty_title">Wybór specjalności</string>
     <string name="onboarding_specialty_subtitle">Wybierz swoją specjalność do planu</string>
-    <string name="onboarding_no_specialties">Nie znaleziono specjalności dla tego roku</string>
+    <string name="onboarding_no_specialties">Nie znaleziono specjalności</string>
+    <string name="onboarding_no_specialties_desc">Twój rok może realizować wspólny program lub możesz wpisać specjalność ręcznie poniżej.</string>
     <string name="onboarding_manual_specialty_switch">Wpisz specjalność ręcznie</string>
     <string name="onboarding_manual_specialty_hint">Nazwa specjalności</string>
     <string name="onboarding_surname_title">Nazwisko studenta</string>
@@ -108,4 +109,15 @@
     <string name="timeline_item_header_format">%1$d. %2$s, %3$s</string>
     <string name="timeline_time_room_format">%1$s – %2$s · %3$s</string>
     <string name="common_loading">Ładowanie…</string>
+
+    <string name="menu_all_courses">Wszystkie przedmioty</string>
+    <string name="all_courses_title">Wszystkie przedmioty</string>
+    <string name="all_courses_search_hint">Szukaj przedmiotu, typu lub wykładowcy…</string>
+    <string name="all_courses_empty_title">Nic nie znaleziono</string>
+    <string name="all_courses_empty_desc">Sprawdź poprawność wpisanego tekstu</string>
+    <string name="all_courses_strefa_title">Strefa Studenta</string>
+    <string name="all_courses_strefa_desc">Plany zajęć, dni wolne, dane kontaktowe dziekana i pełnomocników…</string>
+    <string name="all_courses_progress_format">%1$d z %2$d</string>
+    <string name="all_courses_count_format">%1$d przedmiotów</string>
+    <string name="all_courses_opening_strefa">Otwieranie Strefy Studenta…</string>
 </resources>
