@@ -146,8 +146,9 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:text="@string/onboarding_no_specialties_desc"
-                            android:textColor="?attr/input_hint"
+                            android:textColor="?attr/app_text"
                             android:textSize="12sp"
+                            android:alpha="0.7"
                             android:lineSpacingExtra="2dp" />
                     </LinearLayout>
                 </LinearLayout>

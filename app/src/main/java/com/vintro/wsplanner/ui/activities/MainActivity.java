@@ -74,6 +74,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Logger.d("MainActivity.onCreate", "MainActivity created");
+
+        // check keystore availability
+        if (!PreferencesManager.checkKeystoreHealth(this)) {
+            Logger.e("MainActivity.onCreate", "Keystore health check failed");
+            showKeystoreErrorDialog();
+            return;
+        }
 
         // check onboarding status
         String login = PreferencesManager.getGlobalLoginPref(this);
@@ -81,7 +89,10 @@ public class MainActivity extends AppCompatActivity {
         String stage = PreferencesManager.getOnboardingStage(this);
         boolean isSpecialtyDone = PreferencesManager.isGlobalSpecialtyConfigured(this);
 
+        Logger.d("MainActivity.onCreate", "Onboarding state: stage=" + stage + ", login=" + (login != null) + ", major=" + major + ", specialtyConfigured=" + isSpecialtyDone);
+
         if (login == null || PreferencesManager.ONBOARDING_STAGE_LOGIN.equals(stage)) {
+            Logger.d("MainActivity.onCreate", "Redirecting to LoginActivity");
             startActivity(new Intent(this, LoginActivity.class));
             finish();
             return;
@@ -90,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
         if (major == null || PreferencesManager.ONBOARDING_STAGE_COURSE.equals(stage)
                 || PreferencesManager.getGlobalDegreeLevelPref(this) == null
                 || PreferencesManager.getGlobalStudyModePref(this) == null) {
+            Logger.d("MainActivity.onCreate", "Redirecting to SetupCourseActivity");
             startActivity(new Intent(this, SetupCourseActivity.class));
             finish();
             return;
@@ -97,11 +109,13 @@ public class MainActivity extends AppCompatActivity {
 
         if (!isSpecialtyDone || PreferencesManager.ONBOARDING_STAGE_SPECIALTY.equals(stage)) {
             if (PreferencesManager.getGlobalYearPref(this) == 1) {
+                Logger.d("MainActivity.onCreate", "Year 1 student skipping specialty setup, advancing to SetupAdditionalActivity");
                 PreferencesManager.setGlobalSpecialtyPref(this, null);
                 PreferencesManager.setGlobalSpecialtyConfigured(this, true);
                 PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_ADDITIONAL);
                 startActivity(new Intent(this, SetupAdditionalActivity.class));
             } else {
+                Logger.d("MainActivity.onCreate", "Redirecting to SetupSpecialtyActivity");
                 startActivity(new Intent(this, SetupSpecialtyActivity.class));
             }
             finish();
@@ -109,6 +123,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (PreferencesManager.ONBOARDING_STAGE_ADDITIONAL.equals(stage)) {
+            Logger.d("MainActivity.onCreate", "Redirecting to SetupAdditionalActivity");
             startActivity(new Intent(this, SetupAdditionalActivity.class));
             finish();
             return;
@@ -237,6 +252,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadSchedule(boolean forceRefresh) {
+        Logger.d("MainActivity.loadSchedule", "Loading schedule for date: " + selectedDate + " (forceRefresh=" + forceRefresh + ")");
         swipeRefreshLayout.setRefreshing(true);
         updateDateUI();
 
@@ -244,6 +260,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onSuccess(DaySchedule result) {
                 currentDaySchedule = result;
+                Logger.i("MainActivity.loadSchedule", "Schedule loaded successfully. Day items count: " + (result != null ? result.getLessons().size() : 0));
                 runOnUiThread(() -> {
                     swipeRefreshLayout.setRefreshing(false);
                     scheduleAdapter.submitDaySchedule(result);
@@ -254,7 +271,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onError(Exception e) {
-                Logger.e(TAG, "Failed to load schedule: " + e.getMessage());
+                Logger.e("MainActivity.loadSchedule", "Failed to load schedule: " + e.getMessage());
                 runOnUiThread(() -> {
                     swipeRefreshLayout.setRefreshing(false);
                     scheduleAdapter.clear();
@@ -268,29 +285,33 @@ public class MainActivity extends AppCompatActivity {
     private void handleManualRefresh(boolean fromSwipe) {
         long cooldownLeft = scheduleRepository.getCooldownRemainingSeconds();
         if (cooldownLeft > 0) {
+            Logger.d("MainActivity.handleManualRefresh", "Refresh blocked by cooldown: " + cooldownLeft + " seconds remaining");
             if (fromSwipe) swipeRefreshLayout.setRefreshing(false);
             Toast.makeText(this, getString(R.string.schedule_cooldown_message, cooldownLeft), Toast.LENGTH_SHORT).show();
             return;
         }
 
+        Logger.i("MainActivity.handleManualRefresh", "Triggering manual force-refresh (fromSwipe=" + fromSwipe + ")");
         loadSchedule(true);
     }
 
     private void openScheduleFile() {
+        Logger.d("MainActivity.openScheduleFile", "User clicked open schedule file");
         Toast.makeText(this, getString(R.string.schedule_opening_file), Toast.LENGTH_SHORT).show();
 
         scheduleRepository.getScheduleFileForOpen(new ScheduleRepository.FileReadyCallback() {
             @Override
             public void onFileReady(File file) {
+                Logger.i("MainActivity.openScheduleFile", "Schedule file ready: " + file.getAbsolutePath());
                 runOnUiThread(() -> {
                     try {
                         Uri uri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".provider", file);
                         Intent intent = new Intent(Intent.ACTION_VIEW);
                         intent.setDataAndType(uri, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
                         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        startActivity(Intent.createChooser(intent, getString(R.string.menu_refresh_schedule)));
+                        startActivity(intent);
                     } catch (Exception e) {
-                        Logger.e(TAG, "Error opening schedule file: " + e.getMessage());
+                        Logger.e("MainActivity.openScheduleFile", "Error opening schedule file: " + e.getMessage());
                         Toast.makeText(MainActivity.this, getString(R.string.schedule_open_file_error), Toast.LENGTH_SHORT).show();
                     }
                 });
@@ -298,6 +319,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onError(Exception e) {
+                Logger.e("MainActivity.openScheduleFile", "Failed to get schedule file: " + e.getMessage());
                 runOnUiThread(() -> Toast.makeText(MainActivity.this, getString(R.string.schedule_open_file_error) + ": " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         });
@@ -406,5 +428,18 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         stopMinuteTicker();
+    }
+
+    private void showKeystoreErrorDialog() {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Защищенное хранилище")
+                .setMessage("Сбой защищенного хранилища ключей Android (Keystore). Для безопасности ваших данных необходимо заново выполнить вход в аккаунт.")
+                .setCancelable(false)
+                .setPositiveButton("Войти заново", (dialog, which) -> {
+                    PreferencesManager.resetCorruptedStorage(this);
+                    startActivity(new Intent(this, LoginActivity.class));
+                    finish();
+                })
+                .show();
     }
 }

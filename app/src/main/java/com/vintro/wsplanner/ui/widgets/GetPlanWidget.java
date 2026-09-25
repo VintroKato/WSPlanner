@@ -20,14 +20,14 @@ public class GetPlanWidget extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.get_plan_widget);
         views.setImageViewResource(R.id.widget_download_button, R.drawable.icon_download);
         views.setOnClickPendingIntent(R.id.widget_download_button, pendingIntent);
-        Logger.d("GetPlanWidget.updateAppWidget()", "onClick set");
+        Logger.d("GetPlanWidget.updateAppWidget", "onClick set for widget " + appWidgetId);
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
-        Logger.d("GetPlanWidget", "onUpdate called, ids count: " + appWidgetIds.length);
+        Logger.d("GetPlanWidget.onUpdate", "onUpdate called, ids count: " + appWidgetIds.length);
 
         for (int appWidgetId : appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId);
@@ -39,7 +39,7 @@ public class GetPlanWidget extends AppWidgetProvider {
         intent.setAction("com.vintro.wsplanner.ACTION_CLICK");
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-        Logger.d("GetPlanWidget.createPendingIntent()", "Intent created for widget " + appWidgetId + ": " + intent);
+        Logger.d("GetPlanWidget.createPendingIntent", "Intent created for widget " + appWidgetId + ": " + intent);
 
         return PendingIntent.getBroadcast(
                 context,
@@ -51,7 +51,7 @@ public class GetPlanWidget extends AppWidgetProvider {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Logger.d("GetPlanWidget", "onReceive called, action: " + intent.getAction());
+        Logger.d("GetPlanWidget.onReceive", "onReceive called, action: " + intent.getAction());
         super.onReceive(context, intent);
         if ("com.vintro.wsplanner.ACTION_CLICK".equals(intent.getAction())) {
             int appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
@@ -72,11 +72,11 @@ public class GetPlanWidget extends AppWidgetProvider {
 
     @Override
     public void onEnabled(Context context) {
-
+        Logger.d("GetPlanWidget.onEnabled", "First widget instance created");
     }
 
     @Override
     public void onDisabled(Context context) {
-
+        Logger.d("GetPlanWidget.onDisabled", "Last widget instance removed");
     }
 }

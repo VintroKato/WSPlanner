@@ -41,6 +41,7 @@ public class SetupAdditionalActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Logger.d("SetupAdditionalActivity.onCreate", "SetupAdditionalActivity created");
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
         setContentView(R.layout.activity_setup_additional);
@@ -170,7 +171,7 @@ public class SetupAdditionalActivity extends AppCompatActivity {
         // clear cached schedule
         ScheduleRepository.getInstance(this).invalidateCache();
 
-        Logger.d("SetupAdditionalActivity", "Onboarding setup completed. Navigating to MainActivity.");
+        Logger.i("SetupAdditionalActivity.finishSetup", "Onboarding setup completed successfully (major=" + major + ", degree=" + degreeLevel + ", mode=" + studyMode + ", year=" + year + ", surname=" + enteredSurname + "). Navigating to MainActivity.");
 
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

@@ -99,7 +99,7 @@ public class StudyPlanScraper {
                 String title = el.attr("title");
                 String teacher = extractSeminarTeacherFromCourseTitle(title);
                 if (teacher != null) {
-                    Logger.d("StudyPlanScraper", "Seminar teacher extracted from title attribute: " + teacher);
+                    Logger.d("StudyPlanScraper.findSeminarTeacherInUrl", "Seminar teacher extracted from title attribute: " + teacher);
                     return teacher;
                 }
             }
@@ -110,12 +110,12 @@ public class StudyPlanScraper {
                 String text = el.text();
                 String teacher = extractSeminarTeacherFromCourseTitle(text);
                 if (teacher != null) {
-                    Logger.d("StudyPlanScraper", "Seminar teacher extracted from element text: " + teacher);
+                    Logger.d("StudyPlanScraper.findSeminarTeacherInUrl", "Seminar teacher extracted from element text: " + teacher);
                     return teacher;
                 }
             }
         } catch (Exception e) {
-            Logger.e("StudyPlanScraper", "Error fetching seminar teacher from " + url + ": " + e.getMessage());
+            Logger.e("StudyPlanScraper.findSeminarTeacherInUrl", "Error fetching seminar teacher from " + url + ": " + e.getMessage());
         }
         return null;
     }
@@ -146,13 +146,13 @@ public class StudyPlanScraper {
                     if (matcher.find()) {
                         String groupNumberStr = matcher.group(1);
                         Integer groupNumber = Integer.parseInt(groupNumberStr);
-                        Logger.d("StudyPlanScraper", "English group extracted: " + groupNumber);
+                        Logger.d("StudyPlanScraper.getEnglishGroup", "English group extracted: " + groupNumber);
                         return groupNumber;
                     }
                 }
             }
         } catch (Exception e) {
-            Logger.e("StudyPlanScraper", "Error fetching English group: " + e.getMessage());
+            Logger.e("StudyPlanScraper.getEnglishGroup", "Error fetching English group: " + e.getMessage());
         }
 
         return null; // not found
@@ -160,11 +160,15 @@ public class StudyPlanScraper {
 
     // get available courses from home page
     public static List<ParsedCourse> getAvailableCourses(OkHttpClient client) {
+        Logger.d("StudyPlanScraper.getAvailableCourses", "Fetching available courses from PUW home page");
         List<ParsedCourse> courses = new ArrayList<>();
 
         Request request = new Request.Builder().url(PUW.homeUrl).build();
         try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) return courses;
+            if (!response.isSuccessful()) {
+                Logger.e("StudyPlanScraper.getAvailableCourses", "Home page request failed with code: " + response.code());
+                return courses;
+            }
 
             Document doc = Jsoup.parse(response.body().string());
             // find student zone links
@@ -190,9 +194,9 @@ public class StudyPlanScraper {
                 courses.add(course);
             }
         } catch (Exception e) {
-            Logger.e("StudyPlanScraper", "Error parsing courses: " + e.getMessage());
+            Logger.e("StudyPlanScraper.getAvailableCourses", "Error parsing courses: " + e.getMessage());
         }
-        Logger.d("StudyPlanScraper.getAvailableCourses", courses.stream().map(Object::toString).collect(Collectors.joining(", ")));
+        Logger.i("StudyPlanScraper.getAvailableCourses", "Parsed " + courses.size() + " available course(s): " + courses.stream().map(Object::toString).collect(Collectors.joining(", ")));
         return courses;
     }
 
@@ -217,7 +221,7 @@ public class StudyPlanScraper {
                 processFolderFiles(client, folderUrl, course, folderMode);
             }
         } catch (Exception e) {
-            Logger.e("StudyPlanScraper", "Error fetching course details: " + e.getMessage());
+            Logger.e("StudyPlanScraper.fetchCourseDetails", "Error fetching course details: " + e.getMessage());
         }
     }
 
@@ -263,7 +267,7 @@ public class StudyPlanScraper {
                 }
             }
         } catch (Exception e) {
-            Logger.e("StudyPlanScraper", "Error processing folder files: " + e.getMessage());
+            Logger.e("StudyPlanScraper.processFolderFiles", "Error processing folder files: " + e.getMessage());
         }
     }
 
@@ -327,8 +331,7 @@ public class StudyPlanScraper {
                                         if (!downloadUrl.contains("forcedownload=1")) {
                                             downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
                                         }
-                                        Logger.d("StudyPlanScrapper.getScheduleFileUrl", "downloadUrl: " + 
-                                        downloadUrl);
+                                        Logger.d("StudyPlanScraper.getScheduleFileUrl", "Resolved schedule file URL: " + downloadUrl);
                                         return downloadUrl;
                                     }
                                 }
@@ -338,7 +341,7 @@ public class StudyPlanScraper {
                 }
             }
         } catch (Exception e) {
-            Logger.e("StudyPlanScraper", "Error fetching schedule file url: " + e.getMessage());
+            Logger.e("StudyPlanScraper.getScheduleFileUrl", "Error fetching schedule file url: " + e.getMessage());
         }
         return null;
     }
@@ -410,7 +413,7 @@ public class StudyPlanScraper {
                 }
             }
         } catch (IOException e) {
-            Logger.e("StudyPlanScraper", "Error searching best course: " + e.getMessage());
+            Logger.e("StudyPlanScraper.searchBestCourse", "Error searching best course: " + e.getMessage());
         }
 
         // fallback to my page
@@ -424,7 +427,7 @@ public class StudyPlanScraper {
                 }
             }
         } catch (IOException e) {
-            Logger.e("StudyPlanScraper", "Error searching best course fallback: " + e.getMessage());
+            Logger.e("StudyPlanScraper.searchBestCourse", "Error searching best course fallback: " + e.getMessage());
         }
 
         return null;
@@ -512,7 +515,7 @@ public class StudyPlanScraper {
                 return searchCourseByKeywordsOnUrl(client, PUW.baseUrl + "/my/", keywords);
             }
         } catch (IOException e) {
-            Logger.e("StudyPlanScraper", "Error searching course by keywords: " + e.getMessage());
+            Logger.e("StudyPlanScraper.searchCourseByKeywords", "Error searching course by keywords: " + e.getMessage());
             return null;
         }
     }
@@ -527,7 +530,7 @@ public class StudyPlanScraper {
                 return extractCourseUrlFromHtml(response.body().string(), keywords);
             }
         } catch (IOException e) {
-            Logger.e("StudyPlanScraper", "Error searching course on url " + pageUrl + ": " + e.getMessage());
+            Logger.e("StudyPlanScraper.searchCourseByKeywordsOnUrl", "Error searching course on url " + pageUrl + ": " + e.getMessage());
             return null;
         }
     }

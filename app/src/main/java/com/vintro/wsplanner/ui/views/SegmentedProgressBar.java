@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat;
 
 import com.vintro.wsplanner.R;
 
+// horizontal segmented progress bar with rounded external corners and thin gaps
 public class SegmentedProgressBar extends View {
     private int totalSegments = 1;
     private int completedSegments = 0;
@@ -41,6 +42,7 @@ public class SegmentedProgressBar extends View {
         init(context);
     }
 
+    // initialize default dimensions and segment colors
     private void init(Context context) {
         float density = context.getResources().getDisplayMetrics().density;
         gapPx = 2f * density;
@@ -50,18 +52,21 @@ public class SegmentedProgressBar extends View {
         inactiveColor = ContextCompat.getColor(context, R.color.timeline_line_upcoming);
     }
 
+    // update progress with completed vs total count
     public void setProgress(int completed, int total) {
         this.completedSegments = Math.max(0, completed);
         this.totalSegments = Math.max(1, total);
         invalidate();
     }
 
+    // configure segment active and inactive colors
     public void setColors(int activeColor, int inactiveColor) {
         this.activeColor = activeColor;
         this.inactiveColor = inactiveColor;
         invalidate();
     }
 
+    // draw segmented pill shapes with rounded outer edges
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);

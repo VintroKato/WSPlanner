@@ -1,5 +1,6 @@
 package com.vintro.wsplanner.enums;
 
+// academic lesson types (lecture, exercises, lab, workshop, language, project, seminar)
 public enum LessonType {
     WYKLAD("Wykład"),
     CWICZENIA("Ćwiczenia"),

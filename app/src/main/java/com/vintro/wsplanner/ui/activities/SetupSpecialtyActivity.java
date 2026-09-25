@@ -52,6 +52,7 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Logger.d("SetupSpecialtyActivity.onCreate", "SetupSpecialtyActivity created");
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
         setContentView(R.layout.activity_setup_specialty);
@@ -146,7 +147,7 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
 
             @Override
             public void onError(Exception e) {
-                Logger.e("SetupSpecialtyActivity", "loadSpecialties error: " + e.getMessage());
+                Logger.e("SetupSpecialtyActivity.fetchSpecialties", "loadSpecialties error: " + e.getMessage());
                 runOnUiThread(() -> {
                     TransitionManager.beginDelayedTransition((ViewGroup) findViewById(R.id.main), new AutoTransition());
                     loadingLayout.setVisibility(View.GONE);
@@ -251,7 +252,7 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
         PreferencesManager.setGlobalSpecialtyPref(this, finalSpecialty);
         PreferencesManager.setGlobalSpecialtyConfigured(this, true);
         PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_ADDITIONAL);
-        Logger.d("SetupSpecialtyActivity", "Continuing to additional setup with specialty: " + finalSpecialty);
+        Logger.i("SetupSpecialtyActivity.continueToAdditional", "Continuing to additional setup with specialty: " + finalSpecialty + " (skipped=" + skipped + ")");
 
         Intent intent = new Intent(this, SetupAdditionalActivity.class);
         startActivity(intent);

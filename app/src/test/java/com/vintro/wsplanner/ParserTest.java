@@ -7,6 +7,11 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import com.vintro.wsplanner.parser.BachelorFullTimeParser;
+import com.vintro.wsplanner.parser.excel.ExcelCell;
+import com.vintro.wsplanner.parser.excel.ExcelRange;
+import com.vintro.wsplanner.parser.excel.ExcelRow;
+import com.vintro.wsplanner.parser.excel.ExcelSheet;
+import com.vintro.wsplanner.parser.excel.ExcelWorkbook;
 import com.vintro.wsplanner.models.Lesson;
 import com.vintro.wsplanner.models.Schedule;
 import static org.junit.Assert.*;
@@ -39,16 +44,19 @@ public class ParserTest {
         assertNotNull(is);
         BachelorFullTimeParser parser = new BachelorFullTimeParser();
         // find cell containing target subject
-        for (int r = 0; r <= 30; r++) {
-            org.apache.poi.ss.usermodel.Row row = org.apache.poi.ss.usermodel.WorkbookFactory.create(
+        try (ExcelWorkbook wb = ExcelWorkbook.create(
                 getClass().getClassLoader().getResourceAsStream("Informatyka - studia I stopnia - st III - semestr letni (7).xlsx")
-            ).getSheetAt(0).getRow(r);
-            if (row == null) continue;
-            org.apache.poi.ss.usermodel.DataFormatter df = new org.apache.poi.ss.usermodel.DataFormatter();
-            for (int c = 0; c < row.getLastCellNum(); c++) {
-                String val = df.formatCellValue(row.getCell(c));
-                if (val.contains("Projekt zespołowy")) {
-                    System.out.println("CELL at r=" + r + " c=" + c + ":\n" + val);
+        )) {
+            ExcelSheet sheet = wb.getSheetAt(0);
+            for (int r = 0; r <= 30; r++) {
+                ExcelRow row = sheet.getRow(r);
+                if (row == null) continue;
+                for (int c = 0; c < row.getLastCellNum(); c++) {
+                    ExcelCell cell = row.getCell(c);
+                    String val = cell != null ? cell.asString() : "";
+                    if (val.contains("Projekt zespołowy")) {
+                        System.out.println("CELL at r=" + r + " c=" + c + ":\n" + val);
+                    }
                 }
             }
         }
@@ -67,26 +75,27 @@ public class ParserTest {
     @Test
     public void testPrintAllHeaders() throws Exception {
         InputStream is = getClass().getClassLoader().getResourceAsStream("Informatyka - studia I stopnia - st III - semestr letni (7).xlsx");
-        org.apache.poi.ss.usermodel.Workbook wb = org.apache.poi.ss.usermodel.WorkbookFactory.create(is);
-        org.apache.poi.ss.usermodel.Sheet s = wb.getSheetAt(0);
-        org.apache.poi.ss.usermodel.DataFormatter df = new org.apache.poi.ss.usermodel.DataFormatter();
+        ExcelWorkbook wb = ExcelWorkbook.create(is);
+        ExcelSheet s = wb.getSheetAt(0);
         System.out.println("=== SEARCH SEMINARIUM IN FILE 1 ===");
         for (int r = 0; r <= s.getLastRowNum(); r++) {
-            org.apache.poi.ss.usermodel.Row row = s.getRow(r);
+            ExcelRow row = s.getRow(r);
             if (row == null) continue;
             for (int c = 0; c < row.getLastCellNum(); c++) {
-                String val = df.formatCellValue(row.getCell(c));
+                ExcelCell cell = row.getCell(c);
+                String val = cell != null ? cell.asString() : "";
                 if (val.toLowerCase().contains("seminarium")) {
                     System.out.println("FOUND SEMINARIUM at r=" + r + " c=" + c + ":\n" + val);
                     // check column headers
                     for (int hr = 0; hr <= 4; hr++) {
-                        org.apache.poi.ss.usermodel.Row hrow = s.getRow(hr);
+                        ExcelRow hrow = s.getRow(hr);
                         if (hrow != null) {
-                            System.out.println("Header at r=" + hr + " c=" + c + ": " + df.formatCellValue(hrow.getCell(c)));
+                            ExcelCell hcell = hrow.getCell(c);
+                            System.out.println("Header at r=" + hr + " c=" + c + ": " + (hcell != null ? hcell.asString() : ""));
                         }
                     }
                     // check merged region
-                    for (org.apache.poi.ss.util.CellRangeAddress region : s.getMergedRegions()) {
+                    for (ExcelRange region : s.getMergedRegions()) {
                         if (region.isInRange(r, c)) {
                             System.out.println("Merged region for r=" + r + " c=" + c + ": " + region.formatAsString());
                         }
@@ -100,11 +109,11 @@ public class ParserTest {
     @Test
     public void testTargetColumns() throws Exception {
         InputStream is = getClass().getClassLoader().getResourceAsStream("Informatyka - studia I stopnia - st III - semestr letni (7).xlsx");
-        org.apache.poi.ss.usermodel.Workbook wb = org.apache.poi.ss.usermodel.WorkbookFactory.create(is);
-        org.apache.poi.ss.usermodel.Sheet s = wb.getSheetAt(0);
+        ExcelWorkbook wb = ExcelWorkbook.create(is);
+        ExcelSheet s = wb.getSheetAt(0);
 
         BachelorFullTimeParser parser = new BachelorFullTimeParser();
-        java.lang.reflect.Method m = BachelorFullTimeParser.class.getDeclaredMethod("findTargetColumns", org.apache.poi.ss.usermodel.Sheet.class, String.class, String.class);
+        java.lang.reflect.Method m = BachelorFullTimeParser.class.getDeclaredMethod("findTargetColumns", ExcelSheet.class, String.class, String.class);
         m.setAccessible(true);
 
         @SuppressWarnings("unchecked")

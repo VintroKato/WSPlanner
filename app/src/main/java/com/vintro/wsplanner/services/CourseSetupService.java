@@ -67,10 +67,12 @@ public class CourseSetupService {
     // load course setup data asynchronously
     public void loadCourseSetupData(@NonNull Context context, @NonNull OnSetupDataLoadedCallback callback) {
         if (cachedCourses != null && !cachedCourses.isEmpty()) {
+            Logger.d("CourseSetupService.loadCourseSetupData", "Reusing cached course setup data (" + cachedCourses.size() + " courses)");
             callback.onSuccess(cachedCourses, cachedEnglishGroup, cachedStudentFullName, cachedSeminarTeacher);
             return;
         }
 
+        Logger.d("CourseSetupService.loadCourseSetupData", "Fetching course setup data from PUW");
         new Thread(() -> {
             try {
                 OkHttpClient client = PUW.globalLogin(context);
@@ -88,9 +90,10 @@ public class CourseSetupService {
                 cachedStudentFullName = studentFullName;
                 cachedSeminarTeacher = seminarTeacher;
 
+                Logger.i("CourseSetupService.loadCourseSetupData", "Course setup data loaded successfully: " + cachedCourses.size() + " courses, EnglishGroup=" + englishGroup + ", StudentName='" + studentFullName + "', SeminarTeacher='" + seminarTeacher + "'");
                 callback.onSuccess(cachedCourses, cachedEnglishGroup, cachedStudentFullName, cachedSeminarTeacher);
             } catch (Exception e) {
-                Logger.e("CourseSetupService", "loadCourseSetupData error: " + e.getMessage());
+                Logger.e("CourseSetupService.loadCourseSetupData", "Error: " + e.getMessage());
                 callback.onError(e);
             }
         }).start();
@@ -101,14 +104,18 @@ public class CourseSetupService {
     public ParsedCourse determinePrimaryCourse(@Nullable List<ParsedCourse> courses) {
         List<ParsedCourse> source = (courses != null) ? courses : cachedCourses;
         if (source == null || source.isEmpty()) {
+            Logger.w("CourseSetupService.determinePrimaryCourse", "No courses available to determine primary");
             return null;
         }
         for (ParsedCourse c : source) {
             if (c.fieldOfStudy != null && c.fieldOfStudy.toLowerCase().contains("informatyka")) {
+                Logger.d("CourseSetupService.determinePrimaryCourse", "Matched primary course: " + c.fieldOfStudy);
                 return c;
             }
         }
-        return source.get(0);
+        ParsedCourse fallback = source.get(0);
+        Logger.d("CourseSetupService.determinePrimaryCourse", "Fallback primary course: " + fallback.fieldOfStudy);
+        return fallback;
     }
 
     // get degree levels for field of study
@@ -188,6 +195,8 @@ public class CourseSetupService {
                 StudyMode studyMode = PreferencesManager.getGlobalStudyModePref(context);
                 int year = PreferencesManager.getGlobalYearPref(context);
 
+                Logger.d("CourseSetupService.loadSpecialties", "Loading specializations for " + major + ", " + degreeLevel + ", " + studyMode + ", year " + year);
+
                 if (major == null || degreeLevel == null || studyMode == null) {
                     throw new IllegalStateException("Missing course configuration");
                 }
@@ -199,7 +208,7 @@ public class CourseSetupService {
 
                 List<String> specializations = new ArrayList<>();
                 String fileUrl = StudyPlanScraper.getScheduleFileUrl(client, major, degreeLevel, studyMode, year);
-                Logger.d("CourseSetupService", "Fetched schedule file url for specialties: " + fileUrl);
+                Logger.d("CourseSetupService.loadSpecialties", "Fetched schedule file url for specialties: " + fileUrl);
 
                 if (fileUrl != null) {
                     Request request = new Request.Builder().url(fileUrl).build();
@@ -211,9 +220,10 @@ public class CourseSetupService {
                     }
                 }
 
+                Logger.i("CourseSetupService.loadSpecialties", "Loaded " + specializations.size() + " specialization(s)");
                 callback.onSuccess(specializations != null ? specializations : Collections.emptyList());
             } catch (Exception e) {
-                Logger.e("CourseSetupService", "loadSpecialties error: " + e.getMessage());
+                Logger.e("CourseSetupService.loadSpecialties", "Error: " + e.getMessage());
                 callback.onError(e);
             }
         }).start();
@@ -221,6 +231,7 @@ public class CourseSetupService {
 
     // clear in-memory cache
     public void clearCache() {
+        Logger.d("CourseSetupService.clearCache", "Clearing CourseSetupService memory cache");
         cachedCourses = null;
         cachedEnglishGroup = null;
         cachedStudentFullName = null;

@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="cache_schedules" path="." />
-    <external-cache-path name="ext_cache_schedules" path="." />
-    <files-path name="internal_files" path="." />
 </paths>

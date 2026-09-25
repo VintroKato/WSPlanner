@@ -13,10 +13,10 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Locale;
 
-import dev.spght.encryptedprefs.*;
-
+// preferences manager for app settings, user profiles, and secure credentials
 public class PreferencesManager {
     private static final String prefs_name = "wsplanner_prefs";
+    private static final String secure_prefs_name = "wsplanner_secure_prefs";
     private static final String key_login = "data_login_";
     private static final String key_password = "data_password_";
     private static final String key_major = "data_major_";
@@ -41,29 +41,52 @@ public class PreferencesManager {
 
     public static final int GLOBAL_ID = -1;
 
-    private static SharedPreferences getEncryptedPreferences(Context context) {
-        try {
-            MasterKey masterKey = new MasterKey.Builder(context)
-                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                    .build();
+    private static volatile SharedPreferences encryptedPrefsInstance;
 
-            return EncryptedSharedPreferences.create(
-                    context,
-                    prefs_name,
-                    masterKey,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            );
+    // get or initialize secure hardware-backed preferences
+    private static synchronized SharedPreferences getEncryptedPreferences(Context context) {
+        if (encryptedPrefsInstance != null) {
+            return encryptedPrefsInstance;
+        }
+        try {
+            encryptedPrefsInstance = SecurePreferences.create(context, secure_prefs_name);
+            return encryptedPrefsInstance;
         } catch (GeneralSecurityException | IOException e) {
-            Logger.e("PreferencesManager", "Failed to create encrypted preferences, falling back to regular:" + e);
-            return context.getSharedPreferences(prefs_name, Context.MODE_PRIVATE);
+            Logger.e("PreferencesManager.getEncryptedPreferences", "Failed to initialize encrypted preferences: " + e.getMessage());
+            // Do not fall back to unencrypted preferences for credentials
+            throw new IllegalStateException("Secure storage unavailable", e);
         }
     }
 
+    // check keystore availability
+    public static boolean checkKeystoreHealth(Context context) {
+        try {
+            getEncryptedPreferences(context);
+            return true;
+        } catch (Exception e) {
+            Logger.e("PreferencesManager.checkKeystoreHealth", "Keystore health check failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // reset corrupted storage in emergency recovery
+    public static void resetCorruptedStorage(Context context) {
+        try {
+            encryptedPrefsInstance = null;
+            context.deleteSharedPreferences(prefs_name);
+            context.deleteSharedPreferences(secure_prefs_name);
+            Logger.i("PreferencesManager.resetCorruptedStorage", "Corrupted storage reset successfully");
+        } catch (Exception e) {
+            Logger.e("PreferencesManager.resetCorruptedStorage", "Failed to reset corrupted storage: " + e.getMessage());
+        }
+    }
+
+    // standard unencrypted preferences for non-sensitive data
     private static SharedPreferences getPreferences(Context context) {
         return context.getSharedPreferences(prefs_name, Context.MODE_PRIVATE);
     }
 
+    // save global user profile preferences
     public static void saveGlobalPrefs(Context context, String login, String password, String major, DegreeLevel degreeLevel, StudyMode studyMode, int year, String specialty, String englishGroup) {
         savePrefs(context, GLOBAL_ID, login, password, major, degreeLevel, studyMode, year, specialty, englishGroup);
     }
@@ -97,6 +120,7 @@ public class PreferencesManager {
     }
 
     public static void setGlobalSpecialtyPref(Context context, String specialty) {
+        Logger.d("PreferencesManager.setGlobalSpecialtyPref", "Setting global specialty: " + specialty);
         getEncryptedPreferences(context).edit()
                 .putString(key_specialty + GLOBAL_ID, specialty)
                 .apply();
@@ -107,6 +131,7 @@ public class PreferencesManager {
     }
 
     public static void setGlobalEnglishGroupPref(Context context, String englishGroup) {
+        Logger.d("PreferencesManager.setGlobalEnglishGroupPref", "Setting global English group: " + englishGroup);
         getEncryptedPreferences(context).edit()
                 .putString(key_english_group + GLOBAL_ID, englishGroup)
                 .apply();
@@ -117,6 +142,7 @@ public class PreferencesManager {
     }
 
     public static void setGlobalSeminarTeacherPref(Context context, String teacher) {
+        Logger.d("PreferencesManager.setGlobalSeminarTeacherPref", "Setting global seminar teacher: " + teacher);
         setSeminarTeacherPref(context, GLOBAL_ID, teacher);
     }
 
@@ -125,6 +151,7 @@ public class PreferencesManager {
     }
 
     public static void setGlobalStudentNamePref(Context context, String studentName) {
+        Logger.d("PreferencesManager.setGlobalStudentNamePref", "Setting global student name: " + studentName);
         setStudentNamePref(context, GLOBAL_ID, studentName);
     }
 
@@ -133,6 +160,7 @@ public class PreferencesManager {
     }
 
     public static void setGlobalStudentSurnamePref(Context context, String studentSurname) {
+        Logger.d("PreferencesManager.setGlobalStudentSurnamePref", "Setting global student surname: " + studentSurname);
         setStudentSurnamePref(context, GLOBAL_ID, studentSurname);
     }
 
@@ -141,7 +169,7 @@ public class PreferencesManager {
     }
 
     public static void savePrefs(Context context, int widgetId, String login, String password, String major, DegreeLevel degreeLevel, StudyMode studyMode, int year, String specialty, String englishGroup) {
-        Logger.d("PreferencesManager.savePrefs", "Saving prefs for widget " + widgetId + ", year: " + year);
+        Logger.d("PreferencesManager.savePrefs", "Saving preferences for id " + widgetId + ": login=" + Logger.maskSensitiveData(login) + ", major=" + major + ", degree=" + degreeLevel + ", mode=" + studyMode + ", year=" + year + ", specialty=" + specialty + ", englishGroup=" + englishGroup);
 
         SharedPreferences prefs = getEncryptedPreferences(context);
         prefs.edit()
@@ -159,15 +187,13 @@ public class PreferencesManager {
     public static String getLoginPref(Context context, int widgetId) {
         SharedPreferences prefs = getEncryptedPreferences(context);
         String login = prefs.getString(key_login + widgetId, null);
-        Logger.d("PreferencesManager.getLoginPref", "Getting login for widget " + widgetId);
+        Logger.d("PreferencesManager.getLoginPref", "Retrieved login for id " + widgetId + ": " + Logger.maskSensitiveData(login));
         return login;
     }
 
     public static String getPasswordPref(Context context, int widgetId) {
         SharedPreferences prefs = getEncryptedPreferences(context);
-        String password = prefs.getString(key_password + widgetId, null);
-        Logger.d("PreferencesManager.getPasswordPref", "Getting password for widget " + widgetId + ", result is null: " + (password == null));
-        return password;
+        return prefs.getString(key_password + widgetId, null);
     }
 
     public static String getMajorPref(Context context, int widgetId) {
@@ -251,16 +277,19 @@ public class PreferencesManager {
         }
     }
 
+    // onboarding stage tracking (login -> course -> specialty -> additional -> completed)
     public static String getOnboardingStage(Context context) {
         return getPreferences(context).getString(key_onboarding_stage, ONBOARDING_STAGE_LOGIN);
     }
 
     public static void setOnboardingStage(Context context, String stage) {
+        Logger.d("PreferencesManager.setOnboardingStage", "Transitioning onboarding stage to: " + stage);
         getPreferences(context).edit()
                 .putString(key_onboarding_stage, stage)
                 .apply();
     }
 
+    // course specialty configuration flag
     public static boolean isSpecialtyConfigured(Context context, int widgetId) {
         return getPreferences(context).getBoolean(key_specialty_configured + widgetId, false);
     }
@@ -279,6 +308,7 @@ public class PreferencesManager {
         setSpecialtyConfigured(context, GLOBAL_ID, configured);
     }
 
+    // theme and language preferences
     public static boolean hasExplicitTheme(Context context) {
         return getPreferences(context).contains(key_theme);
     }
@@ -294,6 +324,7 @@ public class PreferencesManager {
     }
 
     public static void setThemePref(Context context, AppTheme theme) {
+        Logger.d("PreferencesManager.setThemePref", "Setting theme preference: " + theme);
         SharedPreferences prefs = getPreferences(context);
         prefs.edit()
                 .putInt(key_theme, theme.value)
@@ -312,6 +343,7 @@ public class PreferencesManager {
     }
 
     public static void setLanguagePref(Context context, Language language) {
+        Logger.d("PreferencesManager.setLanguagePref", "Setting language preference: " + language);
         SharedPreferences prefs = getPreferences(context);
         prefs.edit()
                 .putString(key_language, language.code)

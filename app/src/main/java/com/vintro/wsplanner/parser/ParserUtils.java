@@ -1,11 +1,10 @@
 package com.vintro.wsplanner.parser;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
+import com.vintro.wsplanner.parser.excel.ExcelCell;
+import com.vintro.wsplanner.parser.excel.ExcelRow;
+import com.vintro.wsplanner.parser.excel.ExcelSheet;
+import com.vintro.wsplanner.parser.excel.ExcelWorkbook;
+import com.vintro.wsplanner.utils.Logger;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -15,22 +14,28 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import com.vintro.wsplanner.utils.Logger;
 
 public class ParserUtils {
     // get unique specializations from header
     public static List<String> extractSpecializations(InputStream excelStream) {
+        Logger.d("ParserUtils.extractSpecializations", "Starting extraction of specializations from Excel stream");
         Set<String> specializations = new HashSet<>();
-        DataFormatter formatter = new DataFormatter();
 
-        try (Workbook workbook = WorkbookFactory.create(excelStream)) {
-            Sheet sheet = workbook.getSheetAt(0);
-            Row groupRow = sheet.getRow(3);
+        try (ExcelWorkbook workbook = ExcelWorkbook.create(excelStream)) {
+            ExcelSheet sheet = workbook.getSheetAt(0);
+            if (sheet == null) {
+                Logger.w("ParserUtils.extractSpecializations", "Sheet 0 is null");
+                return new ArrayList<>();
+            }
+            ExcelRow groupRow = sheet.getRow(3);
 
-            if (groupRow == null) return new ArrayList<>();
+            if (groupRow == null) {
+                Logger.w("ParserUtils.extractSpecializations", "Row 3 (group row) is null in sheet");
+                return new ArrayList<>();
+            }
 
-            for (Cell cell : groupRow) {
-                String fullText = formatter.formatCellValue(cell).trim();
+            for (ExcelCell cell : groupRow) {
+                String fullText = (cell != null ? cell.asString() : "").trim();
                 if (fullText.isEmpty()) continue;
 
                 String lowerText = fullText.toLowerCase();
@@ -41,6 +46,7 @@ public class ParserUtils {
                     String spec = m.group(1).trim();
                     spec = spec.replaceAll("(?i)grupa.*|podzia[lł].*", "").trim();
                     specializations.add(spec);
+                    Logger.d("ParserUtils.extractSpecializations", "Found explicit specialization: '" + spec + "' from cell text: '" + fullText + "'");
                     continue;
                 }
 
@@ -54,15 +60,17 @@ public class ParserUtils {
                         String specFallback = firstLine.replaceAll("(?i)grupa.*|podzia[lł].*|nazwisk.*", "").trim();
                         if (!specFallback.isEmpty()) {
                             specializations.add(specFallback);
+                            Logger.d("ParserUtils.extractSpecializations", "Found inferred specialization: '" + specFallback + "' from cell text: '" + fullText + "'");
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            Logger.e("ParserUtils.extractSpecializations", e.getMessage());
+            Logger.e("ParserUtils.extractSpecializations", "Error extracting specializations: " + e.getMessage());
             e.printStackTrace();
         }
-        Logger.d("ParserUtils.extractSpecializations", specializations.stream().map(Object::toString).collect(Collectors.joining(", ")));
+        Logger.i("ParserUtils.extractSpecializations", "Extracted specializations count: " + specializations.size() + " -> " + specializations.stream().map(Object::toString).collect(Collectors.joining(", ")));
         return new ArrayList<>(specializations);
     }
 }
+

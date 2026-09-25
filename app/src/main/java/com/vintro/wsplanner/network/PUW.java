@@ -42,59 +42,107 @@ public class PUW {
         int year = PreferencesManager.getYearPref(context, widgetId);
 
         if (major == null || degreeLevel == null || studyMode == null) {
-            System.out.println("PUW.getFileUrl: Missing preferences for widget " + widgetId);
+            Logger.w("PUW.getFileUrl", "Missing preferences for widget " + widgetId);
             return null;
         }
 
         String url = StudyPlanScraper.getScheduleFileUrl(client, major, degreeLevel, studyMode, year);
-        System.out.println("PUW.getFileUrl: Getting dynamic file url for widget " + widgetId + ", url: " + url);
+        Logger.d("PUW.getFileUrl", "Getting dynamic file url for widget " + widgetId + ", major=" + major + ", degree=" + degreeLevel + ", mode=" + studyMode + ", year=" + year + ", url: " + url);
         return url;
     }
 
-    private static OkHttpClient getClient() {
-        Map<String, List<Cookie>> cookieStore = new HashMap<>();
+    private static final Map<String, List<Cookie>> globalCookieStore = new java.util.concurrent.ConcurrentHashMap<>();
+    private static volatile OkHttpClient sharedClient;
+    private static volatile String activeSessionUser = null;
+    private static volatile long lastLoginTime = 0;
+    private static final long SESSION_MAX_AGE_MS = 60 * 60 * 1000; // 1 hour
 
-        OkHttpClient client = new OkHttpClient.Builder()
-                .cookieJar(new CookieJar() {
-                    @Override
-                    public void saveFromResponse(@NonNull HttpUrl url, @NonNull List<Cookie> cookies) {
-                        cookieStore.put(url.host(), cookies);
-                    }
+    private static synchronized OkHttpClient getClient() {
+        if (sharedClient == null) {
+            sharedClient = new OkHttpClient.Builder()
+                    .cookieJar(new CookieJar() {
+                        @Override
+                        public void saveFromResponse(@NonNull HttpUrl url, @NonNull List<Cookie> cookies) {
+                            globalCookieStore.put(url.host(), cookies);
+                        }
 
-                    @NonNull
-                    @Override
-                    public List<Cookie> loadForRequest(@NonNull HttpUrl url) {
-                        List<Cookie> cookies = cookieStore.get(url.host());
-                        return cookies != null ? cookies : List.of();
-                    }
-                })
-                .build();
-        return client;
+                        @NonNull
+                        @Override
+                        public List<Cookie> loadForRequest(@NonNull HttpUrl url) {
+                            List<Cookie> cookies = globalCookieStore.get(url.host());
+                            return cookies != null ? cookies : List.of();
+                        }
+                    })
+                    .build();
+        }
+        return sharedClient;
+    }
+
+    private static boolean hasMoodleSessionCookie() {
+        List<Cookie> cookies = globalCookieStore.get("puw.wspa.pl");
+        if (cookies != null) {
+            for (Cookie c : cookies) {
+                if (c.name().equalsIgnoreCase("MoodleSession") && !c.value().isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static synchronized void clearSession() {
+        Logger.d("PUW.clearSession", "Clearing global session and cookie store");
+        globalCookieStore.clear();
+        activeSessionUser = null;
+        lastLoginTime = 0;
     }
 
     public static OkHttpClient globalLogin(Context context) {
-        OkHttpClient client = getClient();
         String login = PreferencesManager.getGlobalLoginPref(context);
         String password = PreferencesManager.getGlobalPasswordPref(context);
-        int response = loginWithClient(client, login, password);
-        return response == 1 ? client : null;
+        Logger.d("PUW.globalLogin", "Executing global login for user: " + Logger.maskSensitiveData(login));
+        return getAuthenticatedClient(login, password);
     }
 
     public static OkHttpClient login(Intent intent, Context context) {
         int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
-        Logger.d("PUW.login", "Logging in for widget " + widgetId);
-        // System.out.println("PUW.login: Logging in for widget " + widgetId);
-
-        OkHttpClient client = getClient();
+        Logger.d("PUW.login", "Executing login for widget " + widgetId);
 
         String login = PreferencesManager.getLoginPref(context, widgetId);
         String password = PreferencesManager.getPasswordPref(context, widgetId);
 
+        return getAuthenticatedClient(login, password);
+    }
+
+    public static synchronized OkHttpClient getAuthenticatedClient(String login, String password) {
+        if (login == null || password == null) {
+            Logger.w("PUW.getAuthenticatedClient", "Credentials missing (login=" + (login != null) + ", password=" + (password != null) + ")");
+            return null;
+        }
+
+        OkHttpClient client = getClient();
+        long now = System.currentTimeMillis();
+
+        // If session is still fresh (under 1 hour) and we have valid session cookies for this user, reuse session
+        if (login.equals(activeSessionUser) && (now - lastLoginTime < SESSION_MAX_AGE_MS) && hasMoodleSessionCookie()) {
+            Logger.d("PUW.getAuthenticatedClient", "Reusing active session for user: " + Logger.maskSensitiveData(login));
+            return client;
+        }
+
+        Logger.d("PUW.getAuthenticatedClient", "Session invalid or expired, performing full authentication for: " + Logger.maskSensitiveData(login));
         int response = loginWithClient(client, login, password);
-        return response == 1 ? client : null;
+        if (response == 1) {
+            activeSessionUser = login;
+            lastLoginTime = now;
+            Logger.i("PUW.getAuthenticatedClient", "Authentication successful for user: " + Logger.maskSensitiveData(login));
+            return client;
+        }
+        Logger.w("PUW.getAuthenticatedClient", "Authentication failed for user: " + Logger.maskSensitiveData(login) + ", response code: " + response);
+        return null;
     }
 
     public static int checkLogin(String login, String password) {
+        Logger.d("PUW.checkLogin", "Checking credentials for user: " + Logger.maskSensitiveData(login));
         OkHttpClient client = getClient();
         return loginWithClient(client, login, password);
     }
@@ -102,9 +150,10 @@ public class PUW {
     private static int loginWithClient(OkHttpClient client, String login, String password) {
         if (login == null || password == null) {
             Logger.e("PUW.loginWithClient", "Login or password is null");
-            // System.out.println("PUW.loginWithClient: Login or password is null");
             return -1;
         }
+
+        Logger.d("PUW.loginWithClient", "Sending login POST request to PUW for user: " + Logger.maskSensitiveData(login));
 
         RequestBody formBody = new FormBody.Builder()
                 .add("username", login)
@@ -117,37 +166,34 @@ public class PUW {
                 .build();
 
         try (Response loginResponse = client.newCall(loginRequest).execute()) {
-            Logger.d("PUW.loginWithClient", "Logging in, answer: " + loginResponse.toString());
-            // System.out.println("PUW.loginWithClient: Logging in, answer: " + loginResponse.toString());
+            Logger.d("PUW.loginWithClient", "Received HTTP response: " + loginResponse.code() + ", targetUrl=" + loginResponse.request().url());
             if (!loginResponse.isSuccessful()) {
-                Logger.e("PUW.loginWithClient", "Logging in not 200, code: " + loginResponse.code());
-                // System.out.println("PUW.loginWithClient: Logging in not 200, code: " + loginResponse.code());
+                Logger.e("PUW.loginWithClient", "Login request unsuccessful, HTTP code: " + loginResponse.code());
                 return -1;
             }
             if (!loginResponse.request().url().toString().equals(PUW.homeUrl)) {
-                Logger.w("PUW.loginWithClient", "Logging in not successful, response: " + loginResponse.toString());
-                // System.out.println("PUW.loginWithClient: Logging in not successful, response: " + loginResponse.toString());
+                Logger.w("PUW.loginWithClient", "Login redirected away from homeUrl to: " + loginResponse.request().url());
                 return 0;
             }
+            Logger.i("PUW.loginWithClient", "Login verified successfully");
+            return 1;
         } catch (Exception e) {
-            Logger.e("PUW.loginWithClient", "Logging in error, client: " + client + ", error:" + e.toString());
-            // System.out.println("PUW.loginWithClient: Logging in error, client: " + client + ", error:" + e.toString());
+            Logger.e("PUW.loginWithClient", "Exception during login request: " + e.getMessage());
             return -1;
         }
-        return 1;
     }
 
     public static ResponseBody downloadFile(Intent workIntent, Context context) {
+        Logger.d("PUW.downloadFile", "Starting schedule file download");
         OkHttpClient client = PUW.login(workIntent, context);
         if (client == null) {
-            Logger.e("PUW.downloadFile", "Downloading file error: got null from PUW.login, intent: " + workIntent);
-            // System.out.println("PUW.downloadFile: Downloading file error: got null from PUW.login, intent: " + workIntent);
+            Logger.e("PUW.downloadFile", "Download aborted: could not authenticate with PUW");
             return null;
         }
 
         String fileUrl = PUW.getFileUrl(context, workIntent, client);
         if (fileUrl == null) {
-            Logger.e("PUW.downloadFile", "File URL could not be resolved");
+            Logger.e("PUW.downloadFile", "Download aborted: schedule file URL could not be resolved");
             return null;
         }
 
@@ -156,33 +202,28 @@ public class PUW {
                 .build();
 
         try {
-            Logger.d("PUW.downloadFile", "Downloading file: " + fileUrl);
-            // System.out.println("PUW.downloadFile: Downloading file: " + fileUrl);
+            Logger.d("PUW.downloadFile", "Executing HTTP GET for schedule file: " + fileUrl);
             Response fileResponse = client.newCall(fileRequest).execute();
 
             if (!fileResponse.isSuccessful()) {
-                Logger.e("PUW.downloadFile", "Downloading error: " + fileResponse.toString());
-                // System.out.println("PUW.downloadFile: Downloading error: " + fileResponse.toString());
+                Logger.e("PUW.downloadFile", "Download failed with HTTP code: " + fileResponse.code());
                 fileResponse.close();
                 return null;
             }
 
             ResponseBody file = fileResponse.body();
 
-            if (file.contentLength() == 0) {
-                Logger.e("PUW.downloadFile", "File body is null");
-                // System.out.println("PUW.downloadFile: File body is null");
+            if (file == null || file.contentLength() == 0) {
+                Logger.e("PUW.downloadFile", "Downloaded file body is null or empty");
                 fileResponse.close();
                 return null;
             }
 
-            Logger.d("PUW.downloadFile", "File downloaded, size: " + file.contentLength());
-            // System.out.println("PUW.downloadFile: File downloaded, size: " + file.contentLength());
+            Logger.d("PUW.downloadFile", "Schedule file downloaded successfully, size: " + file.contentLength() + " bytes");
             return file;
 
         } catch (Exception e) {
-            Logger.e("PUW.downloadFile", "Downloading error: " + e.getMessage());
-            // System.out.println("PUW.downloadFile: Downloading error: " + e.getMessage());
+            Logger.e("PUW.downloadFile", "Exception during file download: " + e.getMessage());
             return null;
         }
     }

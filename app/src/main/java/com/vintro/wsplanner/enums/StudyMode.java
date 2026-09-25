@@ -1,5 +1,6 @@
 package com.vintro.wsplanner.enums;
 
+// study mode: full-time (st), part-time (nst), or part-time puw (nst puw)
 public enum StudyMode {
     FULL_TIME("st"),
     PART_TIME("nst"),
@@ -15,6 +16,7 @@ public enum StudyMode {
         return value;
     }
 
+    // parse study mode from raw string identifier
     public static StudyMode fromString(String text) {
         for (StudyMode mode : StudyMode.values()) {
             if (mode.value.equalsIgnoreCase(text)) {

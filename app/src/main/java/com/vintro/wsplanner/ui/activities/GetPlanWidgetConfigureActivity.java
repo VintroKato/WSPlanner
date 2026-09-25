@@ -51,6 +51,7 @@ public class GetPlanWidgetConfigureActivity extends AppCompatActivity {
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
+        Logger.d("GetPlanWidgetConfigureActivity.onCreate", "GetPlanWidgetConfigureActivity created");
         setContentView(R.layout.get_plan_widget_configure);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -132,6 +133,7 @@ public class GetPlanWidgetConfigureActivity extends AppCompatActivity {
         }
 
         PreferencesManager.savePrefs(GetPlanWidgetConfigureActivity.this, widgetId, login, password, null, null, null, course, null, null);
+        Logger.i("GetPlanWidgetConfigureActivity.handleBtnClick", "Saved widget preferences for widget " + widgetId + " (login=" + Logger.maskSensitiveData(login) + ", course=" + course + ")");
 
         Intent resultValue = new Intent();
         resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
@@ -203,21 +205,23 @@ public class GetPlanWidgetConfigureActivity extends AppCompatActivity {
 
         new Thread(() -> {
             int result = PUW.checkLogin(login, password);
-            Logger.d("ConfigActivity.checkData", "Checking data in thread, result: " + result);
+            Logger.d("GetPlanWidgetConfigureActivity.checkData", "Checking credentials in thread for user: " + Logger.maskSensitiveData(login) + ", result: " + result);
 
 
             runOnUiThread(() -> {
-                Logger.d("ConfigActivity.checkData", "Checking data in UI thread, result: " + result);
+                Logger.d("GetPlanWidgetConfigureActivity.checkData", "Checking credentials result on UI thread: " + result);
                 if (result == -1) {
-                    Logger.e("ConfigActivity.checkData", "Got -1 from checkLogin");
+                    Logger.e("GetPlanWidgetConfigureActivity.checkData", "Authentication error code: -1");
                     Toast.makeText(this, "Произошла ошибка, обратитесь к разрабу", Toast.LENGTH_SHORT).show();
                 } else if (result == 0) {
+                    Logger.w("GetPlanWidgetConfigureActivity.checkData", "Invalid credentials entered");
                     setCheckingError();
                 } else if (result == 1) {
+                    Logger.i("GetPlanWidgetConfigureActivity.checkData", "Credentials verified successfully");
                     setCheckingOk();
                 } else {
                     Toast.makeText(this, "Произошла совершенно непонятная ошибка, которая физически не могла случиться, обратитесь к разрабу", Toast.LENGTH_LONG).show();
-                    Logger.wtf("ConfigActivity.checkData", "Got strange result from checkLogin: " + result);
+                    Logger.wtf("GetPlanWidgetConfigureActivity.checkData", "Got unexpected result from checkLogin: " + result);
                 }
             });
         }).start();

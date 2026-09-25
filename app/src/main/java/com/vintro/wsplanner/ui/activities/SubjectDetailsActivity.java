@@ -102,6 +102,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Logger.d("SubjectDetailsActivity.onCreate", "SubjectDetailsActivity created for subject: '" + getIntent().getStringExtra(EXTRA_SUBJECT_NAME) + "'");
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
         EdgeToEdge.enable(this);
@@ -231,7 +232,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
 
             @Override
             public void onError(Exception e) {
-                Logger.e(TAG, "Error loading subject details: " + e.getMessage());
+                Logger.e("SubjectDetailsActivity.loadSubjectDetails", "Error loading subject details: " + e.getMessage());
             }
         });
     }
@@ -457,21 +458,37 @@ public class SubjectDetailsActivity extends AppCompatActivity {
                 }
 
                 final String courseUrl = foundCourseUrl;
-                final String finalUrl = (courseUrl != null) ? courseUrl : "https://puw.wspa.pl/my/";
+                String targetUrl = (courseUrl != null) ? courseUrl : "https://puw.wspa.pl/my/";
+
+                // Security check: validate scheme and domain
+                try {
+                    Uri parsedUri = Uri.parse(targetUrl);
+                    String scheme = parsedUri.getScheme();
+                    String host = parsedUri.getHost();
+                    if (!"https".equalsIgnoreCase(scheme) || host == null || (!host.equalsIgnoreCase("puw.wspa.pl") && !host.endsWith(".wspa.pl"))) {
+                        Logger.w("SubjectDetailsActivity.handleOpenPuwCourse", "Blocked opening untrusted URL: " + targetUrl);
+                        targetUrl = "https://puw.wspa.pl/my/";
+                    }
+                } catch (Exception e) {
+                    targetUrl = "https://puw.wspa.pl/my/";
+                }
+
+                final String safeFinalUrl = targetUrl;
 
                 runOnUiThread(() -> {
                     if (courseUrl == null) {
                         Toast.makeText(SubjectDetailsActivity.this, getString(R.string.subject_course_not_found), Toast.LENGTH_SHORT).show();
                     }
                     try {
-                        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl));
+                        Logger.i("SubjectDetailsActivity.handleOpenPuwCourse", "Opening course URL: " + safeFinalUrl);
+                        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(safeFinalUrl));
                         startActivity(browserIntent);
                     } catch (Exception e) {
-                        Logger.e(TAG, "Failed to open browser: " + e.getMessage());
+                        Logger.e("SubjectDetailsActivity.handleOpenPuwCourse", "Failed to open browser: " + e.getMessage());
                     }
                 });
             } catch (Exception e) {
-                Logger.e(TAG, "Error in handleOpenPuwCourse: " + e.getMessage());
+                Logger.e("SubjectDetailsActivity.handleOpenPuwCourse", "Error in handleOpenPuwCourse: " + e.getMessage());
                 runOnUiThread(() -> {
                     try {
                         startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://puw.wspa.pl/my/")));

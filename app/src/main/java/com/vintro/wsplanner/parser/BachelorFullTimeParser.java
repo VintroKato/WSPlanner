@@ -1,11 +1,13 @@
 package com.vintro.wsplanner.parser;
 
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.ss.util.CellRangeAddress;
-
 import com.vintro.wsplanner.models.Lesson;
 import com.vintro.wsplanner.models.Schedule;
-//import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.parser.excel.ExcelCell;
+import com.vintro.wsplanner.parser.excel.ExcelRange;
+import com.vintro.wsplanner.parser.excel.ExcelRow;
+import com.vintro.wsplanner.parser.excel.ExcelSheet;
+import com.vintro.wsplanner.parser.excel.ExcelWorkbook;
+import com.vintro.wsplanner.utils.Logger;
 
 import java.io.InputStream;
 import java.text.Collator;
@@ -22,10 +24,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class BachelorFullTimeParser implements ScheduleParser {
 
-    private final DataFormatter dataFormatter = new DataFormatter();
+    private String formatCellValue(ExcelCell cell) {
+        return cell != null ? cell.asString() : "";
+    }
 
     // daty: 02.03, 09.03
     private final Pattern datesPattern = Pattern.compile("daty:\\s*(.+)");
@@ -122,29 +127,35 @@ public class BachelorFullTimeParser implements ScheduleParser {
 
     @Override
     public Schedule parse(InputStream excelStream, String fieldOfStudy, int semester, String studentSurname, String studentSpecialization, String targetLangGroup, String seminarTeacher) {
+        Logger.d("BachelorFullTimeParser.parse", "Starting schedule parsing. Field: '" + fieldOfStudy + "', Semester: " + semester + ", StudentSurname: '" + studentSurname + "', Specialization: '" + studentSpecialization + "', LangGroup: '" + targetLangGroup + "', SeminarTeacher: '" + seminarTeacher + "'");
         Schedule schedule = new Schedule(fieldOfStudy, semester, studentSurname);
 
-        try (Workbook workbook = WorkbookFactory.create(excelStream)) {
-            Sheet sheet = workbook.getSheetAt(0);
+        try (ExcelWorkbook workbook = ExcelWorkbook.create(excelStream)) {
+            ExcelSheet sheet = workbook.getSheetAt(0);
+            if (sheet == null) {
+                Logger.w("BachelorFullTimeParser.parse", "Sheet 0 is null");
+                return schedule;
+            }
             extractAcademicYear(sheet);
 
             // find which columns belong to the student based on surname and specialization
             List<Integer> targetColumns = findTargetColumns(sheet, studentSurname, studentSpecialization);
             if (targetColumns.isEmpty()) {
-                System.out.println("Target group columns not found for: " + studentSurname);
+                Logger.w("BachelorFullTimeParser.findTargetColumns", "Target group columns not found for student: '" + studentSurname + "'");
                 return schedule;
             }
+            Logger.d("BachelorFullTimeParser.findTargetColumns", "Matched " + targetColumns.size() + " target column(s): " + targetColumns);
 
             // processed merged cells to avoid duplicating lessons
             Set<String> processedMergedRegions = new HashSet<>();
 
             // iterate rows starting from index 4 where schedule data begins
             for (int rowIndex = 4; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
-                Row row = sheet.getRow(rowIndex);
+                ExcelRow row = sheet.getRow(rowIndex);
                 if (row == null) continue;
 
                 // get default lesson time from the first column
-                String rowTimeRaw = dataFormatter.formatCellValue(row.getCell(0));
+                String rowTimeRaw = formatCellValue(row.getCell(0));
                 LocalTime[] defaultTimes = parseRowTime(rowTimeRaw);
                 if (defaultTimes == null) continue;
 
@@ -161,12 +172,14 @@ public class BachelorFullTimeParser implements ScheduleParser {
                         processedMergedRegions.add(verticalId);
                     }
 
+                    Logger.d("BachelorFullTimeParser.parse", "Cell at [row=" + rowIndex + ", col=" + targetColumnIndex + "] (mergedRegion=" + cellTarget.mergedRegionId + ", defaultTime=" + defaultTimes[0] + "-" + defaultTimes[1] + "). Raw cell content:\n" + cellTarget.value);
+
                     // calc end time if cell takes multiple rows
                     LocalTime overrideEnd = defaultTimes[1];
                     if (cellTarget.lastRowIdx > rowIndex) {
-                        Row lastRow = sheet.getRow(cellTarget.lastRowIdx);
+                        ExcelRow lastRow = sheet.getRow(cellTarget.lastRowIdx);
                         if (lastRow != null) {
-                            String lastRowTimeRaw = dataFormatter.formatCellValue(lastRow.getCell(0));
+                            String lastRowTimeRaw = formatCellValue(lastRow.getCell(0));
                             LocalTime[] lastTimes = parseRowTime(lastRowTimeRaw);
                             if (lastTimes != null) overrideEnd = lastTimes[1];
                         }
@@ -181,14 +194,16 @@ public class BachelorFullTimeParser implements ScheduleParser {
                     }
                 }
             }
+            Logger.i("BachelorFullTimeParser.parse", "Finished schedule parsing successfully. Total lessons extracted: " + schedule.getLessons().size());
         } catch (Exception e) {
-            System.out.println("Error parsing excel: " + e.getMessage());
+            Logger.e("BachelorFullTimeParser.parse", "Error parsing Excel schedule: " + e.getMessage());
         }
 
         return schedule;
     }
 
     public List<Lesson> parseLessonBlock(String block, String targetGroup, LocalTime defaultStart, LocalTime defaultEnd, String targetLangGroup, String seminarTeacher) {
+        Logger.d("BachelorFullTimeParser.parseLessonBlock", "Parsing raw lesson block:\n" + block);
         List<Lesson> lessons = new ArrayList<>();
         String[] rawLines = block.split("\\n");
         if (rawLines.length == 0) return lessons;
@@ -250,6 +265,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
 
         // Clean subjectName from any trailing duration (e.g. " - 15h" or " 15h")
         subjectName = subjectName.replaceAll("(?i)\\s*[-–—]?\\s*\\d{1,2}h\\b", "").trim();
+        Logger.d("BachelorFullTimeParser.parseLessonBlock", "Extracted Subject: '" + subjectName + "', LessonType: '" + lessonType + "'");
 
         LocalTime globalStart = defaultStart;
         LocalTime globalEnd = defaultEnd;
@@ -274,6 +290,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
                     if (isSeminarTeacherMatch(lowerLine, seminarTeacher)) {
                         readingMyGroup = true;
                         seminarFound = true;
+                        Logger.d("BachelorFullTimeParser.parseLessonBlock", "Matched seminar line: '" + line + "' with teacher target: '" + seminarTeacher + "'");
                         String[] parts = line.split("[-–]");
                         if (parts.length >= 2) globalTeacher = parts[1].trim();
                         if (parts.length >= 3) {
@@ -282,6 +299,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
                         }
                     } else {
                         readingMyGroup = false;
+                        Logger.d("BachelorFullTimeParser.parseLessonBlock", "Skipped non-matching seminar line: '" + line + "' (target: '" + seminarTeacher + "')");
                     }
                     continue;
                 }
@@ -293,6 +311,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
                         normalizedLine.startsWith("gr." + targetGr + "–") ||
                         normalizedLine.contains("gr." + targetGr))) {
                     readingMyGroup = true; //  our group
+                    Logger.d("BachelorFullTimeParser.parseLessonBlock", "Matched target lang group: '" + line + "' (target: '" + targetLangGroup + "')");
                     String[] parts = line.split("[-–]");
                     if (parts.length >= 2) globalTeacher = parts[1].trim();
                     if (parts.length >= 3) {
@@ -301,6 +320,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
                     }
                 } else {
                     readingMyGroup = false; // foreign group
+                    Logger.d("BachelorFullTimeParser.parseLessonBlock", "Skipped foreign lang group line: '" + line + "' (target: '" + targetLangGroup + "')");
                 }
                 continue;
             }
@@ -431,6 +451,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
 
         // skip seminar if teacher not matched
         if (isSeminarSubject && !seminarFound) {
+            Logger.d("BachelorFullTimeParser.parseLessonBlock", "Skipping seminar subject '" + subjectName + "': teacher not matched (target: " + seminarTeacher + ")");
             return lessons;
         }
 
@@ -446,6 +467,23 @@ public class BachelorFullTimeParser implements ScheduleParser {
             }
         } else {
             lessons.add(new Lesson(subjectName, lessonType, globalTeacher, globalRoom, null, null, globalStart, globalEnd));
+        }
+
+        if (lessons.isEmpty()) {
+            Logger.d("BachelorFullTimeParser.parseLessonBlock", "Block produced 0 lessons. Raw block:\n" + block);
+        } else {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Block parsed into ").append(lessons.size()).append(" lesson(s):");
+            for (Lesson l : lessons) {
+                sb.append("\n  -> [")
+                  .append(l.getDate() != null ? l.getDate() : "No date").append(" ")
+                  .append(l.getStartTime()).append("-").append(l.getEndTime())
+                  .append("] '").append(l.getSubjectName())
+                  .append("' (type=").append(l.getLessonType())
+                  .append(", teacher=").append(l.getTeacherName())
+                  .append(", room=").append(l.getRoom()).append(")");
+            }
+            Logger.d("BachelorFullTimeParser.parseLessonBlock", sb.toString());
         }
 
         return lessons;
@@ -486,6 +524,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
             }
         }
         if (currentBlock.length() > 0) realBlocks.add(currentBlock.toString());
+        Logger.d("BachelorFullTimeParser.splitIntoBlocks", "Split raw cell into " + realBlocks.size() + " block(s)");
         return realBlocks;
     }
 
@@ -523,18 +562,19 @@ public class BachelorFullTimeParser implements ScheduleParser {
         }
     }
 
-    private void extractAcademicYear(Sheet sheet) {
+    private void extractAcademicYear(ExcelSheet sheet) {
         for (int r = 0; r <= 3; r++) {
-            Row row = sheet.getRow(r);
+            ExcelRow row = sheet.getRow(r);
             if (row != null) {
                 for (int c = 0; c < row.getLastCellNum(); c++) {
-                    Cell cell = row.getCell(c);
+                    ExcelCell cell = row.getCell(c);
                     if (cell != null) {
-                        String header = dataFormatter.formatCellValue(cell);
+                        String header = formatCellValue(cell);
                         Matcher yMatcher = academicYearPattern.matcher(header);
                         if (yMatcher.find()) {
                             academicYearStart = Integer.parseInt(yMatcher.group(1));
                             academicYearEnd = Integer.parseInt(yMatcher.group(2));
+                            Logger.d("BachelorFullTimeParser.extractAcademicYear", "Academic years determined: " + academicYearStart + "/" + academicYearEnd + " from header: '" + header + "'");
                             return;
                         }
                     }
@@ -553,17 +593,17 @@ public class BachelorFullTimeParser implements ScheduleParser {
         }
     }
 
-    private List<Integer> findTargetColumns(Sheet sheet, String studentSurname, String studentSpecialization) {
+    private List<Integer> findTargetColumns(ExcelSheet sheet, String studentSurname, String studentSpecialization) {
         List<Integer> cols = new ArrayList<>();
         
         int headerRowIdx = 3;
         for (int r = 1; r <= 4; r++) {
-            Row row = sheet.getRow(r);
+            ExcelRow row = sheet.getRow(r);
             if (row != null) {
                 for (int c = 1; c < row.getLastCellNum(); c++) {
-                    Cell cell = row.getCell(c);
+                    ExcelCell cell = row.getCell(c);
                     if (cell != null) {
-                        String text = dataFormatter.formatCellValue(cell).toLowerCase();
+                        String text = formatCellValue(cell).toLowerCase();
                         if (text.contains("gr.") || text.contains("grupa") || text.contains("nazwisk") || text.contains("sp.")) {
                             headerRowIdx = r;
                             break;
@@ -573,7 +613,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
             }
         }
 
-        Row groupRow = sheet.getRow(headerRowIdx);
+        ExcelRow groupRow = sheet.getRow(headerRowIdx);
         boolean hasAnyGroupsDefined = false;
 
         if (groupRow != null) {
@@ -651,6 +691,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
             }
         }
 
+        Logger.d("BachelorFullTimeParser.findTargetColumns", "Target columns selected: " + cols + " for surname='" + studentSurname + "', spec='" + studentSpecialization + "'");
         return cols;
     }
 
@@ -733,19 +774,19 @@ public class BachelorFullTimeParser implements ScheduleParser {
         return null;
     }
 
-    private CellTarget getMergedCellValue(Sheet sheet, int rowIdx, int colIdx) {
-        Row row = sheet.getRow(rowIdx);
-        Cell cell = (row != null) ? row.getCell(colIdx) : null;
+    private CellTarget getMergedCellValue(ExcelSheet sheet, int rowIdx, int colIdx) {
+        ExcelRow row = sheet.getRow(rowIdx);
+        ExcelCell cell = (row != null) ? row.getCell(colIdx) : null;
 
-        for (CellRangeAddress mergedRegion : sheet.getMergedRegions()) {
+        for (ExcelRange mergedRegion : sheet.getMergedRegions()) {
             if (mergedRegion.isInRange(rowIdx, colIdx)) {
-                Row firstRow = sheet.getRow(mergedRegion.getFirstRow());
-                Cell firstCell = firstRow.getCell(mergedRegion.getFirstColumn());
-                String value = dataFormatter.formatCellValue(firstCell);
+                ExcelRow firstRow = sheet.getRow(mergedRegion.getFirstRow());
+                ExcelCell firstCell = (firstRow != null) ? firstRow.getCell(mergedRegion.getFirstColumn()) : null;
+                String value = formatCellValue(firstCell);
                 return new CellTarget(value, mergedRegion.formatAsString(), mergedRegion.getLastRow());
             }
         }
-        return new CellTarget(dataFormatter.formatCellValue(cell), null, rowIdx);
+        return new CellTarget(formatCellValue(cell), null, rowIdx);
     }
 
     private static class CellTarget {

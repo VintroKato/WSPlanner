@@ -47,6 +47,7 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
+        Logger.d("LoginActivity.onCreate", "LoginActivity created");
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
         setContentView(R.layout.activity_login);
@@ -93,6 +94,7 @@ public class LoginActivity extends AppCompatActivity {
         String login = loginInput.getText().toString();
         String password = passwordInput.getText().toString();
 
+        Logger.i("LoginActivity.handleBtnClick", "Saving global login credentials for user: " + Logger.maskSensitiveData(login) + ", advancing to SetupCourseActivity");
         PreferencesManager.saveGlobalPrefs(this, login, password, null, null, null, 1, null, null);
         PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_COURSE);
         
@@ -131,6 +133,8 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
+        Logger.d("LoginActivity.checkData", "Verifying credentials for user: " + Logger.maskSensitiveData(login));
+
         resetFields();
 
         progressBar.setVisibility(View.VISIBLE);
@@ -158,6 +162,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void setCheckingOk() {
+        Logger.i("LoginActivity.setCheckingOk", "Credentials valid, confirm button enabled");
         setConfirmButtonEnabled(true);
         setLoginState(InputState.OK);
         setPasswordState(InputState.OK);
@@ -182,6 +187,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void setCheckingError() {
+        Logger.w("LoginActivity.setCheckingError", "Credentials check failed or invalid");
         progressBar.setVisibility(View.GONE);
         errorLabel.setText(R.string.configure_status_error);
         errorLabel.setTextColor(UIHelper.getThemeColor(this, R.attr.input_border_error));

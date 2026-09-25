@@ -63,6 +63,7 @@ public class AllCoursesActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Logger.d("AllCoursesActivity.onCreate", "AllCoursesActivity created");
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
         EdgeToEdge.enable(this);
@@ -149,7 +150,7 @@ public class AllCoursesActivity extends AppCompatActivity {
 
             @Override
             public void onError(Exception e) {
-                Logger.e(TAG, "Error loading all courses: " + e.getMessage());
+                Logger.e("AllCoursesActivity.loadCourses", "Error loading all courses: " + e.getMessage());
                 runOnUiThread(() -> {
                     progressLoading.setVisibility(View.GONE);
                     filterCourses(editSearch.getText().toString());
@@ -261,7 +262,7 @@ public class AllCoursesActivity extends AppCompatActivity {
                     url = StudyPlanScraper.getStudentZoneUrl(client);
                 }
             } catch (Exception e) {
-                Logger.e(TAG, "Error resolving student zone url: " + e.getMessage());
+                Logger.e("AllCoursesActivity.openStudentZone", "Error resolving student zone url: " + e.getMessage());
             }
 
             if (url == null || url.trim().isEmpty()) {
@@ -271,10 +272,11 @@ public class AllCoursesActivity extends AppCompatActivity {
             final String finalUrl = url;
             runOnUiThread(() -> {
                 try {
+                    Logger.i("AllCoursesActivity.openStudentZone", "Opening student zone URL: " + finalUrl);
                     Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl));
                     startActivity(browserIntent);
                 } catch (Exception e) {
-                    Logger.e(TAG, "Error opening browser: " + e.getMessage());
+                    Logger.e("AllCoursesActivity.openStudentZone", "Error opening browser: " + e.getMessage());
                 }
             });
         }).start();

@@ -48,6 +48,7 @@ public class Location implements Serializable {
         }
     }
 
+    // detect off-site city addresses, sports facilities, or fieldwork locations
     private static boolean isOffsiteLocation(String lower) {
         return lower.contains("ul.")
                 || lower.contains("al.")
@@ -64,10 +65,12 @@ public class Location implements Serializable {
                 || lower.contains("teren");
     }
 
+    // check if string contains 3-digit room number pattern (e.g. 104, 205B)
     private static boolean hasStandaloneRoomNumber(String lower) {
         return lower.matches(".*(?<![\\d-])\\b\\d{3}[a-zA-Z]?\\b(?![\\d-]).*");
     }
 
+    // generate geo uri intent for navigation apps
     private static String buildMapQueryUrl(String raw, String lower) {
         if (raw == null || raw.trim().isEmpty()) return null;
         String query = raw.replace("\n", ", ").trim();
@@ -81,6 +84,7 @@ public class Location implements Serializable {
         }
     }
 
+    // extract classroom number from text
     private String extractRoomNumber(String text) {
         if (text == null || text.trim().isEmpty()) return null;
         String lower = text.toLowerCase();

@@ -3,6 +3,7 @@ package com.vintro.wsplanner.models;
 import java.util.ArrayList;
 import java.util.List;
 
+// schedule model representing full timetable for a field of study and semester
 public class Schedule {
     private final String fieldOfStudy;
     private final int semester;
@@ -16,10 +17,12 @@ public class Schedule {
         this.lessons = new ArrayList<>();
     }
 
+    // append single lesson to schedule
     public void addLesson(Lesson lesson) {
         this.lessons.add(lesson);
     }
 
+    // append collection of lessons to schedule
     public void addLessons(List<Lesson> newLessons) {
         this.lessons.addAll(newLessons);
     }

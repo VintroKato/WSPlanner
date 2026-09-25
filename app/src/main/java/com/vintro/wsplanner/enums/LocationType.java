@@ -3,6 +3,7 @@ package com.vintro.wsplanner.enums;
 import androidx.annotation.StringRes;
 import com.vintro.wsplanner.R;
 
+// classification of lesson location: campus, online, or off-site
 public enum LocationType {
     UCZELNIA(R.string.location_uczelnia),
     ONLINE(R.string.location_online),

@@ -37,18 +37,18 @@ public class GetPlanService extends JobIntentService {
     @Override
     public void onCreate() {
         super.onCreate();
-        Logger.d("GetPlanService", "GetPlanService started");
+        Logger.d("GetPlanService.onCreate", "GetPlanService created");
     }
 
     @Override
     protected void onHandleWork(Intent intent) {
         int course = PreferencesManager.getYearPref(this, intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1));
-        Logger.d("GetPlanService", "GetPlanService.onHandleWork, course: " + course + ", intent: " + intent);
+        Logger.d("GetPlanService.onHandleWork", "Handling work for course year " + course + ", intent: " + intent);
 
         workIntent = intent;
 
         if (!isNetworkAvailable()) {
-            Logger.w("GetPlanService", "No network connection");
+            Logger.w("GetPlanService.onHandleWork", "No network connection available");
             endService();
             return;
         }
@@ -58,21 +58,22 @@ public class GetPlanService extends JobIntentService {
         try {
             ResponseBody fileResponse = PUW.downloadFile(workIntent, this);
             if (fileResponse == null) {
+                Logger.e("GetPlanService.onHandleWork", "Downloaded file response is null");
                 endService();
                 return;
             }
 
             File outputFile = saveToCache(fileResponse, course);
             if (outputFile == null) {
+                Logger.e("GetPlanService.onHandleWork", "Failed to save file to cache");
                 endService();
                 return;
             }
 
             openFile(outputFile);
 
-
         } catch (Exception e) {
-            Logger.e("GetPlanService", "Error: " + e.getMessage());
+            Logger.e("GetPlanService.onHandleWork", "Error during work execution: " + e.getMessage());
         }
         endService();
     }
@@ -88,27 +89,27 @@ public class GetPlanService extends JobIntentService {
                 out.write(buffer, 0, bytesRead);
             }
         } catch (Exception e) {
-            Logger.e("GetPlanService", "Error saving file: " + e.getMessage());
+            Logger.e("GetPlanService.saveToCache", "Error saving file: " + e.getMessage());
             return null;
         }
 
-        Logger.d("GetPlanService", "File saved: " + outputFile.getAbsolutePath());
+        Logger.d("GetPlanService.saveToCache", "File saved: " + outputFile.getAbsolutePath());
         return outputFile;
     }
 
     private void openFile(File outputFile) {
         try {
             Uri localUri = FileProvider.getUriForFile(this, getPackageName() + ".provider", outputFile);
-            Logger.d("GetPlanService", "File uri: " + localUri);
+            Logger.d("GetPlanService.openFile", "Opening file via URI: " + localUri);
 
             Intent i = new Intent(Intent.ACTION_VIEW);
             i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             i.setDataAndType(localUri, getContentResolver().getType(localUri));
             startActivity(i);
-            Logger.d("GetPlanService", "File opened");
+            Logger.i("GetPlanService.openFile", "File view intent started successfully");
         } catch (Exception e) {
-            Logger.e("GetPlanService", "Error opening file: " + e.getMessage());
+            Logger.e("GetPlanService.openFile", "Error opening file: " + e.getMessage());
         }
     }
 
@@ -137,7 +138,7 @@ public class GetPlanService extends JobIntentService {
 
     private void endService() {
         updateWidget(false);
-        Logger.d("GetPlanService", "Ending service");
+        Logger.d("GetPlanService.endService", "Ending GetPlanService work");
     }
 
     private boolean isNetworkAvailable() {

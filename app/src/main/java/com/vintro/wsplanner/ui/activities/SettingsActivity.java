@@ -20,6 +20,7 @@ import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.enums.AppTheme;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
+import com.vintro.wsplanner.utils.Logger;
 
 public class SettingsActivity extends AppCompatActivity {
     ConstraintLayout root;
@@ -80,6 +81,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         AppTheme theme = PreferencesManager.getThemePref(this);
         Language language = PreferencesManager.getLanguagePref(this);
+        Logger.d("SettingsActivity.onCreate", "SettingsActivity created (theme=" + theme + ", language=" + language + ")");
 
         switch (theme) {
             case AUTO:
@@ -154,6 +156,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void bindThemeOnClick(MaterialCardView card, AppTheme theme) {
         card.setOnClickListener(v -> {
+            Logger.i("SettingsActivity.bindThemeOnClick", "User selected theme: " + theme);
             boolean isOldNight = UIHelper.isNightMode(this);
 
             PreferencesManager.setThemePref(this, theme);
@@ -172,6 +175,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void bindLanguageOnClick(MaterialCardView card, Language language) {
         card.setOnClickListener(v -> {
+            Logger.i("SettingsActivity.bindLanguageOnClick", "User selected language: " + language);
             selectCard(card);
             PreferencesManager.setLanguagePref(this, language);
             recreate();

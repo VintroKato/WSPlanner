@@ -53,6 +53,7 @@ public class SetupCourseActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Logger.d("SetupCourseActivity.onCreate", "SetupCourseActivity created");
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
         setContentView(R.layout.activity_setup_course);
@@ -84,12 +85,14 @@ public class SetupCourseActivity extends AppCompatActivity {
     }
 
     private void fetchCourses() {
+        Logger.d("SetupCourseActivity.fetchCourses", "Fetching available courses from service");
         loadingLayout.setVisibility(View.VISIBLE);
         contentLayout.setVisibility(View.GONE);
 
         courseSetupService.loadCourseSetupData(this, new CourseSetupService.OnSetupDataLoadedCallback() {
             @Override
             public void onSuccess(List<ParsedCourse> courses, Integer englishGroup, String studentFullName, String seminarTeacher) {
+                Logger.i("SetupCourseActivity.fetchCourses", "Loaded " + courses.size() + " courses. Full name: '" + studentFullName + "'");
                 availableCourses = courses;
                 loadedStudentFullName = studentFullName;
                 runOnUiThread(() -> {
@@ -102,6 +105,7 @@ public class SetupCourseActivity extends AppCompatActivity {
 
             @Override
             public void onError(Exception e) {
+                Logger.e("SetupCourseActivity.fetchCourses", "Error loading courses: " + e.getMessage());
                 runOnUiThread(() -> {
                     Toast.makeText(SetupCourseActivity.this, "Failed to load courses: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     finish();
@@ -319,7 +323,7 @@ public class SetupCourseActivity extends AppCompatActivity {
             }
         }
 
-        Logger.d("SetupCourseActivity", "Saved configuration: " + selectedCourse.fieldOfStudy + ", " + selectedLevel + ", " + selectedMode + ", year " + selectedYear);
+        Logger.i("SetupCourseActivity.saveAndContinue", "Saved configuration: " + selectedCourse.fieldOfStudy + ", " + selectedLevel + ", " + selectedMode + ", year " + selectedYear);
 
         if (selectedYear == 1) {
             PreferencesManager.setGlobalSpecialtyPref(this, null);

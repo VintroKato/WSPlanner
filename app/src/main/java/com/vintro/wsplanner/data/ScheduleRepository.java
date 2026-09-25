@@ -95,21 +95,25 @@ public class ScheduleRepository {
 
                 if (cacheFile.exists() && cacheFile.length() > 0) {
                     long ageMinutes = (System.currentTimeMillis() - cacheFile.lastModified()) / (60 * 1000);
+                    Logger.d("ScheduleRepository.getScheduleFileForOpen", "Found cached schedule file: " + cacheFile.getAbsolutePath() + " (age: " + ageMinutes + " min)");
                     if (ageMinutes < STALE_THRESHOLD_MINUTES) {
                         shouldDownload = false;
                     }
                 }
 
                 if (shouldDownload) {
+                    Logger.d("ScheduleRepository.getScheduleFileForOpen", "Cache missing or stale, downloading fresh file");
                     downloadScheduleFile(cacheFile);
                     parseFile(cacheFile);
                     lastConfigSignature = buildConfigSignature();
                     lastSyncTime = LocalDateTime.now();
+                } else {
+                    Logger.d("ScheduleRepository.getScheduleFileForOpen", "Reusing cached schedule file");
                 }
 
                 callback.onFileReady(cacheFile);
             } catch (Exception e) {
-                Logger.e(TAG, "getScheduleFileForOpen error: " + e.getMessage());
+                Logger.e("ScheduleRepository.getScheduleFileForOpen", "Error: " + e.getMessage());
                 callback.onError(e);
             }
         }).start();
@@ -117,13 +121,15 @@ public class ScheduleRepository {
 
     // get schedule for a day asynchronously
     public void getScheduleForDate(LocalDate date, boolean forceRefresh, ScheduleCallback<DaySchedule> callback) {
+        Logger.d("ScheduleRepository.getScheduleForDate", "Requesting schedule for date: " + date + " (forceRefresh=" + forceRefresh + ")");
         new Thread(() -> {
             try {
                 ensureScheduleLoaded(forceRefresh);
                 DaySchedule daySchedule = createDayScheduleForDate(date);
+                Logger.d("ScheduleRepository.getScheduleForDate", "Returning " + daySchedule.getLessons().size() + " lesson(s) for " + date);
                 callback.onSuccess(daySchedule);
             } catch (Exception e) {
-                Logger.e(TAG, "getScheduleForDate error: " + e.getMessage());
+                Logger.e("ScheduleRepository.getScheduleForDate", "Error: " + e.getMessage());
                 callback.onError(e);
             }
         }).start();
@@ -131,19 +137,22 @@ public class ScheduleRepository {
 
     // get schedule for a day synchronously
     public DaySchedule getScheduleForDateSync(LocalDate date) {
+        Logger.d("ScheduleRepository.getScheduleForDateSync", "Requesting sync schedule for date: " + date);
         ensureScheduleLoaded(false);
         return createDayScheduleForDate(date);
     }
 
     // get subject details asynchronously
     public void getSubjectDetails(String subjectName, String rawLessonType, boolean forceRefresh, ScheduleCallback<SubjectDetails> callback) {
+        Logger.d("ScheduleRepository.getSubjectDetails", "Requesting details for subject: '" + subjectName + "', type: '" + rawLessonType + "' (forceRefresh=" + forceRefresh + ")");
         new Thread(() -> {
             try {
                 ensureScheduleLoaded(forceRefresh);
                 SubjectDetails details = createSubjectDetails(subjectName, rawLessonType);
+                Logger.d("ScheduleRepository.getSubjectDetails", "Resolved details with " + details.getTotalCount() + " lessons, teacher: '" + details.getTeacherName() + "'");
                 callback.onSuccess(details);
             } catch (Exception e) {
-                Logger.e(TAG, "getSubjectDetails error: " + e.getMessage());
+                Logger.e("ScheduleRepository.getSubjectDetails", "Error: " + e.getMessage());
                 callback.onError(e);
             }
         }).start();
@@ -151,19 +160,22 @@ public class ScheduleRepository {
 
     // get subject details synchronously
     public SubjectDetails getSubjectDetailsSync(String subjectName, String rawLessonType) {
+        Logger.d("ScheduleRepository.getSubjectDetailsSync", "Requesting sync details for subject: '" + subjectName + "'");
         ensureScheduleLoaded(false);
         return createSubjectDetails(subjectName, rawLessonType);
     }
 
     // get all unique courses in the semester asynchronously
     public void getAllCourses(boolean forceRefresh, ScheduleCallback<List<SubjectDetails>> callback) {
+        Logger.d("ScheduleRepository.getAllCourses", "Requesting all courses list (forceRefresh=" + forceRefresh + ")");
         new Thread(() -> {
             try {
                 ensureScheduleLoaded(forceRefresh);
                 List<SubjectDetails> courses = buildAllCourses();
+                Logger.d("ScheduleRepository.getAllCourses", "Returning " + courses.size() + " unique course(s)");
                 callback.onSuccess(courses);
             } catch (Exception e) {
-                Logger.e(TAG, "getAllCourses error: " + e.getMessage());
+                Logger.e("ScheduleRepository.getAllCourses", "Error: " + e.getMessage());
                 callback.onError(e);
             }
         }).start();
@@ -301,14 +313,18 @@ public class ScheduleRepository {
     public synchronized void ensureScheduleLoaded(boolean forceRefresh) {
         String currentConfig = buildConfigSignature();
         if (currentConfig == null) {
+            Logger.e("ScheduleRepository.ensureScheduleLoaded", "Cannot load schedule: Student configuration is not completed yet");
             throw new IllegalStateException("Student configuration is not completed yet");
         }
 
         boolean configChanged = !currentConfig.equals(lastConfigSignature);
 
         if (!forceRefresh && !configChanged && cachedAllLessons != null) {
-            return; // memory cache is valid
+            Logger.d("ScheduleRepository.ensureScheduleLoaded", "Memory cache is valid (" + cachedAllLessons.size() + " lessons, config unchanged), skipping reload");
+            return;
         }
+
+        Logger.d("ScheduleRepository.ensureScheduleLoaded", "Loading schedule (forceRefresh=" + forceRefresh + ", configChanged=" + configChanged + ", cachedLessons=" + (cachedAllLessons != null ? cachedAllLessons.size() : "null") + ")");
 
         File cacheFile = getLocalScheduleFile();
         if (forceRefresh || !cacheFile.exists() || cacheFile.length() == 0) {
@@ -321,6 +337,7 @@ public class ScheduleRepository {
             lastConfigSignature = currentConfig;
             lastSyncTime = LocalDateTime.now();
         } else {
+            Logger.e("ScheduleRepository.ensureScheduleLoaded", "Failed to obtain schedule Excel file at: " + cacheFile.getAbsolutePath());
             throw new IllegalStateException("Failed to obtain schedule Excel file");
         }
     }
@@ -347,23 +364,28 @@ public class ScheduleRepository {
         ScheduleParser parser = ParserFactory.getParser(degree, mode);
         int semester = (year * 2) - 1; // default to odd semester
 
+        Logger.d("ScheduleRepository.parseFile", "Parsing local schedule file: " + file.getAbsolutePath() + " (size: " + file.length() + " bytes) for student '" + surname + "', major '" + major + "', semester " + semester);
+
         try (InputStream in = new FileInputStream(file)) {
             Schedule schedule = parser.parse(in, major, semester, surname, specialty, langGroup, seminarTeacher);
             if (schedule != null && schedule.getLessons() != null) {
                 cachedAllLessons = new ArrayList<>(schedule.getLessons());
-                Logger.d(TAG, "Parsed " + cachedAllLessons.size() + " lessons successfully");
+                Logger.i("ScheduleRepository.parseFile", "Successfully cached " + cachedAllLessons.size() + " lessons from file: " + file.getName());
             } else {
                 cachedAllLessons = new ArrayList<>();
+                Logger.w("ScheduleRepository.parseFile", "Parser returned null or empty lessons list");
             }
         } catch (Exception e) {
-            Logger.e(TAG, "Error parsing schedule file: " + e.getMessage());
+            Logger.e("ScheduleRepository.parseFile", "Error parsing schedule file: " + e.getMessage());
             cachedAllLessons = new ArrayList<>();
         }
     }
 
     private void downloadScheduleFile(File destFile) {
+        Logger.d("ScheduleRepository.downloadScheduleFile", "Initiating schedule file download to: " + destFile.getAbsolutePath());
         OkHttpClient client = PUW.globalLogin(appContext);
         if (client == null) {
+            Logger.e("ScheduleRepository.downloadScheduleFile", "Failed to login to PUW for downloading schedule");
             throw new IllegalStateException("Failed to login to PUW for downloading schedule");
         }
 
@@ -374,16 +396,20 @@ public class ScheduleRepository {
 
         String fileUrl = StudyPlanScraper.getScheduleFileUrl(client, major, degreeLevel, studyMode, year);
         if (fileUrl == null) {
+            Logger.e("ScheduleRepository.downloadScheduleFile", "Could not resolve schedule download URL for " + major + ", " + degreeLevel + ", " + studyMode + ", year " + year);
             throw new IllegalStateException("Could not resolve schedule download URL");
         }
 
+        Logger.d("ScheduleRepository.downloadScheduleFile", "Downloading schedule from URL: " + fileUrl);
         Request request = new Request.Builder().url(fileUrl).build();
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
+                Logger.e("ScheduleRepository.downloadScheduleFile", "Download HTTP error: " + response.code());
                 throw new IllegalStateException("Download HTTP error: " + response.code());
             }
             ResponseBody body = response.body();
             if (body == null) {
+                Logger.e("ScheduleRepository.downloadScheduleFile", "Empty response body from schedule URL");
                 throw new IllegalStateException("Empty response body from schedule URL");
             }
 
@@ -395,9 +421,9 @@ public class ScheduleRepository {
                     out.write(buffer, 0, read);
                 }
             }
-            Logger.d(TAG, "Schedule downloaded successfully to " + destFile.getAbsolutePath());
+            Logger.i("ScheduleRepository.downloadScheduleFile", "Schedule downloaded successfully to " + destFile.getAbsolutePath() + " (" + destFile.length() + " bytes)");
         } catch (Exception e) {
-            Logger.e(TAG, "Error downloading schedule: " + e.getMessage());
+            Logger.e("ScheduleRepository.downloadScheduleFile", "Error downloading schedule: " + e.getMessage());
             throw new RuntimeException(e);
         }
     }
@@ -423,12 +449,14 @@ public class ScheduleRepository {
 
     // clear in-memory and disk cache
     public synchronized void invalidateCache() {
+        Logger.d("ScheduleRepository.invalidateCache", "Invalidating memory and disk schedule cache");
         cachedAllLessons = null;
         lastConfigSignature = null;
         lastSyncTime = null;
         File cacheFile = getLocalScheduleFile();
         if (cacheFile.exists()) {
-            cacheFile.delete();
+            boolean deleted = cacheFile.delete();
+            Logger.d("ScheduleRepository.invalidateCache", "Cache file deletion result: " + deleted);
         }
     }
 }
