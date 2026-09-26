@@ -46,6 +46,16 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         notifyDataSetChanged();
     }
 
+    public void showNoInternetState() {
+        items.clear();
+        currentDaySchedule = null;
+        items.add(ScheduleItem.createNoInternet(
+                context.getString(R.string.no_internet_title),
+                context.getString(R.string.no_internet_schedule_desc)
+        ));
+        notifyDataSetChanged();
+    }
+
     // load day schedule and insert breaks
     public void submitDaySchedule(DaySchedule daySchedule) {
         this.currentDaySchedule = daySchedule;
@@ -100,6 +110,8 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             ((LessonViewHolder) holder).bind(item.getLesson());
         } else if (holder instanceof BreakGapViewHolder) {
             ((BreakGapViewHolder) holder).bind(item.getGapMinutes());
+        } else if (holder instanceof EmptyViewHolder) {
+            ((EmptyViewHolder) holder).bind(item);
         }
     }
 
@@ -320,8 +332,30 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     static class EmptyViewHolder extends RecyclerView.ViewHolder {
+        private final TextView emptyTitle;
+        private final TextView emptySubtitle;
+
         EmptyViewHolder(@NonNull View itemView) {
             super(itemView);
+            emptyTitle = itemView.findViewById(R.id.empty_title);
+            emptySubtitle = itemView.findViewById(R.id.empty_subtitle);
+        }
+
+        void bind(ScheduleItem item) {
+            if (emptyTitle != null) {
+                if (item != null && item.getEmptyTitle() != null) {
+                    emptyTitle.setText(item.getEmptyTitle());
+                } else {
+                    emptyTitle.setText(R.string.schedule_empty_title);
+                }
+            }
+            if (emptySubtitle != null) {
+                if (item != null && item.getEmptySubtitle() != null) {
+                    emptySubtitle.setText(item.getEmptySubtitle());
+                } else {
+                    emptySubtitle.setText(R.string.schedule_empty_subtitle);
+                }
+            }
         }
     }
 }

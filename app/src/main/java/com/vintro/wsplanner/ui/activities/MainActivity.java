@@ -1,6 +1,7 @@
 package com.vintro.wsplanner.ui.activities;
 
 import android.app.DatePickerDialog;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
@@ -37,6 +38,7 @@ import com.vintro.wsplanner.models.DaySchedule;
 import com.vintro.wsplanner.ui.adapters.ScheduleAdapter;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.utils.NetworkUtils;
 
 import java.io.File;
 import java.time.LocalDate;
@@ -266,6 +268,10 @@ public class MainActivity extends AppCompatActivity {
                     scheduleAdapter.submitDaySchedule(result);
                     recyclerSchedule.scheduleLayoutAnimation();
                     updateLastSyncUI();
+                    if (forceRefresh && result != null && result.isFromCacheFallback()) {
+                        Logger.i("MainActivity.loadSchedule", "Displaying schedule from offline cache fallback");
+                        Toast.makeText(MainActivity.this, R.string.schedule_offline_cached_toast, Toast.LENGTH_SHORT).show();
+                    }
                 });
             }
 
@@ -274,9 +280,8 @@ public class MainActivity extends AppCompatActivity {
                 Logger.e("MainActivity.loadSchedule", "Failed to load schedule: " + e.getMessage());
                 runOnUiThread(() -> {
                     swipeRefreshLayout.setRefreshing(false);
-                    scheduleAdapter.clear();
-                    Toast.makeText(MainActivity.this, "Error loading schedule: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     updateLastSyncUI();
+                    scheduleAdapter.showNoInternetState();
                 });
             }
         });
@@ -291,6 +296,9 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        if (!NetworkUtils.isNetworkAvailable(this)) {
+            Logger.w("MainActivity.handleManualRefresh", "Device is offline during manual refresh, attempting local cache fallback");
+        }
         Logger.i("MainActivity.handleManualRefresh", "Triggering manual force-refresh (fromSwipe=" + fromSwipe + ")");
         loadSchedule(true);
     }
@@ -310,6 +318,18 @@ public class MainActivity extends AppCompatActivity {
                         intent.setDataAndType(uri, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
                         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                         startActivity(intent);
+                    } catch (ActivityNotFoundException e) {
+                        Logger.w("MainActivity.openScheduleFile", "Direct open failed, falling back to ACTION_VIEW chooser: " + e.getMessage());
+                        try {
+                            Uri uri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".provider", file);
+                            Intent intent = new Intent(Intent.ACTION_VIEW);
+                            intent.setDataAndType(uri, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            startActivity(Intent.createChooser(intent, getString(R.string.schedule_opening_file)));
+                        } catch (Exception ex) {
+                            Logger.e("MainActivity.openScheduleFile", "Chooser fallback also failed: " + ex.getMessage());
+                            Toast.makeText(MainActivity.this, getString(R.string.schedule_open_file_error), Toast.LENGTH_SHORT).show();
+                        }
                     } catch (Exception e) {
                         Logger.e("MainActivity.openScheduleFile", "Error opening schedule file: " + e.getMessage());
                         Toast.makeText(MainActivity.this, getString(R.string.schedule_open_file_error), Toast.LENGTH_SHORT).show();

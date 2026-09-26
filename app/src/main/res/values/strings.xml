@@ -133,4 +133,14 @@
     <string name="all_courses_progress_format">%1$d of %2$d</string>
     <string name="all_courses_count_format">%1$d courses</string>
     <string name="all_courses_opening_strefa">Opening Student Zone…</string>
+
+    <string name="main_title">Schedule</string>
+    <string name="no_internet_title">No internet connection</string>
+    <string name="no_internet_connection">No internet connection</string>
+    <string name="no_internet_schedule_desc">Schedule is not cached. Connect to the internet to load it.</string>
+    <string name="no_internet_onboarding_desc">No internet connection. Please check your network and try again.</string>
+    <string name="no_internet_specialty_desc">Could not load specializations. You can enter your specialty manually below.</string>
+    <string name="teacher_email_no_internet">No internet connection</string>
+    <string name="schedule_offline_cached_toast">No internet connection. Showing cached schedule.</string>
+    <string name="button_retry">Retry</string>
 </resources>

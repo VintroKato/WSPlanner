@@ -28,6 +28,7 @@ import com.vintro.wsplanner.services.CourseSetupService;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.utils.NetworkUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -88,6 +89,19 @@ public class SetupCourseActivity extends AppCompatActivity {
         Logger.d("SetupCourseActivity.fetchCourses", "Fetching available courses from service");
         loadingLayout.setVisibility(View.VISIBLE);
         contentLayout.setVisibility(View.GONE);
+        findViewById(R.id.progress_bar).setVisibility(View.VISIBLE);
+        TextView loadingLabel = findViewById(R.id.loading_label);
+        loadingLabel.setText(R.string.onboarding_loading_courses);
+        Button retryButton = findViewById(R.id.button_retry);
+        if (retryButton != null) {
+            retryButton.setVisibility(View.GONE);
+        }
+
+        if (!NetworkUtils.isNetworkAvailable(this)) {
+            Logger.w("SetupCourseActivity.fetchCourses", "Device is offline, cannot load courses from PUW");
+            showCourseLoadError(getString(R.string.no_internet_onboarding_desc));
+            return;
+        }
 
         courseSetupService.loadCourseSetupData(this, new CourseSetupService.OnSetupDataLoadedCallback() {
             @Override
@@ -107,11 +121,22 @@ public class SetupCourseActivity extends AppCompatActivity {
             public void onError(Exception e) {
                 Logger.e("SetupCourseActivity.fetchCourses", "Error loading courses: " + e.getMessage());
                 runOnUiThread(() -> {
-                    Toast.makeText(SetupCourseActivity.this, "Failed to load courses: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    finish();
+                    showCourseLoadError(getString(R.string.no_internet_onboarding_desc));
                 });
             }
         });
+    }
+
+    private void showCourseLoadError(String message) {
+        Logger.w("SetupCourseActivity.showCourseLoadError", "Displaying course load error: " + message);
+        findViewById(R.id.progress_bar).setVisibility(View.GONE);
+        TextView loadingLabel = findViewById(R.id.loading_label);
+        loadingLabel.setText(message);
+        Button retryButton = findViewById(R.id.button_retry);
+        if (retryButton != null) {
+            retryButton.setVisibility(View.VISIBLE);
+            retryButton.setOnClickListener(v -> fetchCourses());
+        }
     }
 
     private void populateUI(Integer englishGroup, String seminarTeacher) {

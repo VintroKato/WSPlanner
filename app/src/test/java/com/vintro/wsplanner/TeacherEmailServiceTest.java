@@ -34,4 +34,18 @@ public class TeacherEmailServiceTest {
         assertFalse(TeacherEmailService.isGenericUniversityEmail("j.kowalski@wspa.pl"));
         assertFalse(TeacherEmailService.isGenericUniversityEmail("a.nowak@wspa.pl"));
     }
+
+    @Test
+    public void testNetworkErrorResult() {
+        TeacherEmailService.TeacherEmailResult netErr = TeacherEmailService.TeacherEmailResult.networkError();
+        assertTrue(netErr.isNetworkError);
+        assertFalse(netErr.hasEmail);
+        assertFalse(netErr.isFoundOnWebsite);
+        assertNull(netErr.email);
+
+        TeacherEmailService.TeacherEmailResult found = TeacherEmailService.TeacherEmailResult.found("teacher@wspa.pl", "http://example.com", "Teacher");
+        assertFalse(found.isNetworkError);
+        assertTrue(found.hasEmail);
+        assertEquals("teacher@wspa.pl", found.email);
+    }
 }

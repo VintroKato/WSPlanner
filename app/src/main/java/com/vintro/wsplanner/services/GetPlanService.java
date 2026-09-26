@@ -19,6 +19,7 @@ import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.network.PUW;
 import com.vintro.wsplanner.ui.widgets.GetPlanWidget;
 import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.utils.NetworkUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -26,10 +27,12 @@ import java.io.InputStream;
 
 import okhttp3.ResponseBody;
 
+// background service to download study plan excel file for widgets
 public class GetPlanService extends JobIntentService {
     public static final String outputFileName = "plan";
     private Intent workIntent;
 
+    // enqueue background work execution
     public static void enqueueWork(Context context, Intent work) {
         enqueueWork(context, GetPlanService.class, 1000, work);
     }
@@ -40,6 +43,7 @@ public class GetPlanService extends JobIntentService {
         Logger.d("GetPlanService.onCreate", "GetPlanService created");
     }
 
+    // handle download or offline opening of study plan excel
     @Override
     protected void onHandleWork(Intent intent) {
         int course = PreferencesManager.getYearPref(this, intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1));
@@ -47,8 +51,16 @@ public class GetPlanService extends JobIntentService {
 
         workIntent = intent;
 
-        if (!isNetworkAvailable()) {
-            Logger.w("GetPlanService.onHandleWork", "No network connection available");
+        if (!NetworkUtils.isNetworkAvailable(this)) {
+            Logger.w("GetPlanService.onHandleWork", "Device is offline, checking for existing cached plan file");
+            File dir = new File(getCacheDir(), "plans");
+            File cachedFile = new File(dir, outputFileName + course + ".xlsx");
+            if (cachedFile.exists() && cachedFile.length() > 0) {
+                Logger.i("GetPlanService.onHandleWork", "Offline fallback: opening cached plan file: " + cachedFile.getAbsolutePath());
+                openFile(cachedFile);
+            } else {
+                Logger.w("GetPlanService.onHandleWork", "No network connection and no cached plan file available for course: " + course);
+            }
             endService();
             return;
         }
@@ -78,8 +90,13 @@ public class GetPlanService extends JobIntentService {
         endService();
     }
 
+    // save downloaded stream to cache directory
     private File saveToCache(ResponseBody fileResponse, int course) {
-        File outputFile = new File(getCacheDir(), outputFileName + course + ".xlsx");
+        File dir = new File(getCacheDir(), "plans");
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+        File outputFile = new File(dir, outputFileName + course + ".xlsx");
         try (InputStream in = fileResponse.byteStream();
              FileOutputStream out = new FileOutputStream(outputFile)
         ) {
@@ -97,6 +114,7 @@ public class GetPlanService extends JobIntentService {
         return outputFile;
     }
 
+    // open file with external excel viewer
     private void openFile(File outputFile) {
         try {
             Uri localUri = FileProvider.getUriForFile(this, getPackageName() + ".provider", outputFile);
@@ -113,6 +131,7 @@ public class GetPlanService extends JobIntentService {
         }
     }
 
+    // update widget remote views with progress state
     private void updateWidget(boolean loading) {
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
         RemoteViews views = new RemoteViews(getPackageName(), R.layout.get_plan_widget);
@@ -136,22 +155,9 @@ public class GetPlanService extends JobIntentService {
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }
 
+    // finish service and restore idle widget state
     private void endService() {
         updateWidget(false);
         Logger.d("GetPlanService.endService", "Ending GetPlanService work");
-    }
-
-    private boolean isNetworkAvailable() {
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-
-        Network network = cm.getActiveNetwork();
-        if (network == null) return false;
-
-        NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
-        return capabilities != null && (
-                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
-                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-        );
     }
 }

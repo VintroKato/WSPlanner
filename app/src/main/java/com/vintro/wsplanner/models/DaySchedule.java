@@ -14,6 +14,7 @@ public class DaySchedule implements Serializable {
     private final LocalDate date;
     private final List<Lesson> lessons;
     private final LocalDateTime lastSyncTimestamp;
+    private boolean isFromCacheFallback = false;
 
     public DaySchedule(LocalDate date, List<Lesson> lessons, LocalDateTime lastSyncTimestamp) {
         this.date = date;
@@ -75,5 +76,13 @@ public class DaySchedule implements Serializable {
 
     public LocalDateTime getLastSyncTimestamp() {
         return lastSyncTimestamp;
+    }
+
+    public boolean isFromCacheFallback() {
+        return isFromCacheFallback;
+    }
+
+    public void setFromCacheFallback(boolean fromCacheFallback) {
+        this.isFromCacheFallback = fromCacheFallback;
     }
 }

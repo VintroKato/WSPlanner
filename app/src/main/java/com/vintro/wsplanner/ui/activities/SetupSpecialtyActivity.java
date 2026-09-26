@@ -28,6 +28,7 @@ import com.vintro.wsplanner.services.CourseSetupService;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.utils.NetworkUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -131,12 +132,14 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
     }
 
     private void fetchSpecialties() {
+        Logger.d("SetupSpecialtyActivity.fetchSpecialties", "Starting fetch specialties request");
         loadingLayout.setVisibility(View.VISIBLE);
         contentLayout.setVisibility(View.GONE);
 
         courseSetupService.loadSpecialties(this, new CourseSetupService.OnSpecialtiesLoadedCallback() {
             @Override
             public void onSuccess(List<String> specialties) {
+                Logger.i("SetupSpecialtyActivity.fetchSpecialties", "Specialties loaded successfully (" + (specialties != null ? specialties.size() : 0) + " options)");
                 runOnUiThread(() -> {
                     TransitionManager.beginDelayedTransition((ViewGroup) findViewById(R.id.main), new AutoTransition());
                     loadingLayout.setVisibility(View.GONE);
@@ -164,6 +167,17 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
 
         if (availableSpecialties.isEmpty()) {
             noSpecialtiesCard.setVisibility(View.VISIBLE);
+            TextView titleView = findViewById(R.id.no_specialties_title);
+            TextView descView = findViewById(R.id.no_specialties_desc);
+            if (!NetworkUtils.isNetworkAvailable(this)) {
+                Logger.w("SetupSpecialtyActivity.populateSpecialties", "Offline mode detected: showing no internet UI for specialties");
+                if (titleView != null) titleView.setText(R.string.no_internet_title);
+                if (descView != null) descView.setText(R.string.no_internet_specialty_desc);
+            } else {
+                Logger.d("SetupSpecialtyActivity.populateSpecialties", "No specialties available for this course, displaying fallback card");
+                if (titleView != null) titleView.setText(R.string.onboarding_no_specialties);
+                if (descView != null) descView.setText(R.string.onboarding_no_specialties_desc);
+            }
         } else {
             noSpecialtiesCard.setVisibility(View.GONE);
             for (String spec : availableSpecialties) {

@@ -17,6 +17,7 @@ import com.vintro.wsplanner.network.StudyPlanScraper;
 import com.vintro.wsplanner.parser.ParserFactory;
 import com.vintro.wsplanner.parser.ScheduleParser;
 import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.utils.NetworkUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -47,6 +48,16 @@ public class ScheduleRepository {
     private List<Lesson> cachedAllLessons;
     private LocalDateTime lastSyncTime;
     private String lastConfigSignature;
+    private boolean isLastLoadFromCacheFallback = false;
+
+    public static class NoScheduleCacheException extends Exception {
+        public NoScheduleCacheException(String message) {
+            super(message);
+        }
+        public NoScheduleCacheException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
 
     private ScheduleRepository(Context context) {
         this.appContext = context.getApplicationContext();
@@ -74,6 +85,10 @@ public class ScheduleRepository {
     private long lastManualSyncTimestampMillis = 0;
 
     public LocalDateTime getLastSyncTime() {
+        if (lastSyncTime == null) {
+            File cacheFile = getLocalScheduleFile();
+            lastSyncTime = loadLastSyncTime(cacheFile);
+        }
         return lastSyncTime;
     }
 
@@ -102,11 +117,41 @@ public class ScheduleRepository {
                 }
 
                 if (shouldDownload) {
-                    Logger.d("ScheduleRepository.getScheduleFileForOpen", "Cache missing or stale, downloading fresh file");
-                    downloadScheduleFile(cacheFile);
-                    parseFile(cacheFile);
-                    lastConfigSignature = buildConfigSignature();
-                    lastSyncTime = LocalDateTime.now();
+                    if (!NetworkUtils.isNetworkAvailable(appContext)) {
+                        Logger.w("ScheduleRepository.getScheduleFileForOpen", "Device is offline, skipping download and checking local cache");
+                        if (!cacheFile.exists() || cacheFile.length() == 0) {
+                            Logger.e("ScheduleRepository.getScheduleFileForOpen", "Device is offline and no cached schedule file exists");
+                            throw new NoScheduleCacheException("Device is offline and no cached schedule file exists");
+                        }
+                        Logger.i("ScheduleRepository.getScheduleFileForOpen", "Offline fallback: using cached schedule file");
+                        callback.onFileReady(cacheFile);
+                        return;
+                    }
+                    Logger.d("ScheduleRepository.getScheduleFileForOpen", "Cache missing or stale, attempting fresh download");
+                    File tempFile = new File(cacheFile.getParentFile(), cacheFile.getName() + ".download_" + System.currentTimeMillis());
+                    try {
+                        downloadScheduleFile(tempFile);
+                        if (tempFile.exists() && tempFile.length() > 0) {
+                            if (cacheFile.exists()) {
+                                cacheFile.delete();
+                            }
+                            if (tempFile.renameTo(cacheFile)) {
+                                parseFile(cacheFile);
+                                lastConfigSignature = buildConfigSignature();
+                                lastSyncTime = LocalDateTime.now();
+                                saveLastSyncTime(lastSyncTime);
+                            }
+                        }
+                    } catch (Exception e) {
+                        Logger.w("ScheduleRepository.getScheduleFileForOpen", "Download failed, checking cached file: " + e.getMessage());
+                        if (!cacheFile.exists() || cacheFile.length() == 0) {
+                            throw e;
+                        }
+                    } finally {
+                        if (tempFile.exists()) {
+                            tempFile.delete();
+                        }
+                    }
                 } else {
                     Logger.d("ScheduleRepository.getScheduleFileForOpen", "Reusing cached schedule file");
                 }
@@ -138,7 +183,11 @@ public class ScheduleRepository {
     // get schedule for a day synchronously
     public DaySchedule getScheduleForDateSync(LocalDate date) {
         Logger.d("ScheduleRepository.getScheduleForDateSync", "Requesting sync schedule for date: " + date);
-        ensureScheduleLoaded(false);
+        try {
+            ensureScheduleLoaded(false);
+        } catch (Exception e) {
+            Logger.w("ScheduleRepository.getScheduleForDateSync", "Could not load schedule: " + e.getMessage());
+        }
         return createDayScheduleForDate(date);
     }
 
@@ -161,7 +210,11 @@ public class ScheduleRepository {
     // get subject details synchronously
     public SubjectDetails getSubjectDetailsSync(String subjectName, String rawLessonType) {
         Logger.d("ScheduleRepository.getSubjectDetailsSync", "Requesting sync details for subject: '" + subjectName + "'");
-        ensureScheduleLoaded(false);
+        try {
+            ensureScheduleLoaded(false);
+        } catch (Exception e) {
+            Logger.w("ScheduleRepository.getSubjectDetailsSync", "Could not load details: " + e.getMessage());
+        }
         return createSubjectDetails(subjectName, rawLessonType);
     }
 
@@ -206,8 +259,11 @@ public class ScheduleRepository {
     }
 
     private DaySchedule createDayScheduleForDate(LocalDate date) {
+        LocalDateTime syncTime = getLastSyncTime();
         if (cachedAllLessons == null || cachedAllLessons.isEmpty()) {
-            return new DaySchedule(date, Collections.emptyList(), lastSyncTime);
+            DaySchedule ds = new DaySchedule(date, Collections.emptyList(), syncTime);
+            ds.setFromCacheFallback(isLastLoadFromCacheFallback);
+            return ds;
         }
 
         List<Lesson> dayLessons = new ArrayList<>();
@@ -216,7 +272,9 @@ public class ScheduleRepository {
                 dayLessons.add(l);
             }
         }
-        return new DaySchedule(date, dayLessons, lastSyncTime);
+        DaySchedule ds = new DaySchedule(date, dayLessons, syncTime);
+        ds.setFromCacheFallback(isLastLoadFromCacheFallback);
+        return ds;
     }
 
     private SubjectDetails createSubjectDetails(String subjectName, String rawLessonType) {
@@ -233,7 +291,7 @@ public class ScheduleRepository {
 
         for (Lesson l : cachedAllLessons) {
             String itemSub = l.getSubjectName() != null ? l.getSubjectName().trim().toLowerCase() : "";
-            boolean nameMatch = itemSub.equals(cleanSearchName) || itemSub.contains(cleanSearchName) || cleanSearchName.contains(itemSub);
+            boolean nameMatch = itemSub.equals(cleanSearchName);
 
             boolean typeMatch = true;
             if (!cleanRawType.isEmpty()) {
@@ -260,17 +318,17 @@ public class ScheduleRepository {
                 if (duplicate) continue;
 
                 matched.add(l);
-                if (teacher.isEmpty() && !l.getTeacherName().isEmpty()) {
+                if (teacher.isEmpty() && !l.getTeacherName().isEmpty() && !l.getTeacherName().equalsIgnoreCase("Unknown Teacher")) {
                     teacher = l.getTeacherName();
                 }
             }
         }
 
-        // fallback: match by subject name only
+        // fallback: match by exact subject name only (ignoring lesson type)
         if (matched.isEmpty()) {
             for (Lesson l : cachedAllLessons) {
                 String itemSub = l.getSubjectName() != null ? l.getSubjectName().trim().toLowerCase() : "";
-                if (itemSub.equals(cleanSearchName) || itemSub.contains(cleanSearchName) || cleanSearchName.contains(itemSub)) {
+                if (itemSub.equals(cleanSearchName)) {
                     boolean duplicate = false;
                     for (Lesson existing : matched) {
                         if (existing.getDate() != null && existing.getDate().isEqual(l.getDate())
@@ -281,7 +339,7 @@ public class ScheduleRepository {
                     }
                     if (!duplicate) {
                         matched.add(l);
-                        if (teacher.isEmpty() && !l.getTeacherName().isEmpty()) {
+                        if (teacher.isEmpty() && !l.getTeacherName().isEmpty() && !l.getTeacherName().equalsIgnoreCase("Unknown Teacher")) {
                             teacher = l.getTeacherName();
                         }
                     }
@@ -310,7 +368,7 @@ public class ScheduleRepository {
     }
 
     // download and parse schedule if cache is missing or stale
-    public synchronized void ensureScheduleLoaded(boolean forceRefresh) {
+    public synchronized void ensureScheduleLoaded(boolean forceRefresh) throws NoScheduleCacheException {
         String currentConfig = buildConfigSignature();
         if (currentConfig == null) {
             Logger.e("ScheduleRepository.ensureScheduleLoaded", "Cannot load schedule: Student configuration is not completed yet");
@@ -327,18 +385,62 @@ public class ScheduleRepository {
         Logger.d("ScheduleRepository.ensureScheduleLoaded", "Loading schedule (forceRefresh=" + forceRefresh + ", configChanged=" + configChanged + ", cachedLessons=" + (cachedAllLessons != null ? cachedAllLessons.size() : "null") + ")");
 
         File cacheFile = getLocalScheduleFile();
-        if (forceRefresh || !cacheFile.exists() || cacheFile.length() == 0) {
-            downloadScheduleFile(cacheFile);
-            lastManualSyncTimestampMillis = System.currentTimeMillis();
+        boolean cacheExists = cacheFile.exists() && cacheFile.length() > 0;
+        boolean downloadAttempted = false;
+        boolean downloadSucceeded = false;
+        Exception downloadError = null;
+
+        if (forceRefresh || !cacheExists) {
+            downloadAttempted = true;
+            if (!NetworkUtils.isNetworkAvailable(appContext)) {
+                Logger.w("ScheduleRepository.ensureScheduleLoaded", "Device is offline, skipping schedule download");
+                downloadSucceeded = false;
+                downloadError = new IllegalStateException("Device is offline");
+            } else {
+                File tempFile = new File(cacheFile.getParentFile(), cacheFile.getName() + ".download_" + System.currentTimeMillis());
+                try {
+                    downloadScheduleFile(tempFile);
+                    if (tempFile.exists() && tempFile.length() > 0) {
+                        if (cacheFile.exists()) {
+                            cacheFile.delete();
+                        }
+                        if (tempFile.renameTo(cacheFile)) {
+                            downloadSucceeded = true;
+                            lastManualSyncTimestampMillis = System.currentTimeMillis();
+                            lastSyncTime = LocalDateTime.now();
+                            saveLastSyncTime(lastSyncTime);
+                        }
+                    }
+                } catch (Exception e) {
+                    downloadError = e;
+                    Logger.w("ScheduleRepository.ensureScheduleLoaded", "Download failed: " + e.getMessage());
+                } finally {
+                    if (tempFile.exists()) {
+                        tempFile.delete();
+                    }
+                }
+            }
         }
 
         if (cacheFile.exists() && cacheFile.length() > 0) {
             parseFile(cacheFile);
             lastConfigSignature = currentConfig;
-            lastSyncTime = LocalDateTime.now();
+            if (lastSyncTime == null) {
+                lastSyncTime = loadLastSyncTime(cacheFile);
+            }
+            if (downloadAttempted && !downloadSucceeded) {
+                isLastLoadFromCacheFallback = true;
+                Logger.i("ScheduleRepository.ensureScheduleLoaded", "Offline fallback: successfully loaded schedule from local cache after download failure");
+            } else {
+                isLastLoadFromCacheFallback = false;
+            }
         } else {
-            Logger.e("ScheduleRepository.ensureScheduleLoaded", "Failed to obtain schedule Excel file at: " + cacheFile.getAbsolutePath());
-            throw new IllegalStateException("Failed to obtain schedule Excel file");
+            Logger.e("ScheduleRepository.ensureScheduleLoaded", "Failed to obtain schedule: offline and no local cache file exists");
+            if (downloadError != null) {
+                throw new NoScheduleCacheException("No cached schedule and download failed: " + downloadError.getMessage(), downloadError);
+            } else {
+                throw new NoScheduleCacheException("Failed to obtain schedule Excel file");
+            }
         }
     }
 
@@ -383,6 +485,10 @@ public class ScheduleRepository {
 
     private void downloadScheduleFile(File destFile) {
         Logger.d("ScheduleRepository.downloadScheduleFile", "Initiating schedule file download to: " + destFile.getAbsolutePath());
+        if (!NetworkUtils.isNetworkAvailable(appContext)) {
+            Logger.w("ScheduleRepository.downloadScheduleFile", "Download aborted: device is offline");
+            throw new IllegalStateException("Device is offline");
+        }
         OkHttpClient client = PUW.globalLogin(appContext);
         if (client == null) {
             Logger.e("ScheduleRepository.downloadScheduleFile", "Failed to login to PUW for downloading schedule");
@@ -429,8 +535,12 @@ public class ScheduleRepository {
     }
 
     private File getLocalScheduleFile() {
+        File dir = new File(appContext.getCacheDir(), "plans");
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
         int year = PreferencesManager.getGlobalYearPref(appContext);
-        return new File(appContext.getCacheDir(), CACHE_FILE_PREFIX + year + ".xlsx");
+        return new File(dir, CACHE_FILE_PREFIX + year + ".xlsx");
     }
 
     private String buildConfigSignature() {
@@ -447,12 +557,45 @@ public class ScheduleRepository {
         return major + "|" + degree.name() + "|" + mode.name() + "|" + year + "|" + spec + "|" + lang;
     }
 
+    private void saveLastSyncTime(LocalDateTime time) {
+        if (time != null) {
+            appContext.getSharedPreferences("schedule_repo_prefs", Context.MODE_PRIVATE)
+                    .edit()
+                    .putString("last_sync_time", time.toString())
+                    .apply();
+        }
+    }
+
+    private LocalDateTime loadLastSyncTime(File cacheFile) {
+        String saved = appContext.getSharedPreferences("schedule_repo_prefs", Context.MODE_PRIVATE)
+                .getString("last_sync_time", null);
+        if (saved != null) {
+            try {
+                return LocalDateTime.parse(saved);
+            } catch (Exception ignored) {}
+        }
+        if (cacheFile != null && cacheFile.exists() && cacheFile.length() > 0) {
+            try {
+                return LocalDateTime.ofInstant(
+                        java.time.Instant.ofEpochMilli(cacheFile.lastModified()),
+                        java.time.ZoneId.systemDefault()
+                );
+            } catch (Exception ignored) {}
+        }
+        return null;
+    }
+
     // clear in-memory and disk cache
     public synchronized void invalidateCache() {
         Logger.d("ScheduleRepository.invalidateCache", "Invalidating memory and disk schedule cache");
         cachedAllLessons = null;
         lastConfigSignature = null;
         lastSyncTime = null;
+        isLastLoadFromCacheFallback = false;
+        appContext.getSharedPreferences("schedule_repo_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .remove("last_sync_time")
+                .apply();
         File cacheFile = getLocalScheduleFile();
         if (cacheFile.exists()) {
             boolean deleted = cacheFile.delete();

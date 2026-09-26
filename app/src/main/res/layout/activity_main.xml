@@ -40,7 +40,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:text="WSPlanner"
+                android:text="@string/main_title"
                 android:textColor="?attr/app_text"
                 android:textSize="17sp"
                 android:textStyle="bold" />

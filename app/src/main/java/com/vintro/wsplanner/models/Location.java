@@ -25,6 +25,12 @@ public class Location implements Serializable {
             this.displayText = "Online, PUW";
             this.roomNumber = null;
             this.mapQueryUrl = null;
+        } else if (lower.matches(".*\\b\\d{1,2}\\.\\d{2}\\b.*") || lower.equalsIgnoreCase("unknown room") || this.rawValue.isEmpty()) {
+            // Guard against accidental date strings (e.g. "18.01") or missing room
+            this.type = LocationType.UCZELNIA;
+            this.displayText = "WSPA";
+            this.roomNumber = null;
+            this.mapQueryUrl = null;
         } else if (isOffsiteLocation(lower)) {
             this.type = LocationType.W_TERENIE;
             this.displayText = this.rawValue;
@@ -33,12 +39,7 @@ public class Location implements Serializable {
         } else if (lower.contains("sala") || lower.contains("s.") || lower.contains("uczelni") || lower.contains("wspa") || hasStandaloneRoomNumber(lower)) {
             this.type = LocationType.UCZELNIA;
             this.roomNumber = extractRoomNumber(this.rawValue);
-            this.displayText = this.roomNumber != null ? "Sala " + this.roomNumber : (!this.rawValue.isEmpty() ? this.rawValue : "WSPA");
-            this.mapQueryUrl = null;
-        } else if (this.rawValue.isEmpty() || this.rawValue.equalsIgnoreCase("Unknown Room")) {
-            this.type = LocationType.UCZELNIA;
-            this.displayText = "WSPA";
-            this.roomNumber = null;
+            this.displayText = this.roomNumber != null ? "Sala " + this.roomNumber : (!this.rawValue.isEmpty() && !this.rawValue.equalsIgnoreCase("sala") ? this.rawValue : "WSPA");
             this.mapQueryUrl = null;
         } else {
             this.type = LocationType.W_TERENIE;
@@ -87,12 +88,15 @@ public class Location implements Serializable {
     // extract classroom number from text
     private String extractRoomNumber(String text) {
         if (text == null || text.trim().isEmpty()) return null;
-        String lower = text.toLowerCase();
-        if (isOffsiteLocation(lower)) return null;
+        String lower = text.toLowerCase().trim();
+        if (lower.equals("wspa") || lower.equals("sala") || isOffsiteLocation(lower)) return null;
 
-        Matcher explicitMatcher = Pattern.compile("(?i)(?:sal(?:a|i|ach)|s\\.?)\\s*([a-zA-Z0-9]+)").matcher(text);
+        Matcher explicitMatcher = Pattern.compile("(?i)(?:\\bsal(?:a|i|ach)|\\bs\\.)\\s*([a-zA-Z0-9]+)").matcher(text);
         if (explicitMatcher.find()) {
-            return explicitMatcher.group(1).toUpperCase();
+            String found = explicitMatcher.group(1).trim();
+            if (!found.equalsIgnoreCase("wspa")) {
+                return found.toUpperCase();
+            }
         }
 
         Matcher numberMatcher = Pattern.compile("(?<![\\d-])\\b(\\d{3}[a-zA-Z]?)\\b(?![\\d-])").matcher(text);

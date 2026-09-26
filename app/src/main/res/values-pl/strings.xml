@@ -120,4 +120,14 @@
     <string name="all_courses_progress_format">%1$d z %2$d</string>
     <string name="all_courses_count_format">%1$d przedmiotów</string>
     <string name="all_courses_opening_strefa">Otwieranie Strefy Studenta…</string>
+
+    <string name="main_title">Plan zajęć</string>
+    <string name="no_internet_title">Brak połączenia z internetem</string>
+    <string name="no_internet_connection">Brak połączenia z internetem</string>
+    <string name="no_internet_schedule_desc">Brak planu w pamięci podręcznej. Połącz się z internetem, aby go pobrać.</string>
+    <string name="no_internet_onboarding_desc">Brak połączenia z internetem. Sprawdź połączenie i spróbuj ponownie.</string>
+    <string name="no_internet_specialty_desc">Nie udało się pobrać specjalności. Możesz wpisać specjalność ręcznie poniżej.</string>
+    <string name="teacher_email_no_internet">Brak połączenia z internetem</string>
+    <string name="schedule_offline_cached_toast">Brak połączenia z internetem. Wyświetlono plan z pamięci podręcznej.</string>
+    <string name="button_retry">Ponów</string>
 </resources>
