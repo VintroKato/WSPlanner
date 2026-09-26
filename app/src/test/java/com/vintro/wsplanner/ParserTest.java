@@ -365,5 +365,68 @@ public class ParserTest {
         assertFalse(loc4.isOffsite());
         assertEquals("Sala 206", loc4.getDisplayText());
         assertEquals("206", loc4.getRoomNumber());
+
+        com.vintro.wsplanner.models.Location locDate = new com.vintro.wsplanner.models.Location("18.01");
+        assertFalse(locDate.isOffsite());
+        assertEquals("WSPA", locDate.getDisplayText());
+        assertNull(locDate.getMapQueryUrl());
+    }
+
+    @Test
+    public void testJavaSubjectAndMultilineTeacher() {
+        BachelorFullTimeParser parser = new BachelorFullTimeParser();
+        String rawBlock = "Sp.: Programowanie w \n" +
+                "języku JAVA - \n" +
+                "laboratorium 30h\n" +
+                "dr Barbara \n" +
+                "Gocłowska, prof. \n" +
+                "WSPA\n" +
+                "daty: 06.10, 13.10, \n" +
+                "20.10, 27.10, 03.11, \n" +
+                "10.11, 17.11, 24.11, \n" +
+                "01.12, 08.12\n" +
+                "sala\n" +
+                "zajęcia w siedzibie \n" +
+                "Uczelni";
+
+        List<Lesson> lessons = parser.parseLessonBlock(rawBlock, null, LocalTime.of(17, 0), LocalTime.of(19, 30), null, null);
+        assertEquals(10, lessons.size());
+        Lesson first = lessons.get(0);
+        assertEquals("Programowanie w języku JAVA", first.getSubjectName());
+        assertEquals("laboratorium", first.getLessonType());
+        assertEquals("dr Barbara Gocłowska", first.getTeacherName());
+        assertEquals("WSPA", first.getLocation().getDisplayText());
+        assertFalse(first.getLocation().hasMapLink());
+    }
+
+    @Test
+    public void testBareSalaAndDateContinuationNotLocation() {
+        BachelorFullTimeParser parser = new BachelorFullTimeParser();
+        String rawBlock = "Programowanie - \n" +
+                "laboratorium 40h\n" +
+                "mgr inż. Pior Wójcicki\n" +
+                "daty: 05.10, 12.10, 19.10, 26.10, 02.11, 09.11, 16.11, 23.11, 30.11, 07.12, 14.12, 21.12, 11.01\n" +
+                "18.01\n" +
+                "w dniu 18.01 zajęcia w godz. 16:05-16:50\n" +
+                "sala\n" +
+                "zajęcia w siedzibie \n" +
+                "Uczelni";
+
+        List<Lesson> lessons = parser.parseLessonBlock(rawBlock, null, LocalTime.of(16, 5), LocalTime.of(18, 35), null, null);
+        // 13 dates in first line + 18.01 = 14 dates
+        assertEquals(14, lessons.size());
+        Lesson first = lessons.get(0);
+        assertEquals("Programowanie", first.getSubjectName());
+        assertEquals("laboratorium", first.getLessonType());
+        assertEquals("mgr inż. Pior Wójcicki", first.getTeacherName());
+        assertEquals("WSPA", first.getLocation().getDisplayText());
+        assertFalse(first.getLocation().hasMapLink());
+
+        // verify 18.01 lesson
+        Lesson jan18 = lessons.stream().filter(l -> l.getDate() != null && l.getDate().getMonthValue() == 1 && l.getDate().getDayOfMonth() == 18).findFirst().orElse(null);
+        assertNotNull(jan18);
+        assertEquals(LocalTime.of(16, 5), jan18.getStartTime());
+        assertEquals(LocalTime.of(16, 50), jan18.getEndTime());
+        assertEquals("WSPA", jan18.getLocation().getDisplayText());
     }
 }

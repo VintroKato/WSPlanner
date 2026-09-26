@@ -53,6 +53,15 @@
                 android:gravity="center"
                 android:text="@string/onboarding_loading_courses"
                 android:textSize="16sp" />
+
+            <Button
+                android:id="@+id/button_retry"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/button_retry"
+                android:visibility="gone" />
         </LinearLayout>
 
         <LinearLayout

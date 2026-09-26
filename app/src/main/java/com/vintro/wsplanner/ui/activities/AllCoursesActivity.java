@@ -131,6 +131,7 @@ public class AllCoursesActivity extends AppCompatActivity {
     }
 
     private void loadCourses() {
+        Logger.d("AllCoursesActivity.loadCourses", "Loading all semester courses from repository");
         progressLoading.setVisibility(View.VISIBLE);
         recyclerAllCourses.setVisibility(View.GONE);
         layoutEmptyState.setVisibility(View.GONE);
@@ -138,6 +139,7 @@ public class AllCoursesActivity extends AppCompatActivity {
         scheduleRepository.getAllCourses(false, new ScheduleRepository.ScheduleCallback<List<SubjectDetails>>() {
             @Override
             public void onSuccess(List<SubjectDetails> result) {
+                Logger.i("AllCoursesActivity.loadCourses", "Loaded " + (result != null ? result.size() : 0) + " semester courses");
                 runOnUiThread(() -> {
                     progressLoading.setVisibility(View.GONE);
                     allCourses.clear();
@@ -150,7 +152,7 @@ public class AllCoursesActivity extends AppCompatActivity {
 
             @Override
             public void onError(Exception e) {
-                Logger.e("AllCoursesActivity.loadCourses", "Error loading all courses: " + e.getMessage());
+                Logger.e("AllCoursesActivity.loadCourses", "Error loading all courses (offline/no cache): " + e.getMessage());
                 runOnUiThread(() -> {
                     progressLoading.setVisibility(View.GONE);
                     filterCourses(editSearch.getText().toString());

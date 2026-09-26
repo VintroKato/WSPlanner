@@ -33,7 +33,7 @@ jobs:
       - name: Build release APK
         run: ./gradlew assembleRelease --stacktrace
 
-      - name: Sign release APK
+      - name: Sign Release APK
         id: sign_app
         uses: r0adkll/sign-android-release@v1
         env:
@@ -45,21 +45,42 @@ jobs:
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Generate checksums
+      - name: Prepare Artifact & Verification Notes
         run: |
           cd app/build/outputs/apk/release
-          sha256sum *signed*.apk > sha256sum.txt
+          mv *signed.apk WSPlanner-${{ github.ref_name }}.apk
+          
+          HASH=$(sha256sum WSPlanner-${{ github.ref_name }}.apk | awk '{print $1}')
+          echo "$HASH  WSPlanner-${{ github.ref_name }}.apk" > sha256sum.txt
+          
+          cat <<EOF > $GITHUB_WORKSPACE/release_notes.md
+          ### 🛡️ Build verification & Integrity
+          This APK was automatically built, signed, and attested by **GitHub Actions** directly from the source code.
+          
+          * **Release Tag:** \`${{ github.ref_name }}\`
+          * **Source Commit:** [\`${{ github.sha }}\](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+          * **SHA-256 Checksum:**
+            \`\`\`text
+            ${HASH}
+            \`\`\`
+          
+          #### Verify via GitHub CLI:
+          \`\`\`bash
+          gh attestation verify WSPlanner-${{ github.ref_name }}.apk --repo ${{ github.repository }}
+          \`\`\`
+          EOF
 
       - name: Generate attestation (SLSA Provenance)
         uses: actions/attest-build-provenance@v1
         with:
-          subject-path: 'app/build/outputs/apk/release/*signed*.apk'
+          subject-path: 'app/build/outputs/apk/release/WSPlanner-*.apk'
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: release_notes.md
           files: |
-            app/build/outputs/apk/release/*signed*.apk
+            app/build/outputs/apk/release/WSPlanner-*.apk
             app/build/outputs/apk/release/sha256sum.txt
           generate_release_notes: true
         env:

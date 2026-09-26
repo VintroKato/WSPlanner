@@ -49,6 +49,7 @@ import com.vintro.wsplanner.services.TeacherEmailService;
 import com.vintro.wsplanner.ui.adapters.TimelineAdapter;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.utils.NetworkUtils;
 
 import java.util.List;
 
@@ -347,7 +348,28 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         // check cache first
         TeacherEmailService.TeacherEmailResult cachedResult = emailService.getCachedEmail(teacherName);
         if (cachedResult != null) {
+            Logger.d("SubjectDetailsActivity.searchTeacherEmail", "Teacher email cache hit for: " + teacherName);
             applyTeacherEmailResult(cachedResult);
+            return;
+        }
+
+        // if not in cache and no network available, show offline text immediately
+        if (!NetworkUtils.isNetworkAvailable(this)) {
+            Logger.w("SubjectDetailsActivity.searchTeacherEmail", "Device is offline and email not cached for teacher: " + teacherName);
+            loadedTeacherEmail = null;
+            if (heroTeacherEmailRow != null) {
+                heroTeacherEmailRow.setVisibility(View.VISIBLE);
+            }
+            if (teacherEmailProgress != null) {
+                teacherEmailProgress.setVisibility(View.GONE);
+            }
+            if (heroTeacherEmail != null) {
+                heroTeacherEmail.setText(R.string.teacher_email_no_internet);
+                heroTeacherEmail.setAlpha(0.6f);
+            }
+            if (buttonCopyTeacherEmail != null) {
+                buttonCopyTeacherEmail.setVisibility(View.GONE);
+            }
             return;
         }
 
@@ -407,6 +429,18 @@ public class SubjectDetailsActivity extends AppCompatActivity {
             }
             if (buttonCopyTeacherEmail != null) {
                 buttonCopyTeacherEmail.setVisibility(View.VISIBLE);
+            }
+        } else if (result != null && result.isNetworkError) {
+            loadedTeacherEmail = null;
+            if (heroTeacherEmailRow != null) {
+                heroTeacherEmailRow.setVisibility(View.VISIBLE);
+            }
+            if (heroTeacherEmail != null) {
+                heroTeacherEmail.setText(R.string.teacher_email_no_internet);
+                heroTeacherEmail.setAlpha(0.6f);
+            }
+            if (buttonCopyTeacherEmail != null) {
+                buttonCopyTeacherEmail.setVisibility(View.GONE);
             }
         } else {
             loadedTeacherEmail = null;

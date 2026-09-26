@@ -202,6 +202,12 @@ public class BachelorFullTimeParser implements ScheduleParser {
         return schedule;
     }
 
+    private boolean isTeacherDegreePrefix(String lower) {
+        return lower.startsWith("mgr") || lower.startsWith("dr ") || lower.startsWith("dr.") ||
+                lower.startsWith("prof") || lower.startsWith("ks.") || lower.startsWith("inż") ||
+                lower.startsWith("inz");
+    }
+
     public List<Lesson> parseLessonBlock(String block, String targetGroup, LocalTime defaultStart, LocalTime defaultEnd, String targetLangGroup, String seminarTeacher) {
         Logger.d("BachelorFullTimeParser.parseLessonBlock", "Parsing raw lesson block:\n" + block);
         List<Lesson> lessons = new ArrayList<>();
@@ -244,27 +250,44 @@ public class BachelorFullTimeParser implements ScheduleParser {
         String globalTeacher = "Unknown Teacher";
         String globalRoom = "Unknown Room";
 
-        // merge first two lines if subject wraps
-        String firstLine = lines.get(0).trim();
-        if (firstLine.endsWith("-") && lines.size() > 1) {
-            firstLine = firstLine + " " + lines.get(1).trim();
-            lines.set(1, ""); // clear the second line so it is not parsed again
+        // 1. Gather all subject header lines (multi-line subjects wrapped across lines)
+        List<String> subjectHeaderLines = new ArrayList<>();
+        int lineIdx = 0;
+        while (lineIdx < lines.size()) {
+            String curLine = lines.get(lineIdx);
+            String curLower = curLine.toLowerCase().trim();
+            if (curLower.startsWith("daty:") || curLower.startsWith("terminy:") ||
+                    curLower.startsWith("sala") || curLower.contains("on-line") || curLower.contains("online") ||
+                    curLower.contains("w siedzibie") || curLower.startsWith("gr.") || curLower.startsWith("+") ||
+                    curLower.contains("godz") || curLower.matches(".*\\b\\d{1,2}:\\d{2}\\b.*") ||
+                    curLower.matches(".*\\b\\d{1,2}\\.\\d{2}\\b.*") ||
+                    isTeacherDegreePrefix(curLower)) {
+                break;
+            }
+            subjectHeaderLines.add(curLine.trim());
+            lineIdx++;
         }
 
-        // extract subject name and lesson type from first line
-        if (firstLine.contains(" - ") || firstLine.contains(" – ")) {
-            String delimiter = firstLine.contains(" - ") ? " - " : " – ";
-            int dashIndex = firstLine.lastIndexOf(delimiter);
-            subjectName = firstLine.substring(0, dashIndex).trim();
-            String lessonTypeRaw = firstLine.substring(dashIndex + delimiter.length()).trim();
+        String fullSubjectHeader = String.join(" ", subjectHeaderLines).replaceAll("\\s+", " ").trim();
+        if (fullSubjectHeader.isEmpty() && !lines.isEmpty()) {
+            fullSubjectHeader = lines.get(0).trim();
+            lineIdx = 1;
+        }
+
+        // extract subject name and lesson type from fullSubjectHeader
+        if (fullSubjectHeader.contains(" - ") || fullSubjectHeader.contains(" – ")) {
+            String delimiter = fullSubjectHeader.contains(" - ") ? " - " : " – ";
+            int dashIndex = fullSubjectHeader.lastIndexOf(delimiter);
+            subjectName = fullSubjectHeader.substring(0, dashIndex).trim();
+            String lessonTypeRaw = fullSubjectHeader.substring(dashIndex + delimiter.length()).trim();
             lessonType = cleanLessonType(lessonTypeRaw);
         } else {
-            subjectName = firstLine;
+            subjectName = fullSubjectHeader;
             lessonType = null;
         }
 
-        // Clean subjectName from any trailing duration (e.g. " - 15h" or " 15h")
-        subjectName = subjectName.replaceAll("(?i)\\s*[-–—]?\\s*\\d{1,2}h\\b", "").trim();
+        // Clean subjectName from Sp: prefix, duration hours, and whitespace
+        subjectName = ParserUtils.cleanSubjectName(subjectName);
         Logger.d("BachelorFullTimeParser.parseLessonBlock", "Extracted Subject: '" + subjectName + "', LessonType: '" + lessonType + "'");
 
         LocalTime globalStart = defaultStart;
@@ -280,7 +303,8 @@ public class BachelorFullTimeParser implements ScheduleParser {
         boolean isSeminarSubject = subjectName.toLowerCase().contains("seminarium") || subjectName.toLowerCase().contains("dyplom");
         boolean seminarFound = false;
 
-        for (String line : lines) {
+        while (lineIdx < lines.size()) {
+            String line = lines.get(lineIdx++);
             String lowerLine = line.toLowerCase().trim();
             if (lowerLine.isEmpty()) continue;
 
@@ -333,9 +357,29 @@ public class BachelorFullTimeParser implements ScheduleParser {
             // dates are parsed only if we are in our group section or global section
             if (!readingMyGroup) continue;
 
-            if (lowerLine.startsWith("daty:")) {
+            if (lowerLine.startsWith("daty:") || lowerLine.startsWith("terminy:")) {
                 Matcher dateMatcher = singleDatePattern.matcher(lowerLine);
                 while (dateMatcher.find()) rawDates.add(dateMatcher.group(1));
+
+                // Continue reading subsequent date lines (e.g. "18.01" or "01.12, 08.12")
+                while (lineIdx < lines.size()) {
+                    String next = lines.get(lineIdx);
+                    String nextLower = next.toLowerCase().trim();
+                    if (nextLower.startsWith("+") || nextLower.contains("w dn") || nextLower.contains("w dniu") ||
+                            nextLower.contains("godz") || nextLower.startsWith("sala") || nextLower.contains("zajęcia") ||
+                            nextLower.contains("online") || nextLower.contains("on-line") || nextLower.startsWith("gr.") ||
+                            isTeacherDegreePrefix(nextLower)) {
+                        break;
+                    }
+                    Matcher m = singleDatePattern.matcher(nextLower);
+                    boolean found = false;
+                    while (m.find()) {
+                        rawDates.add(m.group(1));
+                        found = true;
+                    }
+                    if (!found) break;
+                    lineIdx++;
+                }
                 continue;
             }
 
@@ -423,15 +467,31 @@ public class BachelorFullTimeParser implements ScheduleParser {
             }
             // global teacher and room
             else {
-                if (lowerLine.startsWith("mgr") || lowerLine.startsWith("dr") || lowerLine.startsWith("prof") || lowerLine.startsWith("ks.")) {
-                    globalTeacher = line.trim();
+                if (isTeacherDegreePrefix(lowerLine)) {
+                    List<String> tLines = new ArrayList<>();
+                    tLines.add(line.trim());
+                    while (lineIdx < lines.size()) {
+                        String next = lines.get(lineIdx);
+                        String nextLower = next.toLowerCase().trim();
+                        if (nextLower.startsWith("daty:") || nextLower.startsWith("terminy:") ||
+                                nextLower.startsWith("sala") || nextLower.contains("on-line") || nextLower.contains("online") ||
+                                nextLower.contains("w siedzibie") || nextLower.startsWith("gr.") || nextLower.startsWith("+") ||
+                                nextLower.contains("w dn") || nextLower.contains("w dniu") || isTeacherDegreePrefix(nextLower)) {
+                            break;
+                        }
+                        tLines.add(next.trim());
+                        lineIdx++;
+                    }
+                    globalTeacher = String.join(" ", tLines).replaceAll("\\s+", " ").trim();
+                    globalTeacher = globalTeacher.replaceAll("(?i)\\s*,?\\s*prof\\.?\\s*wspa\\b.*", "").trim();
+                    if (globalTeacher.isEmpty()) globalTeacher = "Unknown Teacher";
                 } else if (lowerLine.startsWith("sala") || lowerLine.contains("on-line") || lowerLine.contains("online")
                         || lowerLine.contains("ul.") || lowerLine.contains("al.") || lowerLine.contains("lublin")
                         || lowerLine.contains("fit") || lowerLine.contains("siłownia") || lowerLine.contains("basen")
-                        || lowerLine.matches(".*\\b\\d{2}-\\d{3}\\b.*")) {
+                        || lowerLine.matches(".*\\b\\d{2}-\\d{3}\\b.*") || lowerLine.contains("w siedzibie")) {
                     String potentialRoom = extractRoomInfo(line);
                     if (potentialRoom != null) {
-                        if (globalRoom.equals("Unknown Room")) {
+                        if (globalRoom.equals("Unknown Room") || globalRoom.equals("WSPA")) {
                             globalRoom = potentialRoom;
                         } else if (globalRoom.equals("online") && potentialRoom.startsWith("sala")) {
                             // If global room was tentatively online, a concrete physical room is the base room
@@ -440,8 +500,10 @@ public class BachelorFullTimeParser implements ScheduleParser {
                             globalRoom += ", " + potentialRoom;
                         }
                     }
-                } else if (!lowerLine.startsWith("+") && !lowerLine.contains("zajęcia") && globalRoom.equals("Unknown Room")) {
-                    // capture custom location from line
+                } else if (!lowerLine.startsWith("+") && !lowerLine.contains("zajęcia") &&
+                        !singleDatePattern.matcher(lowerLine).find() && !specificTimePattern.matcher(lowerLine).find() &&
+                        globalRoom.equals("Unknown Room")) {
+                    // capture custom location from line only if it's not a date/time/subject
                     if (!line.contains(subjectName)) {
                         globalRoom = line.trim();
                     }
@@ -502,14 +564,19 @@ public class BachelorFullTimeParser implements ScheduleParser {
                     firstLineLower.startsWith("dr") ||
                     firstLineLower.startsWith("prof") ||
                     firstLineLower.startsWith("ks.") ||
+                    firstLineLower.startsWith("inż") ||
+                    firstLineLower.startsWith("inz") ||
                     firstLineLower.startsWith("sala") ||
                     firstLineLower.startsWith("daty:") ||
+                    firstLineLower.startsWith("terminy:") ||
                     firstLineLower.startsWith("w dn") ||
+                    firstLineLower.startsWith("w dniu") ||
                     firstLineLower.startsWith("zj.") ||
                     firstLineLower.startsWith("od ") ||
                     firstLineLower.startsWith("na ") ||
                     firstLineLower.startsWith("gr.") ||
                     firstLineLower.startsWith("+") ||
+                    firstLineLower.matches(".*\\b\\d{1,2}\\.\\d{2}\\b.*") ||
                     firstLineLower.contains("godz") ||
                     firstLineLower.contains("ul.") ||
                     firstLineLower.contains("lublin") ||
@@ -531,6 +598,10 @@ public class BachelorFullTimeParser implements ScheduleParser {
     private String extractRoomInfo(String line) {
         String lower = line.toLowerCase().trim();
         if (lower.contains("on-line") || lower.contains("online")) return "online";
+
+        if (lower.equals("sala") || lower.equals("sala:") || lower.contains("w siedzibie uczelni") || lower.contains("w siedzibie")) {
+            return "WSPA";
+        }
 
         // format addresses and offsite venues by removing unrelated text
         if (lower.contains("ul.") || lower.contains("al.") || lower.contains("instytut")

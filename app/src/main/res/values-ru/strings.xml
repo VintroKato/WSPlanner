@@ -120,4 +120,14 @@
     <string name="all_courses_progress_format">%1$d из %2$d</string>
     <string name="all_courses_count_format">%1$d курсов</string>
     <string name="all_courses_opening_strefa">Открытие Студенческой зоны…</string>
+
+    <string name="main_title">Расписание</string>
+    <string name="no_internet_title">Нет подключения к интернету</string>
+    <string name="no_internet_connection">Нет подключения к интернету</string>
+    <string name="no_internet_schedule_desc">Файл расписания отсутствует в кэше. Подключитесь к интернету для загрузки.</string>
+    <string name="no_internet_onboarding_desc">Нет подключения к интернету. Проверьте сеть и повторите попытку.</string>
+    <string name="no_internet_specialty_desc">Не удалось загрузить специализации. Вы можете указать специальность вручную ниже.</string>
+    <string name="teacher_email_no_internet">Нет подключения к интернету</string>
+    <string name="schedule_offline_cached_toast">Нет подключения к интернету. Показано расписание из кэша.</string>
+    <string name="button_retry">Повторить</string>
 </resources>

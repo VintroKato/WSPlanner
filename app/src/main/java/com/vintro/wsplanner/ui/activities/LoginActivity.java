@@ -31,6 +31,7 @@ import com.vintro.wsplanner.enums.InputState;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.utils.NetworkUtils;
 
 public class LoginActivity extends AppCompatActivity {
     ViewGroup layout;
@@ -133,6 +134,12 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
+        if (!NetworkUtils.isNetworkAvailable(this)) {
+            Logger.w("LoginActivity.checkData", "Login check aborted: device is offline");
+            setCheckingNetworkError();
+            return;
+        }
+
         Logger.d("LoginActivity.checkData", "Verifying credentials for user: " + Logger.maskSensitiveData(login));
 
         resetFields();
@@ -150,8 +157,7 @@ public class LoginActivity extends AppCompatActivity {
                 Logger.d("LoginActivity.checkData", "Checking data in UI thread, result: " + result);
 
                 if (result == -1) {
-                    Toast.makeText(this, "Network error occurred", Toast.LENGTH_SHORT).show();
-                    setCheckingError();
+                    setCheckingNetworkError();
                 } else if (result == 0) {
                     setCheckingError();
                 } else if (result == 1) {
@@ -159,6 +165,16 @@ public class LoginActivity extends AppCompatActivity {
                 }
             });
         }).start();
+    }
+
+    private void setCheckingNetworkError() {
+        Logger.w("LoginActivity.setCheckingNetworkError", "Network error occurred during credentials check");
+        progressBar.setVisibility(View.GONE);
+        errorLabel.setVisibility(View.VISIBLE);
+        errorLabel.setText(R.string.no_internet_connection);
+        errorLabel.setTextColor(UIHelper.getThemeColor(this, R.attr.input_border_error));
+        setLoginState(InputState.ERROR);
+        setPasswordState(InputState.ERROR);
     }
 
     private void setCheckingOk() {

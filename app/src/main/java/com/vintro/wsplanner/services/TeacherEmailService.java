@@ -6,6 +6,7 @@ import android.os.Looper;
 import android.util.Patterns;
 
 import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.utils.NetworkUtils;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -63,25 +64,35 @@ public class TeacherEmailService {
         public final boolean hasEmail;
         public final String profileUrl;
         public final String matchedName;
+        public final boolean isNetworkError;
 
         public TeacherEmailResult(String email, boolean isFoundOnWebsite, String profileUrl, String matchedName) {
+            this(email, isFoundOnWebsite, profileUrl, matchedName, false);
+        }
+
+        public TeacherEmailResult(String email, boolean isFoundOnWebsite, String profileUrl, String matchedName, boolean isNetworkError) {
             this.email = email;
             this.isFoundOnWebsite = isFoundOnWebsite;
             this.hasEmail = (email != null && !email.trim().isEmpty());
             this.profileUrl = profileUrl;
             this.matchedName = matchedName;
+            this.isNetworkError = isNetworkError;
+        }
+
+        public static TeacherEmailResult networkError() {
+            return new TeacherEmailResult(null, false, null, null, true);
         }
 
         public static TeacherEmailResult notFoundOnWebsite() {
-            return new TeacherEmailResult(null, false, null, null);
+            return new TeacherEmailResult(null, false, null, null, false);
         }
 
         public static TeacherEmailResult noEmail(String profileUrl, String matchedName) {
-            return new TeacherEmailResult(null, true, profileUrl, matchedName);
+            return new TeacherEmailResult(null, true, profileUrl, matchedName, false);
         }
 
         public static TeacherEmailResult found(String email, String profileUrl, String matchedName) {
-            return new TeacherEmailResult(email, true, profileUrl, matchedName);
+            return new TeacherEmailResult(email, true, profileUrl, matchedName, false);
         }
     }
 
@@ -186,6 +197,13 @@ public class TeacherEmailService {
             return;
         }
 
+        // check network connection
+        if (!NetworkUtils.isNetworkAvailable(appContext)) {
+            Logger.w("TeacherEmailService.getTeacherEmail", "No network available for fetching teacher email [" + teacherQuery + "]");
+            deliverResult(callback, TeacherEmailResult.networkError());
+            return;
+        }
+
         Logger.d("TeacherEmailService.getTeacherEmail", "Cache MISS for [" + teacherQuery + "], starting background search");
 
         // fetch in background
@@ -195,8 +213,11 @@ public class TeacherEmailService {
                 List<TeacherDirectoryEntry> directory = getOrFetchDirectory();
                 if (directory == null || directory.isEmpty()) {
                     Logger.e("TeacherEmailService.getTeacherEmail", "Teacher directory is empty or failed to load");
-                    TeacherEmailResult fallback = TeacherEmailResult.notFoundOnWebsite();
-                    saveResultToCache(normalizedKey, fallback);
+                    boolean isNetworkIssue = !NetworkUtils.isNetworkAvailable(appContext);
+                    TeacherEmailResult fallback = isNetworkIssue ? TeacherEmailResult.networkError() : TeacherEmailResult.notFoundOnWebsite();
+                    if (!isNetworkIssue) {
+                        saveResultToCache(normalizedKey, fallback);
+                    }
                     deliverResult(callback, fallback);
                     return;
                 }
@@ -229,7 +250,14 @@ public class TeacherEmailService {
 
             } catch (Exception e) {
                 Logger.e("TeacherEmailService.getTeacherEmail", "Error fetching teacher email for: " + teacherQuery + ", " + e.getMessage());
-                TeacherEmailResult errorResult = TeacherEmailResult.notFoundOnWebsite();
+                boolean isNetworkIssue = !NetworkUtils.isNetworkAvailable(appContext) ||
+                        (e instanceof java.io.IOException) ||
+                        (e instanceof java.net.UnknownHostException) ||
+                        (e instanceof java.net.SocketTimeoutException);
+                TeacherEmailResult errorResult = isNetworkIssue ? TeacherEmailResult.networkError() : TeacherEmailResult.notFoundOnWebsite();
+                if (!isNetworkIssue) {
+                    saveResultToCache(normalizedKey, errorResult);
+                }
                 deliverResult(callback, errorResult);
             }
         });
@@ -514,6 +542,7 @@ public class TeacherEmailService {
     }
 
     private void saveResultToCache(String normalizedKey, TeacherEmailResult result) {
+        if (result == null || result.isNetworkError) return;
         memoryCache.put(normalizedKey, result);
 
         executor.execute(() -> {

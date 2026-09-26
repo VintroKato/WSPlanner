@@ -120,4 +120,14 @@
     <string name="all_courses_progress_format">%1$d з %2$d</string>
     <string name="all_courses_count_format">%1$d курсів</string>
     <string name="all_courses_opening_strefa">Відкриття Студентської зони…</string>
+
+    <string name="main_title">Розклад</string>
+    <string name="no_internet_title">Немає підключення до інтернету</string>
+    <string name="no_internet_connection">Немає підключення до інтернету</string>
+    <string name="no_internet_schedule_desc">Розклад відсутній у кеші. Підключіться до інтернету для завантаження.</string>
+    <string name="no_internet_onboarding_desc">Немає підключення до інтернету. Перевірте мережу та повторіть спробу.</string>
+    <string name="no_internet_specialty_desc">Не вдалося завантажити спеціалізації. Ви можете вказати спеціалізацію вручну нижче.</string>
+    <string name="teacher_email_no_internet">Немає підключення до інтернету</string>
+    <string name="schedule_offline_cached_toast">Немає підключення до інтернету. Показано розклад із кешу.</string>
+    <string name="button_retry">Повторити</string>
 </resources>
