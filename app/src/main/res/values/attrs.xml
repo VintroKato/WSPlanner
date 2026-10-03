@@ -19,11 +19,6 @@
         <attr name="input_border_ok" format="color" />
         <attr name="input_border_error" format="color" />
 
-        <attr name="widget_icon_blue" format="color" />
-        <attr name="widget_ripple" format="color" />
-        <attr name="widget_button_bg" format="color" />
-        <attr name="widget_bg" format="color" />
-
         <attr name="card_checked_bg" format="color" />
         <attr name="card_bg" format="color" />
         <attr name="card_border" format="color" />

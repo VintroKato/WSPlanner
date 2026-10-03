@@ -131,6 +131,14 @@ public class AllCoursesActivity extends AppCompatActivity {
     }
 
     private void loadCourses() {
+        if (!scheduleRepository.isConfigurationComplete()) {
+            Logger.d("AllCoursesActivity.loadCourses", "Student configuration incomplete, showing empty courses");
+            progressLoading.setVisibility(View.GONE);
+            allCourses.clear();
+            filterCourses("");
+            return;
+        }
+
         Logger.d("AllCoursesActivity.loadCourses", "Loading all semester courses from repository");
         progressLoading.setVisibility(View.VISIBLE);
         recyclerAllCourses.setVisibility(View.GONE);

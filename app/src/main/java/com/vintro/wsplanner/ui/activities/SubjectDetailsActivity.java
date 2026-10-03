@@ -116,8 +116,15 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         });
 
         subjectName = getIntent().getStringExtra(EXTRA_SUBJECT_NAME);
+        if (subjectName == null || subjectName.isEmpty()) {
+            subjectName = getIntent().getStringExtra("subject_name");
+        }
         if (subjectName == null) subjectName = "";
+
         rawLessonType = getIntent().getStringExtra(EXTRA_LESSON_TYPE);
+        if (rawLessonType == null || rawLessonType.isEmpty()) {
+            rawLessonType = getIntent().getStringExtra("lesson_type");
+        }
         if (rawLessonType == null) rawLessonType = "";
 
         notePrefKey = "note_" + subjectName.trim().toLowerCase() + "_" + rawLessonType.trim().toLowerCase();
@@ -206,6 +213,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         buttonSaveNotes.setOnClickListener(v -> saveNotes());
     }
 
+    // persist subject personal notes to shared preferences
     private void saveNotes() {
         String currentText = editSubjectNotes.getText().toString();
         SharedPreferences prefs = getSharedPreferences(PREFS_NOTES_NAME, MODE_PRIVATE);
@@ -215,6 +223,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         buttonSaveNotes.setEnabled(false);
         buttonSaveNotes.setAlpha(0.4f);
         layoutSavedStatus.setVisibility(View.VISIBLE);
+        Logger.i("SubjectDetailsActivity.saveNotes", "Saved notes for subject: '" + subjectName + "' (length: " + currentText.length() + ")");
 
         // hide keyboard
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -223,11 +232,18 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         }
     }
 
+    // load subject details from schedule repository
     private void loadSubjectDetails() {
+        if (!scheduleRepository.isConfigurationComplete()) {
+            Logger.d("SubjectDetailsActivity.loadSubjectDetails", "Student configuration incomplete, skipping details load");
+            return;
+        }
+        Logger.d("SubjectDetailsActivity.loadSubjectDetails", "Loading details for subject: '" + subjectName + "'");
         scheduleRepository.getSubjectDetails(subjectName, rawLessonType, false, new ScheduleRepository.ScheduleCallback<SubjectDetails>() {
             @Override
             public void onSuccess(SubjectDetails result) {
                 currentDetails = result;
+                Logger.i("SubjectDetailsActivity.loadSubjectDetails", "Successfully loaded details for: '" + subjectName + "' (" + (result != null ? result.getTotalCount() : 0) + " lessons)");
                 runOnUiThread(() -> renderSubjectDetails(result));
             }
 

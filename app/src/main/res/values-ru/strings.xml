@@ -7,15 +7,13 @@
     <string name="settings_theme_option_light">Светлая</string>
     <string name="settings_language_label">Язык</string>
     <string name="settings_button_done">Готово</string>
-    <string name="configure_title">Настройки виджета</string>
+
+
     <string name="configure_email_label">Почта</string>
     <string name="configure_password_label">Пароль</string>
-    <string name="configure_course_label">Курс</string>
-    <string name="configure_button_confirm">Подтвердить</string>
     <string name="configure_status_checking">Проверка данных</string>
     <string name="configure_status_ok">Данные верны</string>
     <string name="configure_status_error">Неверный логин или пароль</string>
-    <string name="widget_name">Расписание</string>
 
     <string name="onboarding_login_title">Вход в PUW</string>
     <string name="onboarding_button_next">Далее</string>
@@ -61,7 +59,7 @@
     <string name="location_w_terenie">Выезд</string>
 
     <string name="schedule_badge_now">СЕЙЧАС</string>
-    <string name="schedule_badge_next">СЛЕДУЮЩИЙ</string>
+    <string name="schedule_badge_next">ДАЛЕЕ</string>
     <string name="schedule_break_gap">Окно</string>
     <string name="schedule_time_left">Ещё %1$s</string>
     <string name="schedule_time_until">Через %1$s</string>
@@ -130,4 +128,39 @@
     <string name="teacher_email_no_internet">Нет подключения к интернету</string>
     <string name="schedule_offline_cached_toast">Нет подключения к интернету. Показано расписание из кэша.</string>
     <string name="button_retry">Повторить</string>
+
+    <!-- Widget Strings -->
+    <string name="widget_current_lesson_name">Текущая / Следующая пара</string>
+    <string name="widget_daily_schedule_name">Расписание на сегодня</string>
+    <string name="widget_settings_title">Виджеты на главном экране</string>
+    <string name="widget_settings_desc">Внешний вид, клики и быстрые кнопки</string>
+    <string name="widget_action_click_title">Действие при клике на виджет</string>
+    <string name="widget_action_open_details">Открыть подробности предмета</string>
+    <string name="widget_action_toggle_lesson">Переключать пару (Сейчас / След.)</string>
+    <string name="widget_action_open_app">Открыть расписание в приложении</string>
+    <string name="widget_action_open_excel">Открыть Excel-файл расписания</string>
+    <string name="widget_action_refresh">Обновить расписание</string>
+    <string name="widget_action_break_title">Если сейчас перерыв или пары кончились</string>
+    <string name="widget_show_excel_btn">Кнопка открытия Excel</string>
+    <string name="widget_show_refresh_btn">Кнопка обновления</string>
+    <string name="widget_show_app_btn">Кнопка перехода в приложение</string>
+    <string name="widget_btn_visibility_title">Кнопки быстрых действий</string>
+    <string name="widget_theme_title">Фон виджета</string>
+    <string name="widget_theme_system">Системный</string>
+    <string name="widget_theme_dark">Тёмный</string>
+    <string name="widget_theme_light">Светлый</string>
+    <string name="widget_preview_title">Живой предпросмотр</string>
+    <string name="widget_save_settings">Сохранить настройки</string>
+    <string name="widget_no_classes_now">Сейчас пары нет</string>
+    <string name="widget_no_classes_today">Сегодня пар нет ☕</string>
+    <string name="widget_classes_done">Все пары завершены! 🎉</string>
+    <string name="widget_tomorrow_prefix">Завтра: %1$s</string>
+    <string name="widget_open_maps_tooltip">Карты</string>
+    <string name="widget_break_until">Перерыв до %1$s</string>
+    <string name="widget_syncing">Обновление…</string>
+    <string name="widget_setup_required_title">Требуется настройка</string>
+    <string name="widget_setup_required_desc">Нажмите, чтобы войти в аккаунт</string>
+    <string name="widget_tab_small">Маленький (2×1)</string>
+    <string name="widget_tab_daily">Большой (3×2)</string>
+    <string name="widget_offline_badge">Офлайн</string>
 </resources>

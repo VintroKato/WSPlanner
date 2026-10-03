@@ -1,6 +1,7 @@
 package com.vintro.wsplanner.ui.activities;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.GridLayout;
@@ -78,6 +79,15 @@ public class SettingsActivity extends AppCompatActivity {
         confirmButton.setOnClickListener(v -> {
             finish();
         });
+
+        MaterialCardView cardWidgetSettings = findViewById(R.id.card_widget_settings);
+        if (cardWidgetSettings != null) {
+            cardWidgetSettings.setOnClickListener(v -> {
+                Logger.d("SettingsActivity.cardWidgetSettings", "Navigating to WidgetConfigureActivity");
+                Intent widgetConfigIntent = new Intent(this, WidgetConfigureActivity.class);
+                startActivity(widgetConfigIntent);
+            });
+        }
 
         AppTheme theme = PreferencesManager.getThemePref(this);
         Language language = PreferencesManager.getLanguagePref(this);

@@ -4,6 +4,7 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:name=".WSPlannerApp"
@@ -53,33 +54,68 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <service
-            android:name=".services.GetPlanService"
-            android:enabled="true"
-            android:exported="false"
-            android:permission="android.permission.BIND_JOB_SERVICE" />
-
+        <!-- Current / Next Lesson Widget (2x1 -> 2x2) -->
         <receiver
-            android:name=".ui.widgets.GetPlanWidget"
+            android:name=".ui.widgets.CurrentLessonWidget"
             android:exported="true"
-            android:label="@string/widget_name">
+            android:label="@string/widget_current_lesson_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.vintro.wsplanner.ACTION_CLICK" />
+                <action android:name="com.vintro.wsplanner.ACTION_WIDGET_TOGGLE_LESSON" />
+                <action android:name="com.vintro.wsplanner.ACTION_WIDGET_CARD_CLICK" />
+                <action android:name="com.vintro.wsplanner.ACTION_WIDGET_OPEN_EXCEL" />
+                <action android:name="com.vintro.wsplanner.ACTION_WIDGET_REFRESH" />
+                <action android:name="com.vintro.wsplanner.ACTION_WIDGET_OPEN_MAPS" />
             </intent-filter>
 
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/get_plan_widget_info" />
+                android:resource="@xml/widget_current_lesson_info" />
         </receiver>
 
+        <!-- Daily Schedule Widget (4x2 -> 4x4) -->
+        <receiver
+            android:name=".ui.widgets.DailyScheduleWidget"
+            android:exported="true"
+            android:label="@string/widget_daily_schedule_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.vintro.wsplanner.ACTION_DAILY_REFRESH" />
+                <action android:name="com.vintro.wsplanner.ACTION_DAILY_OPEN_EXCEL" />
+                <action android:name="com.vintro.wsplanner.ACTION_DAILY_ITEM_CLICK" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_daily_schedule_info" />
+        </receiver>
+
+        <!-- Daily Schedule RemoteViewsService for ListView -->
+        <service
+            android:name=".ui.widgets.DailyScheduleRemoteViewsService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
+        <!-- Precise Widget Update Receiver for Alarm & User Present -->
+        <receiver
+            android:name=".ui.widgets.WidgetUpdateManager"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.vintro.wsplanner.ACTION_SCHEDULE_ALARM_TICK" />
+                <action android:name="com.vintro.wsplanner.ACTION_REFRESH_WIDGETS" />
+                <action android:name="android.intent.action.USER_PRESENT" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Widget Configuration Activity -->
         <activity
-            android:name=".ui.activities.GetPlanWidgetConfigureActivity"
+            android:name=".ui.activities.WidgetConfigureActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
+
         <activity
             android:name=".ui.activities.MainActivity"
             android:exported="true">

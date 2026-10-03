@@ -289,6 +289,10 @@ public class PreferencesManager {
                 .apply();
     }
 
+    public static boolean isOnboardingCompleted(Context context) {
+        return ONBOARDING_STAGE_COMPLETED.equals(getOnboardingStage(context));
+    }
+
     // course specialty configuration flag
     public static boolean isSpecialtyConfigured(Context context, int widgetId) {
         return getPreferences(context).getBoolean(key_specialty_configured + widgetId, false);
@@ -348,5 +352,98 @@ public class PreferencesManager {
         prefs.edit()
                 .putString(key_language, language.code)
                 .apply();
+    }
+
+    // Widget Preferences
+    public static final String WIDGET_THEME_SYSTEM = "SYSTEM";
+    public static final String WIDGET_THEME_DARK = "DARK";
+    public static final String WIDGET_THEME_LIGHT = "LIGHT";
+    public static final String WIDGET_THEME_TRANSPARENT = "TRANSPARENT";
+
+    public static final String WIDGET_CLICK_OPEN_DETAILS = "OPEN_DETAILS";
+    public static final String WIDGET_CLICK_TOGGLE = "TOGGLE";
+    public static final String WIDGET_CLICK_OPEN_APP = "OPEN_APP";
+    public static final String WIDGET_CLICK_OPEN_EXCEL = "OPEN_EXCEL";
+    public static final String WIDGET_CLICK_REFRESH = "REFRESH";
+
+    public static final String WIDGET_BREAK_OPEN_APP = "OPEN_APP";
+    public static final String WIDGET_BREAK_OPEN_EXCEL = "OPEN_EXCEL";
+
+    private static final String KEY_WIDGET_THEME = "widget_theme_pref";
+    private static final String KEY_WIDGET_CLICK_ACTION = "widget_click_action_pref";
+    private static final String KEY_WIDGET_BREAK_ACTION = "widget_break_action_pref";
+    private static final String KEY_WIDGET_SHOW_EXCEL = "widget_show_excel_pref";
+    private static final String KEY_WIDGET_SHOW_REFRESH = "widget_show_refresh_pref";
+    private static final String KEY_WIDGET_SHOW_APP = "widget_show_app_pref";
+    private static final String KEY_WIDGET_FORCED_NEXT = "widget_forced_next_";
+
+    // get widget visual color theme
+    public static String getWidgetTheme(Context context) {
+        return getPreferences(context).getString(KEY_WIDGET_THEME, WIDGET_THEME_SYSTEM);
+    }
+
+    // save widget visual color theme
+    public static void setWidgetTheme(Context context, String theme) {
+        getPreferences(context).edit().putString(KEY_WIDGET_THEME, theme).apply();
+    }
+
+    // get click action behavior for widget lesson card
+    public static String getWidgetClickAction(Context context) {
+        return getPreferences(context).getString(KEY_WIDGET_CLICK_ACTION, WIDGET_CLICK_TOGGLE);
+    }
+
+    // save click action behavior for widget lesson card
+    public static void setWidgetClickAction(Context context, String action) {
+        getPreferences(context).edit().putString(KEY_WIDGET_CLICK_ACTION, action).apply();
+    }
+
+    // get click action when tapping widget during breaks or empty state
+    public static String getWidgetBreakAction(Context context) {
+        return getPreferences(context).getString(KEY_WIDGET_BREAK_ACTION, WIDGET_BREAK_OPEN_APP);
+    }
+
+    // save click action when tapping widget during breaks or empty state
+    public static void setWidgetBreakAction(Context context, String action) {
+        getPreferences(context).edit().putString(KEY_WIDGET_BREAK_ACTION, action).apply();
+    }
+
+    // check if excel button is visible on daily widget header
+    public static boolean isWidgetShowExcel(Context context) {
+        return getPreferences(context).getBoolean(KEY_WIDGET_SHOW_EXCEL, true);
+    }
+
+    // set visibility of excel button on daily widget header
+    public static void setWidgetShowExcel(Context context, boolean show) {
+        getPreferences(context).edit().putBoolean(KEY_WIDGET_SHOW_EXCEL, show).apply();
+    }
+
+    // check if refresh button is visible on daily widget header
+    public static boolean isWidgetShowRefresh(Context context) {
+        return getPreferences(context).getBoolean(KEY_WIDGET_SHOW_REFRESH, true);
+    }
+
+    // set visibility of refresh button on daily widget header
+    public static void setWidgetShowRefresh(Context context, boolean show) {
+        getPreferences(context).edit().putBoolean(KEY_WIDGET_SHOW_REFRESH, show).apply();
+    }
+
+    // check if open app button is visible on daily widget header
+    public static boolean isWidgetShowApp(Context context) {
+        return getPreferences(context).getBoolean(KEY_WIDGET_SHOW_APP, true);
+    }
+
+    // set visibility of open app button on daily widget header
+    public static void setWidgetShowApp(Context context, boolean show) {
+        getPreferences(context).edit().putBoolean(KEY_WIDGET_SHOW_APP, show).apply();
+    }
+
+    // check whether specific widget is toggled to show next lesson instead of current
+    public static boolean isWidgetShowingForcedNext(Context context, int widgetId) {
+        return getPreferences(context).getBoolean(KEY_WIDGET_FORCED_NEXT + widgetId, false);
+    }
+
+    // toggle whether specific widget is forced to show next lesson
+    public static void setWidgetShowingForcedNext(Context context, int widgetId, boolean next) {
+        getPreferences(context).edit().putBoolean(KEY_WIDGET_FORCED_NEXT + widgetId, next).apply();
     }
 }

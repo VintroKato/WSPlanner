@@ -37,8 +37,10 @@ import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.models.DaySchedule;
 import com.vintro.wsplanner.ui.adapters.ScheduleAdapter;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
+import com.vintro.wsplanner.ui.widgets.WidgetUpdateManager;
 import com.vintro.wsplanner.utils.Logger;
 import com.vintro.wsplanner.utils.NetworkUtils;
+import com.vintro.wsplanner.utils.ScheduleFileOpener;
 
 import java.io.File;
 import java.time.LocalDate;
@@ -77,6 +79,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Logger.d("MainActivity.onCreate", "MainActivity created");
+
+        scheduleRepository = ScheduleRepository.getInstance(this);
 
         // check keystore availability
         if (!PreferencesManager.checkKeystoreHealth(this)) {
@@ -127,6 +131,13 @@ public class MainActivity extends AppCompatActivity {
         if (PreferencesManager.ONBOARDING_STAGE_ADDITIONAL.equals(stage)) {
             Logger.d("MainActivity.onCreate", "Redirecting to SetupAdditionalActivity");
             startActivity(new Intent(this, SetupAdditionalActivity.class));
+            finish();
+            return;
+        }
+
+        if (!PreferencesManager.isOnboardingCompleted(this) || !scheduleRepository.isConfigurationComplete()) {
+            Logger.d("MainActivity.onCreate", "Onboarding incomplete, redirecting to LoginActivity");
+            startActivity(new Intent(this, LoginActivity.class));
             finish();
             return;
         }
@@ -254,6 +265,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadSchedule(boolean forceRefresh) {
+        if (scheduleRepository == null || !scheduleRepository.isConfigurationComplete()) {
+            Logger.d("MainActivity.loadSchedule", "Student configuration incomplete, skipping schedule load");
+            return;
+        }
         Logger.d("MainActivity.loadSchedule", "Loading schedule for date: " + selectedDate + " (forceRefresh=" + forceRefresh + ")");
         swipeRefreshLayout.setRefreshing(true);
         updateDateUI();
@@ -303,46 +318,11 @@ public class MainActivity extends AppCompatActivity {
         loadSchedule(true);
     }
 
+    // open excel schedule file with external viewer
     private void openScheduleFile() {
-        Logger.d("MainActivity.openScheduleFile", "User clicked open schedule file");
+        Logger.d("MainActivity.openScheduleFile", "User requested to open schedule Excel file");
         Toast.makeText(this, getString(R.string.schedule_opening_file), Toast.LENGTH_SHORT).show();
-
-        scheduleRepository.getScheduleFileForOpen(new ScheduleRepository.FileReadyCallback() {
-            @Override
-            public void onFileReady(File file) {
-                Logger.i("MainActivity.openScheduleFile", "Schedule file ready: " + file.getAbsolutePath());
-                runOnUiThread(() -> {
-                    try {
-                        Uri uri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".provider", file);
-                        Intent intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setDataAndType(uri, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        startActivity(intent);
-                    } catch (ActivityNotFoundException e) {
-                        Logger.w("MainActivity.openScheduleFile", "Direct open failed, falling back to ACTION_VIEW chooser: " + e.getMessage());
-                        try {
-                            Uri uri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".provider", file);
-                            Intent intent = new Intent(Intent.ACTION_VIEW);
-                            intent.setDataAndType(uri, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-                            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                            startActivity(Intent.createChooser(intent, getString(R.string.schedule_opening_file)));
-                        } catch (Exception ex) {
-                            Logger.e("MainActivity.openScheduleFile", "Chooser fallback also failed: " + ex.getMessage());
-                            Toast.makeText(MainActivity.this, getString(R.string.schedule_open_file_error), Toast.LENGTH_SHORT).show();
-                        }
-                    } catch (Exception e) {
-                        Logger.e("MainActivity.openScheduleFile", "Error opening schedule file: " + e.getMessage());
-                        Toast.makeText(MainActivity.this, getString(R.string.schedule_open_file_error), Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-
-            @Override
-            public void onError(Exception e) {
-                Logger.e("MainActivity.openScheduleFile", "Failed to get schedule file: " + e.getMessage());
-                runOnUiThread(() -> Toast.makeText(MainActivity.this, getString(R.string.schedule_open_file_error) + ": " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            }
-        });
+        ScheduleFileOpener.openExcelSchedule(this);
     }
 
     private void openCalendarPicker() {
@@ -439,9 +419,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (isFinishing()) return;
         updateDateUI();
         updateLastSyncUI();
         startMinuteTicker();
+        if (scheduleRepository != null && scheduleRepository.isConfigurationComplete()) {
+            WidgetUpdateManager.updateAllWidgets(this);
+        }
     }
 
     @Override

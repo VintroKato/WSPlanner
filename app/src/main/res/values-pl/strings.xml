@@ -7,15 +7,13 @@
     <string name="settings_theme_option_light">Jasny</string>
     <string name="settings_language_label">Język</string>
     <string name="settings_button_done">Zastosuj</string>
-    <string name="configure_title">Ustawienia widgetu</string>
+
+
     <string name="configure_email_label">Email</string>
     <string name="configure_password_label">Hasło</string>
-    <string name="configure_course_label">Rok studiów</string>
-    <string name="configure_button_confirm">Zastosuj</string>
     <string name="configure_status_checking">Sprawdzenie danych</string>
     <string name="configure_status_ok">Dane poprawne</string>
     <string name="configure_status_error">Niepoprawny email lub hasło</string>
-    <string name="widget_name">Plan</string>
 
     <string name="onboarding_login_title">Logowanie do PUW</string>
     <string name="onboarding_button_next">Dalej</string>
@@ -61,7 +59,7 @@
     <string name="location_w_terenie">W terenie</string>
 
     <string name="schedule_badge_now">TERAZ</string>
-    <string name="schedule_badge_next">NASTĘPNY</string>
+    <string name="schedule_badge_next">DALEJ</string>
     <string name="schedule_break_gap">Okienko</string>
     <string name="schedule_time_left">Jeszcze %1$s</string>
     <string name="schedule_time_until">Za %1$s</string>
@@ -130,4 +128,39 @@
     <string name="teacher_email_no_internet">Brak połączenia z internetem</string>
     <string name="schedule_offline_cached_toast">Brak połączenia z internetem. Wyświetlono plan z pamięci podręcznej.</string>
     <string name="button_retry">Ponów</string>
+
+    <!-- Widget Strings -->
+    <string name="widget_current_lesson_name">Bieżące / Następne zajęcia</string>
+    <string name="widget_daily_schedule_name">Plan na dziś</string>
+    <string name="widget_settings_title">Widżety ekranu głównego</string>
+    <string name="widget_settings_desc">Wygląd, kliknięcia i szybkie akcje</string>
+    <string name="widget_action_click_title">Działanie po kliknięciu w widżet</string>
+    <string name="widget_action_open_details">Otwórz szczegóły przedmiotu</string>
+    <string name="widget_action_toggle_lesson">Przełączanie zajęć (Teraz / Nast.)</string>
+    <string name="widget_action_open_app">Otwórz plan w aplikacji</string>
+    <string name="widget_action_open_excel">Otwórz plik Excel planu</string>
+    <string name="widget_action_refresh">Odśwież plan zajęć</string>
+    <string name="widget_action_break_title">Gdy trwa przerwa lub zajęcia zakończone</string>
+    <string name="widget_show_excel_btn">Przycisk otwarcia Excel</string>
+    <string name="widget_show_refresh_btn">Przycisk odświeżenia</string>
+    <string name="widget_show_app_btn">Przycisk przejścia do aplikacji</string>
+    <string name="widget_btn_visibility_title">Przyciski szybkich akcji</string>
+    <string name="widget_theme_title">Tło widżetu</string>
+    <string name="widget_theme_system">Systemowy</string>
+    <string name="widget_theme_dark">Ciemny</string>
+    <string name="widget_theme_light">Jasny</string>
+    <string name="widget_preview_title">Podgląd na żywo</string>
+    <string name="widget_save_settings">Zapisz ustawienia</string>
+    <string name="widget_no_classes_now">Brak trwających zajęć</string>
+    <string name="widget_no_classes_today">Brak zajęć dzisiaj ☕</string>
+    <string name="widget_classes_done">Wszystkie zajęcia zakończone! 🎉</string>
+    <string name="widget_tomorrow_prefix">Jutro: %1$s</string>
+    <string name="widget_open_maps_tooltip">Mapy</string>
+    <string name="widget_break_until">Przerwa do %1$s</string>
+    <string name="widget_syncing">Odświeżanie…</string>
+    <string name="widget_setup_required_title">Wymagana konfiguracja</string>
+    <string name="widget_setup_required_desc">Dotknij, aby się zalogować</string>
+    <string name="widget_tab_daily">Duży (3x2)</string>
+    <string name="widget_offline_badge">Offline</string>
+    <string name="widget_tab_small">Mały (2x1)</string>
 </resources>

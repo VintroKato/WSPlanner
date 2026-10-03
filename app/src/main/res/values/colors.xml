@@ -22,9 +22,7 @@
     <color name="input_border_ok_light">#07A80F</color>
     <color name="input_border_error_dark">#D51313</color>
     <color name="input_border_error_light">#FF3030</color>
-    <color name="widget_icon_blue">#3075FF </color>
-    <color name="widget_ripple_dark">#4D4D4D</color>
-    <color name="widget_button_bg_dark">#2F2F2F</color>
+
     <color name="card_checked_bg_light">#D8D8FB</color>
     <color name="card_checked_bg_dark">#313140</color>
     <color name="widget_bg_dark">#242424</color>
@@ -78,4 +76,16 @@
     <color name="notes_saved_green">#34D399</color>
     <color name="timeline_card_border_highlight">#803B82F6</color>
     <color name="hero_card_bg">#12151E</color>
+
+    <!-- Widget Specific Theme Colors -->
+    <color name="widget_bg_dark_glass">#EE161821</color>
+    <color name="widget_bg_dark_card">#202432</color>
+    <color name="widget_bg_light_theme">#F0F1F8</color>
+    <color name="widget_bg_light_card">#FFFFFF</color>
+    <color name="widget_text_light_primary">#1C1B1F</color>
+    <color name="widget_text_light_secondary">#49454F</color>
+    <color name="widget_text_dark_primary">#F1F5F9</color>
+    <color name="widget_text_dark_secondary">#94A3B8</color>
+    <color name="widget_divider_dark">#2E3649</color>
+    <color name="widget_divider_light">#E2E8F0</color>
 </resources>

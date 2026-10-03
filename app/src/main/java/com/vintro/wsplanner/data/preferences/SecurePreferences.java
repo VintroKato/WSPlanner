@@ -27,7 +27,6 @@ import javax.crypto.spec.GCMParameterSpec;
 // lightweight hardware-backed encrypted shared preferences using android keystore (aes-256-gcm)
 public class SecurePreferences implements SharedPreferences {
 
-    private static final String TAG = "SecurePreferences";
     private static final String ANDROID_KEYSTORE = "AndroidKeyStore";
     private static final String KEY_ALIAS = "wsplanner_master_key";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
@@ -64,7 +63,7 @@ public class SecurePreferences implements SharedPreferences {
                     .build();
             keyGenerator.init(spec);
             keyGenerator.generateKey();
-            Logger.i(TAG, "Generated new hardware-backed AES-256 master key in AndroidKeyStore");
+            Logger.i("SecurePreferences.generateKey", "Generated new hardware-backed AES-256 master key in AndroidKeyStore");
         }
     }
 
@@ -89,7 +88,7 @@ public class SecurePreferences implements SharedPreferences {
             buffer.put(cipherText);
             return Base64.encodeToString(buffer.array(), Base64.NO_WRAP);
         } catch (Exception e) {
-            Logger.e(TAG, "Encryption failed: " + e.getMessage());
+            Logger.e("SecurePreferences.encrypt", "Encryption failed: " + e.getMessage());
             return null;
         }
     }
@@ -114,7 +113,7 @@ public class SecurePreferences implements SharedPreferences {
             byte[] plainBytes = cipher.doFinal(cipherText);
             return new String(plainBytes, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            Logger.e(TAG, "Decryption failed: " + e.getMessage());
+            Logger.e("SecurePreferences.decrypt", "Decryption failed: " + e.getMessage());
             return null;
         }
     }

@@ -7,15 +7,13 @@
     <string name="settings_theme_option_light">Світла</string>
     <string name="settings_language_label">Мова</string>
     <string name="settings_button_done">Готово</string>
-    <string name="configure_title">Налаштування віджету</string>
+
+
     <string name="configure_email_label">Пошта</string>
     <string name="configure_password_label">Пароль</string>
-    <string name="configure_course_label">Курс</string>
-    <string name="configure_button_confirm">Підтвердити</string>
     <string name="configure_status_checking">Перевірка ланих</string>
     <string name="configure_status_ok">Дані правильні</string>
     <string name="configure_status_error">Неправильна пошта або пароль</string>
-    <string name="widget_name">Розклад</string>
 
     <string name="onboarding_login_title">Вхід до PUW</string>
     <string name="onboarding_button_next">Далі</string>
@@ -61,7 +59,7 @@
     <string name="location_w_terenie">Виїзд</string>
 
     <string name="schedule_badge_now">ЗАРАЗ</string>
-    <string name="schedule_badge_next">НАСТУПНИЙ</string>
+    <string name="schedule_badge_next">ДАЛІ</string>
     <string name="schedule_break_gap">Вікно</string>
     <string name="schedule_time_left">Ще %1$s</string>
     <string name="schedule_time_until">Через %1$s</string>
@@ -130,4 +128,39 @@
     <string name="teacher_email_no_internet">Немає підключення до інтернету</string>
     <string name="schedule_offline_cached_toast">Немає підключення до інтернету. Показано розклад із кешу.</string>
     <string name="button_retry">Повторити</string>
+
+    <!-- Widget Strings -->
+    <string name="widget_current_lesson_name">Поточна / Наступна пара</string>
+    <string name="widget_daily_schedule_name">Розклад на сьогодні</string>
+    <string name="widget_settings_title">Віджети головного екрана</string>
+    <string name="widget_settings_desc">Зовнішній вигляд, кліки та швидкі кнопки</string>
+    <string name="widget_action_click_title">Дія при натисканні на віджет</string>
+    <string name="widget_action_open_details">Відкрити подробиці предмета</string>
+    <string name="widget_action_toggle_lesson">Перемикати пару (Зараз / Наст.)</string>
+    <string name="widget_action_open_app">Відкрити розклад у додатку</string>
+    <string name="widget_action_open_excel">Відкрити Excel-файл розкладу</string>
+    <string name="widget_action_refresh">Оновити розклад</string>
+    <string name="widget_action_break_title">Якщо зараз перерва або пари закінчилися</string>
+    <string name="widget_show_excel_btn">Кнопка відкриття Excel</string>
+    <string name="widget_show_refresh_btn">Кнопка оновлення</string>
+    <string name="widget_show_app_btn">Кнопка переходу в додаток</string>
+    <string name="widget_btn_visibility_title">Кнопки швидких дій</string>
+    <string name="widget_theme_title">Фон віджета</string>
+    <string name="widget_theme_system">Системний</string>
+    <string name="widget_theme_dark">Темний</string>
+    <string name="widget_theme_light">Світлий</string>
+    <string name="widget_preview_title">Живий передперегляд</string>
+    <string name="widget_save_settings">Зберегти налаштування</string>
+    <string name="widget_no_classes_now">Зараз пари немає</string>
+    <string name="widget_no_classes_today">Сьогодні пар немає ☕</string>
+    <string name="widget_classes_done">Усі пари завершено! 🎉</string>
+    <string name="widget_tomorrow_prefix">Завтра: %1$s</string>
+    <string name="widget_open_maps_tooltip">Карти</string>
+    <string name="widget_break_until">Перерва до %1$s</string>
+    <string name="widget_syncing">Оновлення…</string>
+    <string name="widget_setup_required_title">Потрібне налаштування</string>
+    <string name="widget_setup_required_desc">Натисніть, щоб увійти в акаунт</string>
+    <string name="widget_tab_daily">Великий (3х2)</string>
+    <string name="widget_offline_badge">Офлайн</string>
+    <string name="widget_tab_small">Маленький (2х1)</string>
 </resources>

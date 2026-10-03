@@ -16,6 +16,7 @@ import com.vintro.wsplanner.network.PUW;
 import com.vintro.wsplanner.network.StudyPlanScraper;
 import com.vintro.wsplanner.parser.ParserFactory;
 import com.vintro.wsplanner.parser.ScheduleParser;
+import com.vintro.wsplanner.ui.widgets.WidgetUpdateManager;
 import com.vintro.wsplanner.utils.Logger;
 import com.vintro.wsplanner.utils.NetworkUtils;
 
@@ -101,10 +102,20 @@ public class ScheduleRepository {
         return 0;
     }
 
+    // check if student profile configuration is completed
+    public boolean isConfigurationComplete() {
+        return buildConfigSignature() != null;
+    }
+
     // get schedule excel file, downloading if older than 5 minutes
     public void getScheduleFileForOpen(FileReadyCallback callback) {
         new Thread(() -> {
             try {
+                if (!isConfigurationComplete()) {
+                    Logger.d("ScheduleRepository.getScheduleFileForOpen", "Student configuration is not completed yet");
+                    callback.onError(new NoScheduleCacheException("Student configuration is not completed yet"));
+                    return;
+                }
                 File cacheFile = getLocalScheduleFile();
                 boolean shouldDownload = true;
 
@@ -169,6 +180,11 @@ public class ScheduleRepository {
         Logger.d("ScheduleRepository.getScheduleForDate", "Requesting schedule for date: " + date + " (forceRefresh=" + forceRefresh + ")");
         new Thread(() -> {
             try {
+                if (!isConfigurationComplete()) {
+                    Logger.d("ScheduleRepository.getScheduleForDate", "Student configuration is not completed yet, returning empty schedule");
+                    callback.onSuccess(createDayScheduleForDate(date));
+                    return;
+                }
                 ensureScheduleLoaded(forceRefresh);
                 DaySchedule daySchedule = createDayScheduleForDate(date);
                 Logger.d("ScheduleRepository.getScheduleForDate", "Returning " + daySchedule.getLessons().size() + " lesson(s) for " + date);
@@ -183,6 +199,10 @@ public class ScheduleRepository {
     // get schedule for a day synchronously
     public DaySchedule getScheduleForDateSync(LocalDate date) {
         Logger.d("ScheduleRepository.getScheduleForDateSync", "Requesting sync schedule for date: " + date);
+        if (!isConfigurationComplete()) {
+            Logger.d("ScheduleRepository.getScheduleForDateSync", "Student configuration is not completed yet, returning empty schedule");
+            return createDayScheduleForDate(date);
+        }
         try {
             ensureScheduleLoaded(false);
         } catch (Exception e) {
@@ -196,6 +216,11 @@ public class ScheduleRepository {
         Logger.d("ScheduleRepository.getSubjectDetails", "Requesting details for subject: '" + subjectName + "', type: '" + rawLessonType + "' (forceRefresh=" + forceRefresh + ")");
         new Thread(() -> {
             try {
+                if (!isConfigurationComplete()) {
+                    Logger.d("ScheduleRepository.getSubjectDetails", "Student configuration is not completed yet");
+                    callback.onError(new NoScheduleCacheException("Student configuration is not completed yet"));
+                    return;
+                }
                 ensureScheduleLoaded(forceRefresh);
                 SubjectDetails details = createSubjectDetails(subjectName, rawLessonType);
                 Logger.d("ScheduleRepository.getSubjectDetails", "Resolved details with " + details.getTotalCount() + " lessons, teacher: '" + details.getTeacherName() + "'");
@@ -210,6 +235,9 @@ public class ScheduleRepository {
     // get subject details synchronously
     public SubjectDetails getSubjectDetailsSync(String subjectName, String rawLessonType) {
         Logger.d("ScheduleRepository.getSubjectDetailsSync", "Requesting sync details for subject: '" + subjectName + "'");
+        if (!isConfigurationComplete()) {
+            return createSubjectDetails(subjectName, rawLessonType);
+        }
         try {
             ensureScheduleLoaded(false);
         } catch (Exception e) {
@@ -223,6 +251,11 @@ public class ScheduleRepository {
         Logger.d("ScheduleRepository.getAllCourses", "Requesting all courses list (forceRefresh=" + forceRefresh + ")");
         new Thread(() -> {
             try {
+                if (!isConfigurationComplete()) {
+                    Logger.d("ScheduleRepository.getAllCourses", "Student configuration is not completed yet");
+                    callback.onError(new NoScheduleCacheException("Student configuration is not completed yet"));
+                    return;
+                }
                 ensureScheduleLoaded(forceRefresh);
                 List<SubjectDetails> courses = buildAllCourses();
                 Logger.d("ScheduleRepository.getAllCourses", "Returning " + courses.size() + " unique course(s)");
@@ -371,8 +404,8 @@ public class ScheduleRepository {
     public synchronized void ensureScheduleLoaded(boolean forceRefresh) throws NoScheduleCacheException {
         String currentConfig = buildConfigSignature();
         if (currentConfig == null) {
-            Logger.e("ScheduleRepository.ensureScheduleLoaded", "Cannot load schedule: Student configuration is not completed yet");
-            throw new IllegalStateException("Student configuration is not completed yet");
+            Logger.d("ScheduleRepository.ensureScheduleLoaded", "Cannot load schedule: Student configuration is not completed yet");
+            throw new NoScheduleCacheException("Student configuration is not completed yet");
         }
 
         boolean configChanged = !currentConfig.equals(lastConfigSignature);
@@ -433,6 +466,13 @@ public class ScheduleRepository {
                 Logger.i("ScheduleRepository.ensureScheduleLoaded", "Offline fallback: successfully loaded schedule from local cache after download failure");
             } else {
                 isLastLoadFromCacheFallback = false;
+            }
+            try {
+                WidgetUpdateManager.updateAllWidgets(appContext);
+                WidgetUpdateManager.scheduleNextAlarm(appContext);
+                Logger.d("ScheduleRepository.ensureScheduleLoaded", "Updated widgets and scheduled next alarm after loading schedule");
+            } catch (Exception e) {
+                Logger.w("ScheduleRepository.ensureScheduleLoaded", "Error updating widgets: " + e.getMessage());
             }
         } else {
             Logger.e("ScheduleRepository.ensureScheduleLoaded", "Failed to obtain schedule: offline and no local cache file exists");

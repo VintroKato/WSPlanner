@@ -59,7 +59,7 @@ jobs:
          This APK was automatically built, signed, and attested by **GitHub Actions** directly from the source code.
          
          * **Release Tag:** \`${{ github.ref_name }}\`
-         * **Source Commit:** [\`${{ github.sha }}\](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+         * **Source Commit:** [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
          * **SHA-256 Checksum:**
            \`\`\`text
            ${HASH}
