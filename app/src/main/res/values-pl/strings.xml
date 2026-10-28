@@ -134,7 +134,11 @@
     <string name="widget_daily_schedule_name">Plan na dziś</string>
     <string name="widget_settings_title">Widżety ekranu głównego</string>
     <string name="widget_settings_desc">Wygląd, kliknięcia i szybkie akcje</string>
-    <string name="widget_action_click_title">Działanie po kliknięciu w widżet</string>
+    <string name="widget_action_click_title">Dotknięcie karty zajęć (dolna część)</string>
+    <string name="widget_action_click_subtitle">Górny przycisk (Teraz / Nast.) przełącza zajęcia</string>
+    <string name="widget_daily_action_click_title">Po kliknięciu w zajęcia na liście</string>
+    <string name="widget_daily_action_open_details">Otwórz szczegóły przedmiotu</string>
+    <string name="widget_daily_action_open_app">Otwórz plan w aplikacji</string>
     <string name="widget_action_open_details">Otwórz szczegóły przedmiotu</string>
     <string name="widget_action_toggle_lesson">Przełączanie zajęć (Teraz / Nast.)</string>
     <string name="widget_action_open_app">Otwórz plan w aplikacji</string>

@@ -77,7 +77,10 @@ public class WidgetConfigureActivity extends AppCompatActivity {
     private RadioButton radioBreakApp;
     private RadioButton radioBreakExcel;
 
-    // Daily Widget Buttons
+    // Daily Widget Options
+    private RadioGroup dailyClickActionRadioGroup;
+    private RadioButton radioDailyClickDetails;
+    private RadioButton radioDailyClickApp;
     private MaterialSwitch switchShowExcel;
     private MaterialSwitch switchShowRefresh;
     private MaterialSwitch switchShowApp;
@@ -164,7 +167,10 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         radioBreakApp = findViewById(R.id.radio_break_app);
         radioBreakExcel = findViewById(R.id.radio_break_excel);
 
-        // Daily Widget Buttons
+        // Daily Widget Options
+        dailyClickActionRadioGroup = findViewById(R.id.daily_click_action_radio_group);
+        radioDailyClickDetails = findViewById(R.id.radio_daily_click_details);
+        radioDailyClickApp = findViewById(R.id.radio_daily_click_app);
         switchShowExcel = findViewById(R.id.switch_show_excel);
         switchShowRefresh = findViewById(R.id.switch_show_refresh);
         switchShowApp = findViewById(R.id.switch_show_app);
@@ -255,7 +261,15 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         switchShowRefresh.setChecked(PreferencesManager.isWidgetShowRefresh(this));
         switchShowApp.setChecked(PreferencesManager.isWidgetShowApp(this));
 
-        Logger.d("WidgetConfigureActivity.loadSettings", "Loaded widget configuration: theme=" + theme + ", clickAction=" + clickAction + ", breakAction=" + breakAction);
+        // Daily Widget Lesson Click Action
+        String dailyAction = PreferencesManager.getDailyWidgetLessonAction(this);
+        if (PreferencesManager.DAILY_WIDGET_CLICK_OPEN_APP.equals(dailyAction)) {
+            radioDailyClickApp.setChecked(true);
+        } else {
+            radioDailyClickDetails.setChecked(true);
+        }
+
+        Logger.d("WidgetConfigureActivity.loadSettings", "Loaded widget configuration: theme=" + theme + ", clickAction=" + clickAction + ", breakAction=" + breakAction + ", dailyAction=" + dailyAction);
     }
 
     private void setupListeners() {
@@ -366,7 +380,11 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         PreferencesManager.setWidgetShowRefresh(this, switchShowRefresh.isChecked());
         PreferencesManager.setWidgetShowApp(this, switchShowApp.isChecked());
 
-        Logger.i("WidgetConfigureActivity.saveSettings", "Saved widget settings: theme=" + theme + ", click=" + clickAction + ", break=" + breakAction);
+        // Save Daily Widget Lesson Click Action
+        String dailyAction = radioDailyClickApp.isChecked() ? PreferencesManager.DAILY_WIDGET_CLICK_OPEN_APP : PreferencesManager.DAILY_WIDGET_CLICK_OPEN_DETAILS;
+        PreferencesManager.setDailyWidgetLessonAction(this, dailyAction);
+
+        Logger.i("WidgetConfigureActivity.saveSettings", "Saved widget settings: theme=" + theme + ", click=" + clickAction + ", break=" + breakAction + ", dailyAction=" + dailyAction);
 
         // Update all widget instances immediately
         WidgetUpdateManager.updateAllWidgets(this);

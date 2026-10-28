@@ -127,15 +127,7 @@ public class DailyScheduleRemoteViewsService extends RemoteViewsService {
             // Room / Location
             String loc = lesson.getLocation() != null ? lesson.getLocation().getDisplayText() : "WSPA";
             views.setTextViewText(R.id.item_daily_room, loc);
-
-            // Teacher
-            String teacher = lesson.getTeacherName();
-            if (teacher != null && !teacher.isEmpty()) {
-                views.setTextViewText(R.id.item_daily_teacher, "· " + teacher);
-                views.setViewVisibility(R.id.item_daily_teacher, View.VISIBLE);
-            } else {
-                views.setViewVisibility(R.id.item_daily_teacher, View.GONE);
-            }
+            views.setViewVisibility(R.id.item_daily_teacher, View.GONE);
 
             // Fill-in Intent for item click (opens subject details or main activity)
             Intent fillInIntent = new Intent();

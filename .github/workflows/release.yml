@@ -47,6 +47,9 @@ jobs:
 
       - name: Prepare artifact & Verification notes
         run: |
+          
+         COMMIT_MSG=$(git log -1 --pretty=%s)
+         SHORT_SHA=$(git rev-parse --short HEAD)
          cd app/build/outputs/apk/release
          
          mv *-signed.apk WSPlanner-${{ github.ref_name }}.apk
@@ -59,7 +62,7 @@ jobs:
          This APK was automatically built, signed, and attested by **GitHub Actions** directly from the source code.
          
          * **Release Tag:** \`${{ github.ref_name }}\`
-         * **Source Commit:** [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+         * **Source Commit:** \`${SHORT_SHA}\` — ${COMMIT_MSG}
          * **SHA-256 Checksum:**
            \`\`\`text
            ${HASH}

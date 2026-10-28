@@ -368,9 +368,12 @@ public class PreferencesManager {
 
     public static final String WIDGET_BREAK_OPEN_APP = "OPEN_APP";
     public static final String WIDGET_BREAK_OPEN_EXCEL = "OPEN_EXCEL";
+    public static final String DAILY_WIDGET_CLICK_OPEN_DETAILS = "OPEN_DETAILS";
+    public static final String DAILY_WIDGET_CLICK_OPEN_APP = "OPEN_APP";
 
     private static final String KEY_WIDGET_THEME = "widget_theme_pref";
     private static final String KEY_WIDGET_CLICK_ACTION = "widget_click_action_pref";
+    private static final String KEY_DAILY_WIDGET_LESSON_ACTION = "daily_widget_lesson_action_pref";
     private static final String KEY_WIDGET_BREAK_ACTION = "widget_break_action_pref";
     private static final String KEY_WIDGET_SHOW_EXCEL = "widget_show_excel_pref";
     private static final String KEY_WIDGET_SHOW_REFRESH = "widget_show_refresh_pref";
@@ -395,6 +398,16 @@ public class PreferencesManager {
     // save click action behavior for widget lesson card
     public static void setWidgetClickAction(Context context, String action) {
         getPreferences(context).edit().putString(KEY_WIDGET_CLICK_ACTION, action).apply();
+    }
+
+    // get click action behavior for daily schedule widget lesson item
+    public static String getDailyWidgetLessonAction(Context context) {
+        return getPreferences(context).getString(KEY_DAILY_WIDGET_LESSON_ACTION, DAILY_WIDGET_CLICK_OPEN_DETAILS);
+    }
+
+    // save click action behavior for daily schedule widget lesson item
+    public static void setDailyWidgetLessonAction(Context context, String action) {
+        getPreferences(context).edit().putString(KEY_DAILY_WIDGET_LESSON_ACTION, action).apply();
     }
 
     // get click action when tapping widget during breaks or empty state

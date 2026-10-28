@@ -35,23 +35,61 @@ public class BachelorFullTimeParser implements ScheduleParser {
     // daty: 02.03, 09.03
     private final Pattern datesPattern = Pattern.compile("daty:\\s*(.+)");
 
-    // single date: 02.03
-    private final Pattern singleDatePattern = Pattern.compile("(\\d{2}\\.\\d{2})");
+    // single date: 02.03 or 2.03 (valid day 01-31, valid month 01-12)
+    private final Pattern singleDatePattern = Pattern.compile("((?:0?[1-9]|[12][0-9]|3[01])\\.(?:0[1-9]|1[0-2]))");
 
     // default time in first col: 8:15-9:45 or 815-945 or 8.15-9.45
-    private final Pattern defaultRowTimePattern = Pattern.compile("(\\d{1,2})[:.]?(\\d{2})\\s*[-–]\\s*(\\d{1,2})[:.]?(\\d{2})");
+    private final Pattern defaultRowTimePattern = Pattern.compile("(\\d{1,2})[:.]?(\\d{2})\\s*[-–—~]\\s*(\\d{1,2})[:.]?(\\d{2})");
 
-    // specific time range override: w godz. 8:15 - 9:45 or 10.00 - 14:15
-    private final Pattern specificTimePattern = Pattern.compile("(?:godz)?\\.?\\s*(\\d{1,2}[:.]\\d{2})\\s*[-–]\\s*(\\d{1,2}[:.]\\d{2})");
+    // specific time range override: w godz. 8:15 - 9:45 or 10.00 - 14:15 or w godz 11:45-16:00
+    private final Pattern specificTimePattern = Pattern.compile("(?:godz)?\\.?\\s*(\\d{1,2}\\s*[:.]\\s*\\d{2})\\s*[-–—~]\\s*(\\d{1,2}\\s*[:.]\\s*\\d{2})");
 
     // specific start time override: od godz. 8:15 or od 8.15
-    private final Pattern overrideStartTimePattern = Pattern.compile("od\\s*(?:godz)?\\.?\\s*(\\d{1,2}[:.]\\d{2})");
+    private final Pattern overrideStartTimePattern = Pattern.compile("od\\s*(?:godz)?\\.?\\s*(\\d{1,2}\\s*[:.]\\s*\\d{2})");
 
     // lesson duration in hours: 15h or 30h
     private final Pattern subjectTypeFilter = Pattern.compile("\\s*[-–—]?\\s*\\d{1,2}h\\b", Pattern.CASE_INSENSITIVE);
 
     // additional dates: +17.06 (środa) w godz. 17:00-21:15 or + 02.06 i 16.06 (wtorek)
-    private final Pattern plusDatePattern = Pattern.compile("^\\+\\s*(\\d{2}\\.\\d{2})");
+    private final Pattern plusDatePattern = Pattern.compile("^\\+\\s*((?:0?[1-9]|[12][0-9]|3[01])\\.(?:0[1-9]|1[0-2]))");
+
+    private static String normalizeSuperscript(String input) {
+        if (input == null) return "";
+        return input.replace('⁰', '0')
+                .replace('¹', '1')
+                .replace('²', '2')
+                .replace('³', '3')
+                .replace('⁴', '4')
+                .replace('⁵', '5')
+                .replace('⁶', '6')
+                .replace('⁷', '7')
+                .replace('⁸', '8')
+                .replace('⁹', '9');
+    }
+
+    private static String normalizeDateStr(String dateStr) {
+        if (dateStr == null) return "";
+        String[] parts = dateStr.trim().split("\\.");
+        if (parts.length == 2) {
+            try {
+                int d = Integer.parseInt(parts[0]);
+                int m = Integer.parseInt(parts[1]);
+                return String.format(Locale.US, "%02d.%02d", d, m);
+            } catch (Exception ignored) {}
+        }
+        return dateStr.trim();
+    }
+
+    private boolean isDayOrMetaHeader(String text) {
+        if (text == null) return false;
+        String lower = text.toLowerCase().trim();
+        return lower.startsWith("poniedzia") || lower.startsWith("wtorek") || lower.startsWith("środ") ||
+                lower.startsWith("srod") || lower.startsWith("czwartek") || lower.startsWith("piątek") ||
+                lower.startsWith("piatek") || lower.startsWith("sobot") || lower.startsWith("niedziel") ||
+                lower.equals("dni") || lower.startsWith("godz") || lower.contains("rok akademicki") ||
+                lower.contains("semestr") || lower.contains("rok zerowy") || lower.equals("grupa") ||
+                lower.equals("grupy");
+    }
 
     public static String cleanLessonType(String raw) {
         if (raw == null) return null;
@@ -229,14 +267,19 @@ public class BachelorFullTimeParser implements ScheduleParser {
                                        lastLower.endsWith("w") || lastLower.endsWith("godz.") ||
                                        lastLower.endsWith("godz") || lastLower.endsWith("od") ||
                                        lastLower.endsWith("sali") || lastLower.endsWith("s.") ||
-                                       lastLower.endsWith(",");
+                                       lastLower.endsWith(",") || lastLower.endsWith("oraz") ||
+                                       lastLower.endsWith(" i");
 
                 boolean isContinuationStart = curLower.startsWith("on-line") || curLower.startsWith("online") ||
                                               curLower.startsWith("w godz") || curLower.startsWith("godz.") ||
                                               curLower.startsWith("od ") || curLower.startsWith("od godz") ||
-                                              curLower.matches("\\d{1,2}:\\d{2}\\s*[-–]\\s*\\d{1,2}:\\d{2}.*");
+                                              curLower.matches("\\d{1,2}:\\d{2}\\s*[-–—~]\\s*\\d{1,2}:\\d{2}.*") ||
+                                              (curLower.startsWith("zajęcia") && (curLower.contains("godz") || curLower.contains("siedzibie") || curLower.contains("formie")));
 
-                if (isHangingEnd || (lastLower.contains("w dn") && isContinuationStart)) {
+                boolean isDateContinuation = (lastLower.startsWith("daty:") || lastLower.startsWith("terminy:") || lastLower.matches(".*\\b\\d{1,2}\\.\\d{2}$")) &&
+                                             (curLower.startsWith("w godz") || curLower.startsWith("godz.") || curLower.matches("^\\d{1,2}\\.\\d{2}.*"));
+
+                if (isHangingEnd || ((lastLower.contains("w dn") || lastLower.contains("w dniu")) && isContinuationStart) || isDateContinuation) {
                     lines.set(lines.size() - 1, last + " " + trimmed);
                     continue;
                 }
@@ -358,14 +401,20 @@ public class BachelorFullTimeParser implements ScheduleParser {
             if (!readingMyGroup) continue;
 
             if (lowerLine.startsWith("daty:") || lowerLine.startsWith("terminy:")) {
+                List<String> currentClauseDates = new ArrayList<>();
                 Matcher dateMatcher = singleDatePattern.matcher(lowerLine);
-                while (dateMatcher.find()) rawDates.add(dateMatcher.group(1));
+                while (dateMatcher.find()) {
+                    String d = normalizeDateStr(dateMatcher.group(1));
+                    currentClauseDates.add(d);
+                    rawDates.add(d);
+                }
 
                 // Continue reading subsequent date lines (e.g. "18.01" or "01.12, 08.12")
                 while (lineIdx < lines.size()) {
                     String next = lines.get(lineIdx);
                     String nextLower = next.toLowerCase().trim();
-                    if (nextLower.startsWith("+") || nextLower.contains("w dn") || nextLower.contains("w dniu") ||
+                    if (nextLower.startsWith("daty:") || nextLower.startsWith("terminy:") ||
+                            nextLower.startsWith("+") || nextLower.contains("w dn") || nextLower.contains("w dniu") ||
                             nextLower.contains("godz") || nextLower.startsWith("sala") || nextLower.contains("zajęcia") ||
                             nextLower.contains("online") || nextLower.contains("on-line") || nextLower.startsWith("gr.") ||
                             isTeacherDegreePrefix(nextLower)) {
@@ -374,11 +423,40 @@ public class BachelorFullTimeParser implements ScheduleParser {
                     Matcher m = singleDatePattern.matcher(nextLower);
                     boolean found = false;
                     while (m.find()) {
-                        rawDates.add(m.group(1));
+                        String d = normalizeDateStr(m.group(1));
+                        currentClauseDates.add(d);
+                        rawDates.add(d);
                         found = true;
                     }
                     if (!found) break;
                     lineIdx++;
+                }
+
+                // Check for time on this daty clause (e.g. "daty: 14.10 w godz 11:45-16:00" or "daty: ... w godz. 13:30-16:00")
+                Matcher tm = specificTimePattern.matcher(lowerLine);
+                Matcher odTm = overrideStartTimePattern.matcher(lowerLine);
+                if (tm.find()) {
+                    LocalTime s = parseTime(tm.group(1));
+                    LocalTime e = parseTime(tm.group(2));
+                    if (s != null && e != null) {
+                        for (String d : currentClauseDates) {
+                            dateTimeOverrides.put(d, new LocalTime[]{s, e});
+                        }
+                    }
+                } else if (odTm.find()) {
+                    LocalTime s = parseTime(odTm.group(1));
+                    if (s != null) {
+                        for (String d : currentClauseDates) {
+                            dateTimeOverrides.put(d, new LocalTime[]{s, defaultEnd});
+                        }
+                    }
+                }
+
+                String dateRoom = extractRoomInfo(line);
+                if (dateRoom != null && !dateRoom.equals("WSPA")) {
+                    for (String d : currentClauseDates) {
+                        dateRoomOverrides.put(d, dateRoom);
+                    }
                 }
                 continue;
             }
@@ -389,7 +467,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
                 List<String> additionalDates = new ArrayList<>();
                 Matcher m = singleDatePattern.matcher(lowerLine);
                 while (m.find()) {
-                    String d = m.group(1);
+                    String d = normalizeDateStr(m.group(1));
                     rawDates.add(d);
                     additionalDates.add(d);
                 }
@@ -413,7 +491,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
                 }
 
                 String roomOverride = extractRoomInfo(line);
-                if (roomOverride != null) {
+                if (roomOverride != null && !roomOverride.equals("WSPA")) {
                     for (String d : additionalDates) dateRoomOverrides.put(d, roomOverride);
                 }
                 continue;
@@ -423,7 +501,13 @@ public class BachelorFullTimeParser implements ScheduleParser {
             if (lowerLine.contains("w dn") || lowerLine.contains("w dniu") || lowerLine.contains("na zj")) {
                 List<String> specificDates = new ArrayList<>();
                 Matcher m = singleDatePattern.matcher(lowerLine);
-                while (m.find()) specificDates.add(m.group(1));
+                while (m.find()) {
+                    String d = normalizeDateStr(m.group(1));
+                    specificDates.add(d);
+                    if (!rawDates.contains(d)) {
+                        rawDates.add(d);
+                    }
+                }
 
                 // override start time
                 Matcher tm = specificTimePattern.matcher(lowerLine);
@@ -444,7 +528,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
                 }
 
                 String roomOverride = extractRoomInfo(line);
-                if (roomOverride != null) {
+                if (roomOverride != null && !roomOverride.equals("WSPA")) {
                     for (String d : specificDates) dateRoomOverrides.put(d, roomOverride);
                 }
                 continue;
@@ -493,6 +577,8 @@ public class BachelorFullTimeParser implements ScheduleParser {
                     if (potentialRoom != null) {
                         if (globalRoom.equals("Unknown Room") || globalRoom.equals("WSPA")) {
                             globalRoom = potentialRoom;
+                        } else if (potentialRoom.equals("WSPA")) {
+                            // If globalRoom is already set (e.g. "sala 111") or offsite, ignore redundant "WSPA"
                         } else if (globalRoom.equals("online") && potentialRoom.startsWith("sala")) {
                             // If global room was tentatively online, a concrete physical room is the base room
                             globalRoom = potentialRoom;
@@ -657,7 +743,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
     private LocalTime parseTime(String timeRaw) {
         if (timeRaw == null) return LocalTime.of(0, 0);
         try {
-            String normalized = timeRaw.trim().replace('.', ':');
+            String normalized = timeRaw.trim().replaceAll("\\s+", "").replace('.', ':');
             return LocalTime.parse(normalized, DateTimeFormatter.ofPattern("H:mm"));
         } catch (DateTimeParseException e) {
             return LocalTime.of(0, 0);
@@ -666,29 +752,53 @@ public class BachelorFullTimeParser implements ScheduleParser {
 
     private List<Integer> findTargetColumns(ExcelSheet sheet, String studentSurname, String studentSpecialization) {
         List<Integer> cols = new ArrayList<>();
-        
+
+        // Find max column index across the sheet
+        int maxCols = 0;
+        for (int r = 0; r <= Math.min(20, sheet.getLastRowNum()); r++) {
+            ExcelRow row = sheet.getRow(r);
+            if (row != null) {
+                maxCols = Math.max(maxCols, row.getLastCellNum());
+            }
+        }
+        for (ExcelRange range : sheet.getMergedRegions()) {
+            maxCols = Math.max(maxCols, range.getLastColumn() + 1);
+        }
+
         int headerRowIdx = 3;
+        boolean hasAnyGroupsOrSpecs = false;
+
         for (int r = 1; r <= 4; r++) {
             ExcelRow row = sheet.getRow(r);
             if (row != null) {
                 for (int c = 1; c < row.getLastCellNum(); c++) {
                     ExcelCell cell = row.getCell(c);
                     if (cell != null) {
-                        String text = formatCellValue(cell).toLowerCase();
-                        if (text.contains("gr.") || text.contains("grupa") || text.contains("nazwisk") || text.contains("sp.")) {
+                        String text = formatCellValue(cell).toLowerCase().trim();
+                        if (text.contains("gr.") || text.contains("grupa") || text.contains("nazwisk") ||
+                                text.contains("sp.") || text.contains("specjalność") || text.contains("spec.")) {
                             headerRowIdx = r;
+                            hasAnyGroupsOrSpecs = true;
                             break;
                         }
                     }
                 }
             }
+            if (hasAnyGroupsOrSpecs) break;
+        }
+
+        // If there are no group or specialization headers defined anywhere in the sheet (e.g. Rok zerowy)
+        if (!hasAnyGroupsOrSpecs) {
+            for (int i = 1; i < maxCols; i++) {
+                cols.add(i);
+            }
+            Logger.d("BachelorFullTimeParser.findTargetColumns", "No groups or specializations defined in sheet. All day columns selected: " + cols);
+            return cols;
         }
 
         ExcelRow groupRow = sheet.getRow(headerRowIdx);
-        boolean hasAnyGroupsDefined = false;
-
         if (groupRow != null) {
-            int lastCellNum = groupRow.getLastCellNum();
+            int lastCellNum = Math.max(groupRow.getLastCellNum(), maxCols);
             for (int i = 1; i < lastCellNum; i++) {
                 CellTarget ct = getMergedCellValue(sheet, headerRowIdx, i);
                 String rawHeader = ct.value != null ? ct.value.trim() : "";
@@ -702,17 +812,14 @@ public class BachelorFullTimeParser implements ScheduleParser {
                     }
                 }
                 if (rawHeader.isEmpty()) continue;
-                hasAnyGroupsDefined = true;
 
                 String headerNoNewline = rawHeader.toLowerCase().replace("\n", " ");
-                boolean isTargetColumn = true;
-
                 boolean isCommonGroup = headerNoNewline.startsWith("grupa ") || headerNoNewline.startsWith("gr.") || headerNoNewline.startsWith("gr ");
                 boolean isSpecializationColumn = false;
 
                 if (headerNoNewline.contains("sp.") || headerNoNewline.contains("specjalność") || headerNoNewline.contains("spec.")) {
                     isSpecializationColumn = true;
-                } else if (!isCommonGroup) {
+                } else if (!isCommonGroup && !isDayOrMetaHeader(headerNoNewline)) {
                     String firstLine = rawHeader.split("\n")[0].toLowerCase().trim();
                     if (!firstLine.startsWith("gr") && firstLine.length() > 8) {
                         isSpecializationColumn = true;
@@ -721,6 +828,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
 
                 boolean hasStudentSpec = studentSpecialization != null && !studentSpecialization.trim().isEmpty();
 
+                boolean isTargetColumn = true;
                 if (isSpecializationColumn) {
                     if (hasStudentSpec && headerNoNewline.contains(studentSpecialization.toLowerCase().trim())) {
                         isTargetColumn = true;
@@ -756,8 +864,8 @@ public class BachelorFullTimeParser implements ScheduleParser {
             }
         }
 
-        if (cols.isEmpty() && groupRow != null) {
-            for (int i = 1; i <= Math.min(20, (int) groupRow.getLastCellNum()); i++) {
+        if (cols.isEmpty()) {
+            for (int i = 1; i < maxCols; i++) {
                 cols.add(i);
             }
         }
@@ -834,7 +942,8 @@ public class BachelorFullTimeParser implements ScheduleParser {
     }
 
     private LocalTime[] parseRowTime(String rawTime) {
-        Matcher m = defaultRowTimePattern.matcher(rawTime.replaceAll("\\s+", ""));
+        String normalized = normalizeSuperscript(rawTime).replaceAll("\\s+", "");
+        Matcher m = defaultRowTimePattern.matcher(normalized);
         if (m.find()) {
             try {
                 LocalTime start = LocalTime.of(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)));

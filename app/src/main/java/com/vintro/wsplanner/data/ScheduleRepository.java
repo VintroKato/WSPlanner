@@ -93,6 +93,19 @@ public class ScheduleRepository {
         return lastSyncTime;
     }
 
+    public static final long AUTO_REFRESH_INTERVAL_HOURS = 6;
+
+    // check if cached schedule is older than 6 hours or was never synced
+    public boolean isScheduleOutdated() {
+        LocalDateTime syncTime = getLastSyncTime();
+        if (syncTime == null) return true;
+        try {
+            return java.time.Duration.between(syncTime, LocalDateTime.now()).toHours() >= AUTO_REFRESH_INTERVAL_HOURS;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
     // remaining refresh cooldown in seconds
     public synchronized long getCooldownRemainingSeconds() {
         long elapsedSeconds = (System.currentTimeMillis() - lastManualSyncTimestampMillis) / 1000;
@@ -409,21 +422,24 @@ public class ScheduleRepository {
         }
 
         boolean configChanged = !currentConfig.equals(lastConfigSignature);
+        boolean isOutdated = isScheduleOutdated();
+        File cacheFile = getLocalScheduleFile();
+        boolean cacheExists = cacheFile.exists() && cacheFile.length() > 0;
 
-        if (!forceRefresh && !configChanged && cachedAllLessons != null) {
+        boolean shouldDownload = forceRefresh || !cacheExists || (isOutdated && NetworkUtils.isNetworkAvailable(appContext) && getCooldownRemainingSeconds() == 0);
+
+        if (!forceRefresh && !configChanged && cachedAllLessons != null && !shouldDownload) {
             Logger.d("ScheduleRepository.ensureScheduleLoaded", "Memory cache is valid (" + cachedAllLessons.size() + " lessons, config unchanged), skipping reload");
             return;
         }
 
-        Logger.d("ScheduleRepository.ensureScheduleLoaded", "Loading schedule (forceRefresh=" + forceRefresh + ", configChanged=" + configChanged + ", cachedLessons=" + (cachedAllLessons != null ? cachedAllLessons.size() : "null") + ")");
+        Logger.d("ScheduleRepository.ensureScheduleLoaded", "Loading schedule (forceRefresh=" + forceRefresh + ", configChanged=" + configChanged + ", isOutdated=" + isOutdated + ", cachedLessons=" + (cachedAllLessons != null ? cachedAllLessons.size() : "null") + ")");
 
-        File cacheFile = getLocalScheduleFile();
-        boolean cacheExists = cacheFile.exists() && cacheFile.length() > 0;
         boolean downloadAttempted = false;
         boolean downloadSucceeded = false;
         Exception downloadError = null;
 
-        if (forceRefresh || !cacheExists) {
+        if (shouldDownload) {
             downloadAttempted = true;
             if (!NetworkUtils.isNetworkAvailable(appContext)) {
                 Logger.w("ScheduleRepository.ensureScheduleLoaded", "Device is offline, skipping schedule download");

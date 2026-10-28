@@ -86,11 +86,9 @@ public class CurrentLessonWidget extends AppWidgetProvider {
                     PreferencesManager.setWidgetShowingForcedNext(context, widgetId, !currentlyNext);
                     AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
                     updateWidget(context, appWidgetManager, widgetId);
-                } else if (current != null || next != null) {
-                    Lesson target = current != null ? current : next;
-                    openLessonDetails(context, target);
                 } else {
-                    openMainActivity(context);
+                    AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+                    updateWidget(context, appWidgetManager, widgetId);
                 }
             }
         } else if (ACTION_CARD_CLICK.equals(action)) {
@@ -169,7 +167,7 @@ public class CurrentLessonWidget extends AppWidgetProvider {
                 }
             });
         } else {
-            // Default: TOGGLE
+            // Default: TOGGLE if both exist, otherwise open main app
             if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
                 LocalDate today = LocalDate.now();
                 LocalDateTime now = LocalDateTime.now();
@@ -182,11 +180,8 @@ public class CurrentLessonWidget extends AppWidgetProvider {
                     PreferencesManager.setWidgetShowingForcedNext(context, widgetId, !currentlyNext);
                     AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
                     updateWidget(context, appWidgetManager, widgetId);
-                } else if (current != null || next != null) {
-                    Lesson target = current != null ? current : next;
-                    openLessonDetails(context, target);
                 } else {
-                    performBreakAction(context);
+                    openMainActivity(context);
                 }
             } else {
                 openMainActivity(context);
@@ -227,6 +222,7 @@ public class CurrentLessonWidget extends AppWidgetProvider {
         // Click listeners on whole card, content, and chip
         views.setOnClickPendingIntent(R.id.widget_root, createActionPendingIntent(context, widgetId, ACTION_CARD_CLICK));
         views.setOnClickPendingIntent(R.id.widget_lesson_content, createActionPendingIntent(context, widgetId, ACTION_CARD_CLICK));
+        views.setOnClickPendingIntent(R.id.widget_top_bar, createActionPendingIntent(context, widgetId, ACTION_TOGGLE_LESSON));
         views.setOnClickPendingIntent(R.id.widget_status_chip, createActionPendingIntent(context, widgetId, ACTION_TOGGLE_LESSON));
         views.setOnClickPendingIntent(R.id.widget_empty_state, createOpenAppPendingIntent(context, widgetId));
 
@@ -326,13 +322,12 @@ public class CurrentLessonWidget extends AppWidgetProvider {
             // Empty State
             views.setViewVisibility(R.id.widget_lesson_content, View.GONE);
             views.setViewVisibility(R.id.widget_empty_state, View.VISIBLE);
+            views.setViewVisibility(R.id.widget_empty_subtitle, View.GONE);
 
             if (schedule != null && !schedule.isEmpty()) {
                 views.setTextViewText(R.id.widget_empty_title, context.getString(R.string.widget_classes_done));
-                views.setTextViewText(R.id.widget_empty_subtitle, context.getString(R.string.schedule_empty_subtitle));
             } else {
                 views.setTextViewText(R.id.widget_empty_title, context.getString(R.string.widget_no_classes_today));
-                views.setTextViewText(R.id.widget_empty_subtitle, context.getString(R.string.schedule_empty_subtitle));
             }
         }
 

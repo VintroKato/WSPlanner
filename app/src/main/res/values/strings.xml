@@ -142,7 +142,11 @@
     <string name="widget_daily_schedule_name">Today Schedule</string>
     <string name="widget_settings_title">Home Screen Widgets</string>
     <string name="widget_settings_desc">Appearance, clicks, and quick actions</string>
-    <string name="widget_action_click_title">Tap action on small widget</string>
+    <string name="widget_action_click_title">Lesson card tap (lower section)</string>
+    <string name="widget_action_click_subtitle">Upper chip (NOW / NEXT) switches the displayed lesson</string>
+    <string name="widget_daily_action_click_title">Tap action on schedule list item</string>
+    <string name="widget_daily_action_open_details">Open subject details</string>
+    <string name="widget_daily_action_open_app">Open schedule in app</string>
     <string name="widget_action_open_details">Open subject details</string>
     <string name="widget_action_toggle_lesson">Switch Current / Next lesson</string>
     <string name="widget_action_open_app">Open schedule in app</string>
