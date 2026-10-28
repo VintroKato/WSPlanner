@@ -134,7 +134,11 @@
     <string name="widget_daily_schedule_name">Розклад на сьогодні</string>
     <string name="widget_settings_title">Віджети головного екрана</string>
     <string name="widget_settings_desc">Зовнішній вигляд, кліки та швидкі кнопки</string>
-    <string name="widget_action_click_title">Дія при натисканні на віджет</string>
+    <string name="widget_action_click_title">Натискання на картку пари (нижня частина)</string>
+    <string name="widget_action_click_subtitle">Верхня кнопка («Зараз/Наст.») перемикає пару</string>
+    <string name="widget_daily_action_click_title">При натисканні на пару в списку</string>
+    <string name="widget_daily_action_open_details">Відкрити подробиці про пару</string>
+    <string name="widget_daily_action_open_app">Відкрити розклад у додатку</string>
     <string name="widget_action_open_details">Відкрити подробиці предмета</string>
     <string name="widget_action_toggle_lesson">Перемикати пару (Зараз / Наст.)</string>
     <string name="widget_action_open_app">Відкрити розклад у додатку</string>
@@ -162,5 +166,5 @@
     <string name="widget_setup_required_desc">Натисніть, щоб увійти в акаунт</string>
     <string name="widget_tab_daily">Великий (3х2)</string>
     <string name="widget_offline_badge">Офлайн</string>
-    <string name="widget_tab_small">Маленький (2х1)</string>
+    <string name="widget_tab_small">Малий (2х1)</string>
 </resources>

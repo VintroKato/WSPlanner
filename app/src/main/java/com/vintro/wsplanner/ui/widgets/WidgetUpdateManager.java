@@ -109,12 +109,16 @@ public class WidgetUpdateManager extends BroadcastReceiver {
             Logger.e("WidgetUpdateManager.scheduleNextAlarm", "Error calculating target alarm time: " + e.getMessage());
         }
 
-        // If no more lessons today, schedule for next morning at 07:00
-        if (targetDateTime == null) {
-            targetDateTime = LocalDateTime.of(today.plusDays(1), java.time.LocalTime.of(7, 0));
+        // Maximum interval: 5 minutes so widgets stay fresh and never freeze
+        LocalDateTime fiveMinutesLater = now.plusMinutes(5);
+        if (targetDateTime == null || targetDateTime.isAfter(fiveMinutesLater)) {
+            targetDateTime = fiveMinutesLater;
         }
 
         long triggerAtMillis = targetDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        if (triggerAtMillis <= System.currentTimeMillis()) {
+            triggerAtMillis = System.currentTimeMillis() + 5 * 60 * 1000;
+        }
 
         Intent intent = new Intent(context, WidgetUpdateManager.class);
         intent.setAction(ACTION_SCHEDULE_ALARM_TICK);

@@ -134,7 +134,11 @@
     <string name="widget_daily_schedule_name">Расписание на сегодня</string>
     <string name="widget_settings_title">Виджеты на главном экране</string>
     <string name="widget_settings_desc">Внешний вид, клики и быстрые кнопки</string>
-    <string name="widget_action_click_title">Действие при клике на виджет</string>
+    <string name="widget_action_click_title">Нажатие на карточку пары (нижняя часть)</string>
+    <string name="widget_action_click_subtitle">Верхняя кнопка («Сейчас/Далее») переключает пару</string>
+    <string name="widget_daily_action_click_title">При нажатии на пару в списке</string>
+    <string name="widget_daily_action_open_details">Открыть подробности о паре</string>
+    <string name="widget_daily_action_open_app">Открыть расписание в приложении</string>
     <string name="widget_action_open_details">Открыть подробности предмета</string>
     <string name="widget_action_toggle_lesson">Переключать пару (Сейчас / След.)</string>
     <string name="widget_action_open_app">Открыть расписание в приложении</string>

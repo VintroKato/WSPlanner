@@ -157,7 +157,8 @@ public class MainActivity extends AppCompatActivity {
         initViews();
         setupRecyclerView();
         setupListeners();
-        loadSchedule(false);
+        boolean isOutdated = scheduleRepository != null && scheduleRepository.isScheduleOutdated();
+        loadSchedule(isOutdated);
     }
 
     private void initViews() {
@@ -420,11 +421,51 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (isFinishing()) return;
+
+        LocalDate today = LocalDate.now();
+        // If app was minimized yesterday and reopened today without user navigating away
+        if (selectedDate.isBefore(today)) {
+            selectedDate = today;
+            if (scheduleAdapter != null) {
+                scheduleAdapter.clear();
+            }
+        }
+
         updateDateUI();
         updateLastSyncUI();
         startMinuteTicker();
+
+        // Immediately update timeline states on resume so "NOW" / "NEXT" match the real current time
+        if (selectedDate.isEqual(today)) {
+            if (currentDaySchedule != null && scheduleAdapter != null) {
+                scheduleAdapter.submitDaySchedule(currentDaySchedule);
+            } else {
+                loadSchedule(false);
+            }
+        }
+
+        // Auto-refresh schedule if older than 6 hours
+        checkScheduleFreshnessAndAutoUpdate();
+
         if (scheduleRepository != null && scheduleRepository.isConfigurationComplete()) {
             WidgetUpdateManager.updateAllWidgets(this);
+            WidgetUpdateManager.scheduleNextAlarm(this);
+        }
+    }
+
+    private void checkScheduleFreshnessAndAutoUpdate() {
+        if (scheduleRepository == null || !scheduleRepository.isConfigurationComplete()) {
+            return;
+        }
+        if (swipeRefreshLayout != null && swipeRefreshLayout.isRefreshing()) {
+            return;
+        }
+
+        if (scheduleRepository.isScheduleOutdated()
+                && scheduleRepository.getCooldownRemainingSeconds() == 0
+                && NetworkUtils.isNetworkAvailable(this)) {
+            Logger.i("MainActivity.onResume", "Schedule is outdated (>= 6 hours old). Triggering auto-update.");
+            loadSchedule(true);
         }
     }
 

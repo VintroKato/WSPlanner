@@ -104,6 +104,12 @@ public class DailyScheduleWidget extends AppWidgetProvider {
                 }
             });
         } else if (ACTION_DAILY_ITEM_CLICK.equals(action)) {
+            String dailyAction = PreferencesManager.getDailyWidgetLessonAction(context);
+            if (PreferencesManager.DAILY_WIDGET_CLICK_OPEN_APP.equals(dailyAction)) {
+                openMainActivity(context);
+                return;
+            }
+
             String subjectName = intent.getStringExtra(SubjectDetailsActivity.EXTRA_SUBJECT_NAME);
             if (subjectName == null) subjectName = intent.getStringExtra("subject_name");
             String lessonType = intent.getStringExtra(SubjectDetailsActivity.EXTRA_LESSON_TYPE);
@@ -142,11 +148,12 @@ public class DailyScheduleWidget extends AppWidgetProvider {
         String formattedDate = today.format(DATE_FORMATTER);
         formattedDate = formattedDate.substring(0, 1).toUpperCase(Locale.getDefault()) + formattedDate.substring(1);
         views.setTextViewText(R.id.widget_daily_title, formattedDate);
+        views.setViewVisibility(R.id.widget_daily_subtitle, View.GONE);
 
         // Onboarding Check
         if (!PreferencesManager.isOnboardingCompleted(context)
                 || !ScheduleRepository.getInstance(context).isConfigurationComplete()) {
-            views.setTextViewText(R.id.widget_daily_subtitle, context.getString(R.string.widget_setup_required_title));
+            views.setViewVisibility(R.id.widget_daily_subtitle, View.GONE);
             views.setViewVisibility(R.id.widget_daily_list, View.GONE);
             views.setViewVisibility(R.id.widget_daily_empty, View.VISIBLE);
             views.setTextViewText(R.id.widget_daily_empty_text, context.getString(R.string.widget_setup_required_title));
@@ -169,14 +176,11 @@ public class DailyScheduleWidget extends AppWidgetProvider {
         DaySchedule schedule = ScheduleRepository.getInstance(context).getScheduleForDateSync(today);
         int lessonCount = schedule != null ? schedule.getLessonCount() : 0;
         Logger.d("DailyScheduleWidget.updateWidget", "Updating widget " + widgetId + " (lessonCount=" + lessonCount + ")");
+        views.setViewVisibility(R.id.widget_daily_subtitle, View.GONE);
         if (lessonCount > 0) {
-            views.setTextViewText(R.id.widget_daily_subtitle, formatLessonCount(context, lessonCount));
-            views.setViewVisibility(R.id.widget_daily_subtitle, View.VISIBLE);
             views.setViewVisibility(R.id.widget_daily_list, View.VISIBLE);
             views.setViewVisibility(R.id.widget_daily_empty, View.GONE);
         } else {
-            views.setTextViewText(R.id.widget_daily_subtitle, "");
-            views.setViewVisibility(R.id.widget_daily_subtitle, View.GONE);
             views.setViewVisibility(R.id.widget_daily_list, View.GONE);
             views.setViewVisibility(R.id.widget_daily_empty, View.VISIBLE);
             views.setTextViewText(R.id.widget_daily_empty_text, context.getString(R.string.widget_no_classes_today));
