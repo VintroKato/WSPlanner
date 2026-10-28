@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Важно: загружаем историю, чтобы искать коммит до merge
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -47,32 +49,33 @@ jobs:
 
       - name: Prepare artifact & Verification notes
         run: |
+          COMMIT_MSG=$(git log -1 --no-merges --pretty=%s)
+          SHORT_SHA=$(git log -1 --no-merges --pretty=%h)
+          FULL_SHA=$(git log -1 --no-merges --pretty=%H)
           
-         COMMIT_MSG=$(git log -1 --pretty=%s)
-         SHORT_SHA=$(git rev-parse --short HEAD)
-         cd app/build/outputs/apk/release
-         
-         mv *-signed.apk WSPlanner-${{ github.ref_name }}.apk
-         
-         HASH=$(sha256sum WSPlanner-${{ github.ref_name }}.apk | awk '{print $1}')
-         echo "$HASH  WSPlanner-${{ github.ref_name }}.apk" > sha256sum.txt
-         
-         cat <<EOF > $GITHUB_WORKSPACE/release_notes.md
-         ### 🛡️ Build verification & Integrity
-         This APK was automatically built, signed, and attested by **GitHub Actions** directly from the source code.
-         
-         * **Release Tag:** \`${{ github.ref_name }}\`
-         * **Source Commit:** \`${SHORT_SHA}\` — ${COMMIT_MSG}
-         * **SHA-256 Checksum:**
-           \`\`\`text
-           ${HASH}
-           \`\`\`
-         
-         #### Verify Provenance via GitHub CLI:
-         \`\`\`bash
-         gh attestation verify WSPlanner-${{ github.ref_name }}.apk --repo ${{ github.repository }}
-         \`\`\`
-         EOF
+          cd app/build/outputs/apk/release
+          
+          mv *-signed.apk WSPlanner-${{ github.ref_name }}.apk
+          
+          HASH=$(sha256sum WSPlanner-${{ github.ref_name }}.apk | awk '{print $1}')
+          echo "$HASH  WSPlanner-${{ github.ref_name }}.apk" > sha256sum.txt
+          
+          {
+            echo "### 🛡️ Build verification & Integrity"
+            echo "This APK was automatically built, signed, and attested by **GitHub Actions** directly from the source code."
+            echo ""
+            echo "* **Release Tag:** \`${{ github.ref_name }}\`"
+            echo "* **Source Commit:** \`${SHORT_SHA}\` — ${COMMIT_MSG}"
+            echo "* **SHA-256 Checksum:**"
+            echo "  \`\`\`text"
+            echo "  ${HASH}"
+            echo "  \`\`\`"
+            echo ""
+            echo "#### Verify Provenance via GitHub CLI:"
+            echo "\`\`\`bash"
+            echo "gh attestation verify WSPlanner-${{ github.ref_name }}.apk --repo ${{ github.repository }}"
+            echo "\`\`\`"
+          } > $GITHUB_WORKSPACE/release_notes.md
 
       - name: Generate attestation (SLSA Provenance)
         uses: actions/attest-build-provenance@v1
