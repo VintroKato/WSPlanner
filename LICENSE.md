@@ -1,11 +1,9 @@
-CUSTOM SOURCE-AVAILABLE LICENSE
+# CUSTOM SOURCE-AVAILABLE LICENSE
 Based on PolyForm Noncommercial License 1.0.0 with Mandatory Source Disclosure
 
-Copyright (c) 2026 Vintro (VintroKato)
+ Copyright (c) 2026 Vintro (VintroKato)
 
-==============================================================================
-SPECIAL CONDITION: MANDATORY SOURCE CODE DISCLOSURE (RECIPROCITY)
-==============================================================================
+# SPECIAL CONDITION: MANDATORY SOURCE CODE DISCLOSURE (RECIPROCITY)
 
 As a strict condition to your licenses granted under "Distribution License" 
 and "Changes and New Works License" below:
@@ -30,9 +28,8 @@ Failure to provide the complete corresponding Source Code constitutes an immedia
 material breach of these terms, resulting in the termination of all your licenses 
 as set forth in the Violations section.
 
-==============================================================================
-BASE LICENSE TERMS
-==============================================================================
+
+# BASE LICENSE TERMS
 
 <https://polyformproject.org/licenses/noncommercial/1.0.0>
 
