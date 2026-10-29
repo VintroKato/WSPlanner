@@ -165,7 +165,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
 
     @Override
     public Schedule parse(InputStream excelStream, String fieldOfStudy, int semester, String studentSurname, String studentSpecialization, String targetLangGroup, String seminarTeacher) {
-        Logger.d("BachelorFullTimeParser.parse", "Starting schedule parsing. Field: '" + fieldOfStudy + "', Semester: " + semester + ", StudentSurname: '" + studentSurname + "', Specialization: '" + studentSpecialization + "', LangGroup: '" + targetLangGroup + "', SeminarTeacher: '" + seminarTeacher + "'");
+        Logger.d("BachelorFullTimeParser.parse", "Starting schedule parsing. Field: '" + fieldOfStudy + "', Semester: " + semester + ", StudentSurname: '" + Logger.maskSurname(studentSurname) + "', Specialization: '" + studentSpecialization + "', LangGroup: '" + targetLangGroup + "', SeminarTeacher: '" + seminarTeacher + "'");
         Schedule schedule = new Schedule(fieldOfStudy, semester, studentSurname);
 
         try (ExcelWorkbook workbook = ExcelWorkbook.create(excelStream)) {
@@ -179,7 +179,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
             // find which columns belong to the student based on surname and specialization
             List<Integer> targetColumns = findTargetColumns(sheet, studentSurname, studentSpecialization);
             if (targetColumns.isEmpty()) {
-                Logger.w("BachelorFullTimeParser.findTargetColumns", "Target group columns not found for student: '" + studentSurname + "'");
+                Logger.w("BachelorFullTimeParser.findTargetColumns", "Target group columns not found for student: '" + Logger.maskSurname(studentSurname) + "'");
                 return schedule;
             }
             Logger.d("BachelorFullTimeParser.findTargetColumns", "Matched " + targetColumns.size() + " target column(s): " + targetColumns);
@@ -870,7 +870,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
             }
         }
 
-        Logger.d("BachelorFullTimeParser.findTargetColumns", "Target columns selected: " + cols + " for surname='" + studentSurname + "', spec='" + studentSpecialization + "'");
+        Logger.d("BachelorFullTimeParser.findTargetColumns", "Target columns selected: " + cols + " for surname='" + Logger.maskSurname(studentSurname) + "', spec='" + studentSpecialization + "'");
         return cols;
     }
 

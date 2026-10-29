@@ -162,9 +162,9 @@
     <string name="widget_open_maps_tooltip">Карти</string>
     <string name="widget_break_until">Перерва до %1$s</string>
     <string name="widget_syncing">Оновлення…</string>
+    <string name="widget_tab_daily">Великий (3х2)</string>
+    <string name="widget_tab_small">Малий (2х1)</string>
     <string name="widget_setup_required_title">Потрібне налаштування</string>
     <string name="widget_setup_required_desc">Натисніть, щоб увійти в акаунт</string>
-    <string name="widget_tab_daily">Великий (3х2)</string>
     <string name="widget_offline_badge">Офлайн</string>
-    <string name="widget_tab_small">Малий (2х1)</string>
 </resources>

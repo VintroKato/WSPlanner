@@ -61,10 +61,19 @@ public class PUW {
     private static synchronized OkHttpClient getClient() {
         if (sharedClient == null) {
             sharedClient = new OkHttpClient.Builder()
+                    .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
+                    .writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
                     .cookieJar(new CookieJar() {
                         @Override
                         public void saveFromResponse(@NonNull HttpUrl url, @NonNull List<Cookie> cookies) {
-                            globalCookieStore.put(url.host(), cookies);
+                            List<Cookie> existing = globalCookieStore.computeIfAbsent(
+                                    url.host(), k -> new java.util.concurrent.CopyOnWriteArrayList<>()
+                            );
+                            for (Cookie newCookie : cookies) {
+                                existing.removeIf(c -> c.name().equalsIgnoreCase(newCookie.name()));
+                                existing.add(newCookie);
+                            }
                         }
 
                         @NonNull
@@ -189,7 +198,7 @@ public class PUW {
             Logger.i("PUW.loginWithClient", "Login verified successfully");
             return 1;
         } catch (Exception e) {
-            Logger.e("PUW.loginWithClient", "Exception during login request: " + e.getMessage());
+            Logger.e("PUW.loginWithClient", "Exception during login request: " + Logger.formatException(e), e);
             return -1;
         }
     }
@@ -239,7 +248,7 @@ public class PUW {
             return file;
 
         } catch (Exception e) {
-            Logger.e("PUW.downloadFile", "Exception during file download: " + e.getMessage());
+            Logger.e("PUW.downloadFile", "Exception during file download: " + Logger.formatException(e), e);
             return null;
         }
     }
@@ -272,7 +281,7 @@ public class PUW {
                 }
             }
         } catch (Exception e) {
-            Logger.e("PUW.getStudentFullName", "Error fetching home page: " + e.getMessage());
+            Logger.e("PUW.getStudentFullName", "Error fetching home page: " + Logger.formatException(e), e);
         }
 
         // option 2: if aria-label not found
@@ -296,7 +305,7 @@ public class PUW {
                 }
             }
         } catch (Exception e) {
-            Logger.e("PUW.getStudentFullName", "Error fetching files page: " + e.getMessage());
+            Logger.e("PUW.getStudentFullName", "Error fetching files page: " + Logger.formatException(e), e);
         }
 
         return null;

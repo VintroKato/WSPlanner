@@ -107,7 +107,7 @@ public class CurrentLessonWidget extends AppWidgetProvider {
 
                 @Override
                 public void onError(Exception e) {
-                    Logger.w("CurrentLessonWidget.onReceive", "Widget refresh failed (offline fallback): " + e.getMessage());
+                    Logger.w("CurrentLessonWidget.onReceive", "Widget refresh failed (offline fallback): " + Logger.formatException(e));
                 }
             });
         } else if (ACTION_OPEN_MAPS.equals(action)) {
@@ -163,7 +163,7 @@ public class CurrentLessonWidget extends AppWidgetProvider {
 
                 @Override
                 public void onError(Exception e) {
-                    Logger.w("CurrentLessonWidget.handleCardClick", "Widget refresh failed (offline fallback): " + e.getMessage());
+                    Logger.w("CurrentLessonWidget.handleCardClick", "Widget refresh failed (offline fallback): " + Logger.formatException(e));
                 }
             });
         } else {

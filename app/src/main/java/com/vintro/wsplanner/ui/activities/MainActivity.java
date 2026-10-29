@@ -293,7 +293,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onError(Exception e) {
-                Logger.e("MainActivity.loadSchedule", "Failed to load schedule: " + e.getMessage());
+                Logger.e("MainActivity.loadSchedule", "Failed to load schedule: " + Logger.formatException(e), e);
                 runOnUiThread(() -> {
                     swipeRefreshLayout.setRefreshing(false);
                     updateLastSyncUI();

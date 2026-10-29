@@ -100,7 +100,7 @@ public class DailyScheduleWidget extends AppWidgetProvider {
 
                 @Override
                 public void onError(Exception e) {
-                    Logger.w("DailyScheduleWidget.onReceive", "Daily refresh error (offline fallback): " + e.getMessage());
+                    Logger.w("DailyScheduleWidget.onReceive", "Daily refresh error (offline fallback): " + Logger.formatException(e));
                 }
             });
         } else if (ACTION_DAILY_ITEM_CLICK.equals(action)) {

@@ -171,7 +171,7 @@ public class SetupAdditionalActivity extends AppCompatActivity {
         // clear cached schedule
         ScheduleRepository.getInstance(this).invalidateCache();
 
-        Logger.i("SetupAdditionalActivity.finishSetup", "Onboarding setup completed successfully (major=" + major + ", degree=" + degreeLevel + ", mode=" + studyMode + ", year=" + year + ", surname=" + enteredSurname + "). Navigating to MainActivity.");
+        Logger.i("SetupAdditionalActivity.finishSetup", "Onboarding setup completed successfully (major=" + major + ", degree=" + degreeLevel + ", mode=" + studyMode + ", year=" + year + ", surname=" + Logger.maskSurname(enteredSurname) + "). Navigating to MainActivity.");
 
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

@@ -160,7 +160,7 @@ public class PreferencesManager {
     }
 
     public static void setGlobalStudentSurnamePref(Context context, String studentSurname) {
-        Logger.d("PreferencesManager.setGlobalStudentSurnamePref", "Setting global student surname: " + studentSurname);
+        Logger.d("PreferencesManager.setGlobalStudentSurnamePref", "Setting global student surname: " + Logger.maskSurname(studentSurname));
         setStudentSurnamePref(context, GLOBAL_ID, studentSurname);
     }
 

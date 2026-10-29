@@ -106,7 +106,7 @@ public class WidgetUpdateManager extends BroadcastReceiver {
                 }
             }
         } catch (Exception e) {
-            Logger.e("WidgetUpdateManager.scheduleNextAlarm", "Error calculating target alarm time: " + e.getMessage());
+            Logger.e("WidgetUpdateManager.scheduleNextAlarm", "Error calculating target alarm time: " + Logger.formatException(e), e);
         }
 
         // Maximum interval: 5 minutes so widgets stay fresh and never freeze
@@ -145,7 +145,7 @@ public class WidgetUpdateManager extends BroadcastReceiver {
             Logger.d("WidgetUpdateManager.scheduleNextAlarm", "Next widget alarm scheduled at " + targetDateTime);
         } catch (SecurityException se) {
             alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
-            Logger.w("WidgetUpdateManager.scheduleNextAlarm", "Fallback to standard alarm: " + se.getMessage());
+            Logger.w("WidgetUpdateManager.scheduleNextAlarm", "Fallback to standard alarm: " + Logger.formatException(se), se);
         }
     }
 }

@@ -65,7 +65,7 @@ public class DailyScheduleRemoteViewsService extends RemoteViewsService {
                 }
                 Logger.d("DailyScheduleRemoteViewsFactory.loadData", "Loaded " + lessonList.size() + " items for daily schedule widget");
             } catch (Exception e) {
-                Logger.e("DailyScheduleRemoteViewsFactory.loadData", "Error loading data: " + e.getMessage());
+                Logger.e("DailyScheduleRemoteViewsFactory.loadData", "Error loading data: " + Logger.formatException(e), e);
             }
         }
 

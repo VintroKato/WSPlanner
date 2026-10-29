@@ -46,6 +46,9 @@ public class ScheduleRepository {
     private static ScheduleRepository instance;
 
     private final Context appContext;
+    private final Object cacheLock = new Object();
+    private final Object downloadLock = new Object();
+    private final java.util.concurrent.atomic.AtomicBoolean isDownloadingInProgress = new java.util.concurrent.atomic.AtomicBoolean(false);
     private List<Lesson> cachedAllLessons;
     private LocalDateTime lastSyncTime;
     private String lastConfigSignature;
@@ -209,19 +212,66 @@ public class ScheduleRepository {
         }).start();
     }
 
-    // get schedule for a day synchronously
+    // get schedule for a day synchronously (STRICTLY NON-BLOCKING, NEVER RUNS NETWORK ON CALLING THREAD)
     public DaySchedule getScheduleForDateSync(LocalDate date) {
         Logger.d("ScheduleRepository.getScheduleForDateSync", "Requesting sync schedule for date: " + date);
         if (!isConfigurationComplete()) {
             Logger.d("ScheduleRepository.getScheduleForDateSync", "Student configuration is not completed yet, returning empty schedule");
             return createDayScheduleForDate(date);
         }
-        try {
-            ensureScheduleLoaded(false);
-        } catch (Exception e) {
-            Logger.w("ScheduleRepository.getScheduleForDateSync", "Could not load schedule: " + e.getMessage());
+
+        // Ensure in-memory or disk cache is loaded WITHOUT network
+        ensureLocalCacheLoadedOnly();
+
+        // If schedule is outdated (> 6 hours) and device is online, trigger asynchronous background refresh
+        if (isScheduleOutdated() && NetworkUtils.isNetworkAvailable(appContext) && getCooldownRemainingSeconds() == 0) {
+            triggerBackgroundSync();
         }
+
         return createDayScheduleForDate(date);
+    }
+
+    // load schedule from disk cache if in-memory cache is missing or invalidated, without any network operations
+    public void ensureLocalCacheLoadedOnly() {
+        String currentConfig = buildConfigSignature();
+        if (currentConfig == null) return;
+
+        synchronized (cacheLock) {
+            boolean configChanged = !currentConfig.equals(lastConfigSignature);
+            if (!configChanged && cachedAllLessons != null) {
+                return;
+            }
+            File cacheFile = getLocalScheduleFile();
+            if (cacheFile.exists() && cacheFile.length() > 0) {
+                parseFile(cacheFile);
+                lastConfigSignature = currentConfig;
+                if (lastSyncTime == null) {
+                    lastSyncTime = loadLastSyncTime(cacheFile);
+                }
+            }
+        }
+    }
+
+    // trigger non-blocking background synchronization if not already running
+    public void triggerBackgroundSync() {
+        if (!isConfigurationComplete() || !NetworkUtils.isNetworkAvailable(appContext) || getCooldownRemainingSeconds() > 0) {
+            return;
+        }
+        if (!isDownloadingInProgress.compareAndSet(false, true)) {
+            Logger.d("ScheduleRepository.triggerBackgroundSync", "Background download already in progress, skipping duplicate");
+            return;
+        }
+
+        Logger.i("ScheduleRepository.triggerBackgroundSync", "Starting asynchronous background schedule sync");
+        new Thread(() -> {
+            try {
+                ensureScheduleLoaded(true);
+            } catch (Exception e) {
+                Logger.w("ScheduleRepository.triggerBackgroundSync", "Background sync completed with note: " + Logger.formatException(e));
+            } finally {
+                isDownloadingInProgress.set(false);
+            }
+        }, "wsplanner-bg-sync").start();
     }
 
     // get subject details asynchronously
@@ -239,22 +289,22 @@ public class ScheduleRepository {
                 Logger.d("ScheduleRepository.getSubjectDetails", "Resolved details with " + details.getTotalCount() + " lessons, teacher: '" + details.getTeacherName() + "'");
                 callback.onSuccess(details);
             } catch (Exception e) {
-                Logger.e("ScheduleRepository.getSubjectDetails", "Error: " + e.getMessage());
+                Logger.e("ScheduleRepository.getSubjectDetails", "Error: " + Logger.formatException(e), e);
                 callback.onError(e);
             }
         }).start();
     }
 
-    // get subject details synchronously
+    // get subject details synchronously (strictly non-blocking)
     public SubjectDetails getSubjectDetailsSync(String subjectName, String rawLessonType) {
         Logger.d("ScheduleRepository.getSubjectDetailsSync", "Requesting sync details for subject: '" + subjectName + "'");
         if (!isConfigurationComplete()) {
             return createSubjectDetails(subjectName, rawLessonType);
         }
         try {
-            ensureScheduleLoaded(false);
+            ensureLocalCacheLoadedOnly();
         } catch (Exception e) {
-            Logger.w("ScheduleRepository.getSubjectDetailsSync", "Could not load details: " + e.getMessage());
+            Logger.w("ScheduleRepository.getSubjectDetailsSync", "Could not load details: " + Logger.formatException(e));
         }
         return createSubjectDetails(subjectName, rawLessonType);
     }
@@ -414,23 +464,29 @@ public class ScheduleRepository {
     }
 
     // download and parse schedule if cache is missing or stale
-    public synchronized void ensureScheduleLoaded(boolean forceRefresh) throws NoScheduleCacheException {
+    public void ensureScheduleLoaded(boolean forceRefresh) throws NoScheduleCacheException {
         String currentConfig = buildConfigSignature();
         if (currentConfig == null) {
             Logger.d("ScheduleRepository.ensureScheduleLoaded", "Cannot load schedule: Student configuration is not completed yet");
             throw new NoScheduleCacheException("Student configuration is not completed yet");
         }
 
-        boolean configChanged = !currentConfig.equals(lastConfigSignature);
+        boolean configChanged;
+        synchronized (cacheLock) {
+            configChanged = !currentConfig.equals(lastConfigSignature);
+        }
+
         boolean isOutdated = isScheduleOutdated();
         File cacheFile = getLocalScheduleFile();
         boolean cacheExists = cacheFile.exists() && cacheFile.length() > 0;
 
         boolean shouldDownload = forceRefresh || !cacheExists || (isOutdated && NetworkUtils.isNetworkAvailable(appContext) && getCooldownRemainingSeconds() == 0);
 
-        if (!forceRefresh && !configChanged && cachedAllLessons != null && !shouldDownload) {
-            Logger.d("ScheduleRepository.ensureScheduleLoaded", "Memory cache is valid (" + cachedAllLessons.size() + " lessons, config unchanged), skipping reload");
-            return;
+        synchronized (cacheLock) {
+            if (!forceRefresh && !configChanged && cachedAllLessons != null && !shouldDownload) {
+                Logger.d("ScheduleRepository.ensureScheduleLoaded", "Memory cache is valid (" + cachedAllLessons.size() + " lessons, config unchanged), skipping reload");
+                return;
+            }
         }
 
         Logger.d("ScheduleRepository.ensureScheduleLoaded", "Loading schedule (forceRefresh=" + forceRefresh + ", configChanged=" + configChanged + ", isOutdated=" + isOutdated + ", cachedLessons=" + (cachedAllLessons != null ? cachedAllLessons.size() : "null") + ")");
@@ -440,60 +496,80 @@ public class ScheduleRepository {
         Exception downloadError = null;
 
         if (shouldDownload) {
+            // Guard: Never perform network downloads on the Android Main (UI) thread!
+            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+                Logger.w("ScheduleRepository.ensureScheduleLoaded", "Download requested on Main Thread. Deferring to background thread to prevent NetworkOnMainThreadException and ANR.");
+                triggerBackgroundSync();
+                ensureLocalCacheLoadedOnly();
+                return;
+            }
+
             downloadAttempted = true;
             if (!NetworkUtils.isNetworkAvailable(appContext)) {
                 Logger.w("ScheduleRepository.ensureScheduleLoaded", "Device is offline, skipping schedule download");
-                downloadSucceeded = false;
                 downloadError = new IllegalStateException("Device is offline");
             } else {
-                File tempFile = new File(cacheFile.getParentFile(), cacheFile.getName() + ".download_" + System.currentTimeMillis());
-                try {
-                    downloadScheduleFile(tempFile);
-                    if (tempFile.exists() && tempFile.length() > 0) {
-                        if (cacheFile.exists()) {
-                            cacheFile.delete();
+                synchronized (downloadLock) {
+                    File tempFile = new File(cacheFile.getParentFile(), cacheFile.getName() + ".download_" + System.currentTimeMillis());
+                    try {
+                        downloadScheduleFile(tempFile);
+                        if (tempFile.exists() && tempFile.length() > 0) {
+                            if (cacheFile.exists()) {
+                                cacheFile.delete();
+                            }
+                            if (tempFile.renameTo(cacheFile)) {
+                                downloadSucceeded = true;
+                                lastManualSyncTimestampMillis = System.currentTimeMillis();
+                                LocalDateTime newSyncTime = LocalDateTime.now();
+                                synchronized (cacheLock) {
+                                    lastSyncTime = newSyncTime;
+                                }
+                                saveLastSyncTime(newSyncTime);
+                            }
                         }
-                        if (tempFile.renameTo(cacheFile)) {
-                            downloadSucceeded = true;
-                            lastManualSyncTimestampMillis = System.currentTimeMillis();
-                            lastSyncTime = LocalDateTime.now();
-                            saveLastSyncTime(lastSyncTime);
+                    } catch (Exception e) {
+                        downloadError = e;
+                        lastManualSyncTimestampMillis = System.currentTimeMillis(); // enforce cooldown on error to prevent hammer loop
+                        Logger.w("ScheduleRepository.ensureScheduleLoaded", "Download failed: " + Logger.formatException(e), e);
+                    } finally {
+                        if (tempFile.exists()) {
+                            tempFile.delete();
                         }
-                    }
-                } catch (Exception e) {
-                    downloadError = e;
-                    Logger.w("ScheduleRepository.ensureScheduleLoaded", "Download failed: " + e.getMessage());
-                } finally {
-                    if (tempFile.exists()) {
-                        tempFile.delete();
                     }
                 }
             }
         }
 
         if (cacheFile.exists() && cacheFile.length() > 0) {
-            parseFile(cacheFile);
-            lastConfigSignature = currentConfig;
-            if (lastSyncTime == null) {
-                lastSyncTime = loadLastSyncTime(cacheFile);
+            synchronized (cacheLock) {
+                parseFile(cacheFile);
+                lastConfigSignature = currentConfig;
+                if (lastSyncTime == null) {
+                    lastSyncTime = loadLastSyncTime(cacheFile);
+                }
+                if (downloadAttempted && !downloadSucceeded) {
+                    isLastLoadFromCacheFallback = true;
+                    Logger.i("ScheduleRepository.ensureScheduleLoaded", "Offline fallback: successfully loaded schedule from local cache after download failure");
+                } else {
+                    isLastLoadFromCacheFallback = false;
+                }
             }
-            if (downloadAttempted && !downloadSucceeded) {
-                isLastLoadFromCacheFallback = true;
-                Logger.i("ScheduleRepository.ensureScheduleLoaded", "Offline fallback: successfully loaded schedule from local cache after download failure");
-            } else {
-                isLastLoadFromCacheFallback = false;
-            }
-            try {
-                WidgetUpdateManager.updateAllWidgets(appContext);
-                WidgetUpdateManager.scheduleNextAlarm(appContext);
-                Logger.d("ScheduleRepository.ensureScheduleLoaded", "Updated widgets and scheduled next alarm after loading schedule");
-            } catch (Exception e) {
-                Logger.w("ScheduleRepository.ensureScheduleLoaded", "Error updating widgets: " + e.getMessage());
+
+            // CRITICAL: Only notify widgets if download SUCCEEDED, NOT on every local cache read or failure fallback!
+            // Notifying widgets on cache read caused an infinite loop because widget update calls getScheduleForDateSync!
+            if (downloadSucceeded) {
+                try {
+                    WidgetUpdateManager.updateAllWidgets(appContext);
+                    WidgetUpdateManager.scheduleNextAlarm(appContext);
+                    Logger.d("ScheduleRepository.ensureScheduleLoaded", "Updated widgets and scheduled next alarm after successful schedule download");
+                } catch (Exception e) {
+                    Logger.w("ScheduleRepository.ensureScheduleLoaded", "Error updating widgets: " + Logger.formatException(e));
+                }
             }
         } else {
             Logger.e("ScheduleRepository.ensureScheduleLoaded", "Failed to obtain schedule: offline and no local cache file exists");
             if (downloadError != null) {
-                throw new NoScheduleCacheException("No cached schedule and download failed: " + downloadError.getMessage(), downloadError);
+                throw new NoScheduleCacheException("No cached schedule and download failed: " + Logger.formatException(downloadError), downloadError);
             } else {
                 throw new NoScheduleCacheException("Failed to obtain schedule Excel file");
             }
@@ -522,7 +598,7 @@ public class ScheduleRepository {
         ScheduleParser parser = ParserFactory.getParser(degree, mode);
         int semester = (year * 2) - 1; // default to odd semester
 
-        Logger.d("ScheduleRepository.parseFile", "Parsing local schedule file: " + file.getAbsolutePath() + " (size: " + file.length() + " bytes) for student '" + surname + "', major '" + major + "', semester " + semester);
+        Logger.d("ScheduleRepository.parseFile", "Parsing local schedule file: " + file.getAbsolutePath() + " (size: " + file.length() + " bytes) for student '" + Logger.maskSurname(surname) + "', major '" + major + "', semester " + semester);
 
         try (InputStream in = new FileInputStream(file)) {
             Schedule schedule = parser.parse(in, major, semester, surname, specialty, langGroup, seminarTeacher);
@@ -534,7 +610,7 @@ public class ScheduleRepository {
                 Logger.w("ScheduleRepository.parseFile", "Parser returned null or empty lessons list");
             }
         } catch (Exception e) {
-            Logger.e("ScheduleRepository.parseFile", "Error parsing schedule file: " + e.getMessage());
+            Logger.e("ScheduleRepository.parseFile", "Error parsing schedule file: " + Logger.formatException(e), e);
             cachedAllLessons = new ArrayList<>();
         }
     }
@@ -585,7 +661,7 @@ public class ScheduleRepository {
             }
             Logger.i("ScheduleRepository.downloadScheduleFile", "Schedule downloaded successfully to " + destFile.getAbsolutePath() + " (" + destFile.length() + " bytes)");
         } catch (Exception e) {
-            Logger.e("ScheduleRepository.downloadScheduleFile", "Error downloading schedule: " + e.getMessage());
+            Logger.e("ScheduleRepository.downloadScheduleFile", "Error downloading schedule: " + Logger.formatException(e), e);
             throw new RuntimeException(e);
         }
     }
@@ -642,12 +718,14 @@ public class ScheduleRepository {
     }
 
     // clear in-memory and disk cache
-    public synchronized void invalidateCache() {
+    public void invalidateCache() {
         Logger.d("ScheduleRepository.invalidateCache", "Invalidating memory and disk schedule cache");
-        cachedAllLessons = null;
-        lastConfigSignature = null;
-        lastSyncTime = null;
-        isLastLoadFromCacheFallback = false;
+        synchronized (cacheLock) {
+            cachedAllLessons = null;
+            lastConfigSignature = null;
+            lastSyncTime = null;
+            isLastLoadFromCacheFallback = false;
+        }
         appContext.getSharedPreferences("schedule_repo_prefs", Context.MODE_PRIVATE)
                 .edit()
                 .remove("last_sync_time")

@@ -162,9 +162,9 @@
     <string name="widget_open_maps_tooltip">Mapy</string>
     <string name="widget_break_until">Przerwa do %1$s</string>
     <string name="widget_syncing">Odświeżanie…</string>
+    <string name="widget_tab_daily">Duży (3x2)</string>
+    <string name="widget_tab_small">Mały (2x1)</string>
     <string name="widget_setup_required_title">Wymagana konfiguracja</string>
     <string name="widget_setup_required_desc">Dotknij, aby się zalogować</string>
-    <string name="widget_tab_daily">Duży (3x2)</string>
     <string name="widget_offline_badge">Offline</string>
-    <string name="widget_tab_small">Mały (2x1)</string>
 </resources>
