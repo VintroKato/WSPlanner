@@ -21,18 +21,39 @@
             android:paddingEnd="16dp"
             android:paddingBottom="8dp">
 
-            <!-- Open Excel File Button -->
-            <ImageButton
+            <!-- Open Excel File Button with surrounding spinner -->
+            <FrameLayout
                 android:id="@+id/button_open_file"
-                android:layout_marginTop="2dp"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
                 android:layout_alignParentStart="true"
                 android:layout_centerVertical="true"
+                android:layout_marginTop="2dp"
                 android:background="@drawable/bg_badge_rect"
                 android:backgroundTint="?attr/card_bg"
-                android:contentDescription="Open Excel schedule file"
-                android:src="@drawable/ic_file_excel" />
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Open Excel schedule file">
+
+                <ImageView
+                    android:id="@+id/icon_open_file"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_file_excel"
+                    android:contentDescription="@null" />
+
+                <ProgressBar
+                    android:id="@+id/progress_open_file"
+                    style="?android:attr/progressBarStyle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center"
+                    android:indeterminate="true"
+                    android:indeterminateTint="?attr/colorPrimary"
+                    android:visibility="gone"
+                    android:alpha="0" />
+            </FrameLayout>
 
             <!-- App Title -->
             <TextView

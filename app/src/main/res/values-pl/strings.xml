@@ -167,4 +167,8 @@
     <string name="widget_setup_required_title">Wymagana konfiguracja</string>
     <string name="widget_setup_required_desc">Dotknij, aby się zalogować</string>
     <string name="widget_offline_badge">Offline</string>
+    <string name="widget_preview_tap_to_add">Dotknij widżet, aby dodać go do ekranu</string>
+    <string name="widget_pin_unsupported_hint">Dodaj widżet ręcznie z ekranu głównego</string>
+    <string name="widget_pin_unsupported_toast">Dodaj widżet ręcznie z ekranu głównego</string>
+    <string name="schedule_updated">Harmonogram zaktualizowany</string>
 </resources>

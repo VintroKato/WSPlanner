@@ -153,7 +153,7 @@
     <string name="widget_theme_system">Системный</string>
     <string name="widget_theme_dark">Тёмный</string>
     <string name="widget_theme_light">Светлый</string>
-    <string name="widget_preview_title">Живой предпросмотр</string>
+    <string name="widget_preview_title">Предпросмотр</string>
     <string name="widget_save_settings">Сохранить настройки</string>
     <string name="widget_no_classes_now">Сейчас пары нет</string>
     <string name="widget_no_classes_today">Сегодня пар нет ☕</string>
@@ -167,4 +167,8 @@
     <string name="widget_tab_small">Маленький (2×1)</string>
     <string name="widget_tab_daily">Большой (3×2)</string>
     <string name="widget_offline_badge">Офлайн</string>
+    <string name="widget_preview_tap_to_add">Нажмите на виджет, чтобы добавить на экран</string>
+    <string name="widget_pin_unsupported_hint">Добавьте виджет через главный экран</string>
+    <string name="widget_pin_unsupported_toast">Добавьте виджет через главный экран</string>
+    <string name="schedule_updated">Расписание обновлено</string>
 </resources>

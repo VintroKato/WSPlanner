@@ -108,6 +108,9 @@
                     android:layout_marginTop="8dp"
                     android:animateLayoutChanges="true"
                     android:background="@drawable/bg_widget_dark"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:paddingHorizontal="10dp"
                     android:paddingVertical="7dp">
 
@@ -217,6 +220,9 @@
                     android:layout_marginTop="8dp"
                     android:animateLayoutChanges="true"
                     android:background="@drawable/bg_widget_dark"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:padding="12dp">
 
                     <LinearLayout
@@ -364,6 +370,22 @@
                     </LinearLayout>
                 </FrameLayout>
             </LinearLayout>
+
+            <!-- Tap to add to home screen hint -->
+            <TextView
+                android:id="@+id/preview_pin_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="10dp"
+                android:drawableStart="@drawable/ic_arrow_outward"
+                android:drawablePadding="6dp"
+                android:drawableTint="?attr/colorPrimary"
+                android:gravity="center_vertical"
+                android:text="@string/widget_preview_tap_to_add"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="12.5sp"
+                android:textStyle="bold" />
 
             <!-- Theme / Background Selection (Applies to widgets) -->
             <TextView

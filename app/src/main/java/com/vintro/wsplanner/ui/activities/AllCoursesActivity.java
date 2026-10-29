@@ -263,6 +263,9 @@ public class AllCoursesActivity extends AppCompatActivity {
 
     private void openStudentZone() {
         Toast.makeText(this, R.string.all_courses_opening_strefa, Toast.LENGTH_SHORT).show();
+        if (adapter != null) {
+            adapter.setStrefaLoading(true);
+        }
 
         new Thread(() -> {
             String url = null;
@@ -281,6 +284,9 @@ public class AllCoursesActivity extends AppCompatActivity {
 
             final String finalUrl = url;
             runOnUiThread(() -> {
+                if (adapter != null) {
+                    adapter.setStrefaLoading(false);
+                }
                 try {
                     Logger.i("AllCoursesActivity.openStudentZone", "Opening student zone URL: " + finalUrl);
                     Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl));

@@ -45,6 +45,16 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         this.onStrefaClickListener = listener;
     }
 
+    private boolean isStrefaLoading = false;
+
+    public void setStrefaLoading(boolean loading) {
+        if (this.isStrefaLoading == loading) return;
+        this.isStrefaLoading = loading;
+        if (showStrefa) {
+            notifyItemChanged(0);
+        }
+    }
+
     public void setData(List<SubjectDetails> newCourses, boolean showStrefa, String majorName) {
         this.courses.clear();
         if (newCourses != null) {
@@ -79,7 +89,7 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if (holder instanceof StrefaViewHolder) {
-            ((StrefaViewHolder) holder).bind(majorName, onStrefaClickListener);
+            ((StrefaViewHolder) holder).bind(majorName, isStrefaLoading, onStrefaClickListener);
         } else if (holder instanceof CourseViewHolder) {
             int courseIndex = showStrefa ? position - 1 : position;
             if (courseIndex >= 0 && courseIndex < courses.size()) {
@@ -97,15 +107,19 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         private final MaterialCardView strefaCard;
         private final TextView textStrefaTitle;
         private final TextView textStrefaDesc;
+        private final ImageView strefaArrowIcon;
+        private final android.widget.ProgressBar strefaLoadingProgress;
 
         StrefaViewHolder(@NonNull View itemView) {
             super(itemView);
             strefaCard = itemView.findViewById(R.id.strefa_card);
             textStrefaTitle = itemView.findViewById(R.id.text_strefa_title);
             textStrefaDesc = itemView.findViewById(R.id.text_strefa_desc);
+            strefaArrowIcon = itemView.findViewById(R.id.strefa_arrow_icon);
+            strefaLoadingProgress = itemView.findViewById(R.id.strefa_loading_progress);
         }
 
-        void bind(String major, OnStrefaClickListener listener) {
+        void bind(String major, boolean isLoading, OnStrefaClickListener listener) {
             Context ctx = itemView.getContext();
             String title = ctx.getString(R.string.all_courses_strefa_title);
             if (major != null && !major.trim().isEmpty()) {
@@ -114,8 +128,20 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
             textStrefaTitle.setText(title);
             textStrefaDesc.setText(R.string.all_courses_strefa_desc);
 
+            if (strefaLoadingProgress != null) {
+                if (isLoading) {
+                    strefaLoadingProgress.setVisibility(View.VISIBLE);
+                    strefaLoadingProgress.animate().alpha(0.6f).setDuration(150).start();
+                } else {
+                    strefaLoadingProgress.animate().alpha(0f).setDuration(250).withEndAction(() -> {
+                        strefaLoadingProgress.setVisibility(View.GONE);
+                    }).start();
+                }
+            }
+
+            strefaCard.setEnabled(!isLoading);
             strefaCard.setOnClickListener(v -> {
-                if (listener != null) {
+                if (listener != null && !isLoading) {
                     listener.onStrefaClick();
                 }
             });

@@ -3,12 +3,16 @@ package com.vintro.wsplanner.ui.widgets;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.RemoteViews;
+import android.widget.Toast;
 
 import androidx.core.content.ContextCompat;
 
@@ -19,6 +23,7 @@ import com.vintro.wsplanner.models.DaySchedule;
 import com.vintro.wsplanner.ui.activities.MainActivity;
 import com.vintro.wsplanner.ui.activities.SubjectDetailsActivity;
 import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.utils.NetworkUtils;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -30,6 +35,8 @@ public class DailyScheduleWidget extends AppWidgetProvider {
     public static final String ACTION_DAILY_REFRESH = "com.vintro.wsplanner.ACTION_DAILY_REFRESH";
     public static final String ACTION_DAILY_OPEN_EXCEL = "com.vintro.wsplanner.ACTION_DAILY_OPEN_EXCEL";
     public static final String ACTION_DAILY_ITEM_CLICK = "com.vintro.wsplanner.ACTION_DAILY_ITEM_CLICK";
+
+    private static volatile boolean isManualRefreshing = false;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEE, dd.MM");
 
@@ -85,22 +92,119 @@ public class DailyScheduleWidget extends AppWidgetProvider {
         if (ACTION_DAILY_OPEN_EXCEL.equals(action)) {
             WidgetActionHelper.openExcelSchedule(context);
         } else if (ACTION_DAILY_REFRESH.equals(action)) {
-            if (!PreferencesManager.isOnboardingCompleted(context)
-                    || !ScheduleRepository.getInstance(context).isConfigurationComplete()) {
-                openMainActivity(context);
+            final Context appContext = context.getApplicationContext();
+            if (!PreferencesManager.isOnboardingCompleted(appContext)
+                    || !ScheduleRepository.getInstance(appContext).isConfigurationComplete()) {
+                openMainActivity(appContext);
                 return;
             }
             Logger.d("DailyScheduleWidget.onReceive", "Daily widget manual refresh requested");
-            ScheduleRepository.getInstance(context).getScheduleForDate(LocalDate.now(), true, new ScheduleRepository.ScheduleCallback<DaySchedule>() {
+
+            final AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(appContext);
+            ComponentName component = new ComponentName(appContext, DailyScheduleWidget.class);
+            final int[] widgetIds = appWidgetManager.getAppWidgetIds(component);
+
+            // Check network availability first
+            if (!NetworkUtils.isNetworkAvailable(appContext)) {
+                Toast.makeText(appContext, R.string.no_internet_connection, Toast.LENGTH_SHORT).show();
+                if (widgetIds != null && widgetIds.length > 0) {
+                    for (int id : widgetIds) {
+                        RemoteViews views = new RemoteViews(appContext.getPackageName(), R.layout.widget_daily_schedule);
+                        views.setViewVisibility(R.id.widget_daily_refresh_icon, View.GONE);
+                        views.setViewVisibility(R.id.widget_daily_refresh_progress, View.GONE);
+                        views.setViewVisibility(R.id.widget_daily_refresh_check, View.GONE);
+                        views.setViewVisibility(R.id.widget_daily_refresh_error, View.VISIBLE);
+                        appWidgetManager.partiallyUpdateAppWidget(id, views);
+                    }
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        for (int id : widgetIds) {
+                            RemoteViews views = new RemoteViews(appContext.getPackageName(), R.layout.widget_daily_schedule);
+                            views.setViewVisibility(R.id.widget_daily_refresh_icon, View.VISIBLE);
+                            views.setViewVisibility(R.id.widget_daily_refresh_progress, View.GONE);
+                            views.setViewVisibility(R.id.widget_daily_refresh_check, View.GONE);
+                            views.setViewVisibility(R.id.widget_daily_refresh_error, View.GONE);
+                            appWidgetManager.partiallyUpdateAppWidget(id, views);
+                        }
+                    }, 1200);
+                }
+                return;
+            }
+
+            isManualRefreshing = true;
+            final PendingResult pendingResult = goAsync();
+
+            // Show spinning progress bar replacing the refresh icon immediately
+            if (widgetIds != null && widgetIds.length > 0) {
+                for (int id : widgetIds) {
+                    RemoteViews views = new RemoteViews(appContext.getPackageName(), R.layout.widget_daily_schedule);
+                    views.setViewVisibility(R.id.widget_daily_refresh_icon, View.GONE);
+                    views.setViewVisibility(R.id.widget_daily_refresh_progress, View.VISIBLE);
+                    views.setViewVisibility(R.id.widget_daily_refresh_check, View.GONE);
+                    views.setViewVisibility(R.id.widget_daily_refresh_error, View.GONE);
+                    appWidgetManager.partiallyUpdateAppWidget(id, views);
+                }
+            }
+
+            Handler mainHandler = new Handler(Looper.getMainLooper());
+
+            ScheduleRepository.getInstance(appContext).getScheduleForDate(LocalDate.now(), true, new ScheduleRepository.ScheduleCallback<DaySchedule>() {
                 @Override
                 public void onSuccess(DaySchedule result) {
                     Logger.i("DailyScheduleWidget.onReceive", "Daily widget refresh completed successfully");
-                    WidgetUpdateManager.updateAllWidgets(context);
+                    mainHandler.post(() -> {
+                        boolean isFallback = result != null && result.isFromCacheFallback();
+                        if (isFallback) {
+                            Toast.makeText(appContext, R.string.no_internet_connection, Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(appContext, R.string.schedule_updated, Toast.LENGTH_SHORT).show();
+                        }
+
+                        if (widgetIds != null && widgetIds.length > 0) {
+                            for (int id : widgetIds) {
+                                RemoteViews views = new RemoteViews(appContext.getPackageName(), R.layout.widget_daily_schedule);
+                                views.setViewVisibility(R.id.widget_daily_refresh_icon, View.GONE);
+                                views.setViewVisibility(R.id.widget_daily_refresh_progress, View.GONE);
+                                views.setViewVisibility(R.id.widget_daily_refresh_check, isFallback ? View.GONE : View.VISIBLE);
+                                views.setViewVisibility(R.id.widget_daily_refresh_error, isFallback ? View.VISIBLE : View.GONE);
+                                appWidgetManager.partiallyUpdateAppWidget(id, views);
+                            }
+                        }
+
+                        mainHandler.postDelayed(() -> {
+                            isManualRefreshing = false;
+                            WidgetUpdateManager.updateAllWidgets(appContext);
+                            try {
+                                pendingResult.finish();
+                            } catch (Exception ignored) {}
+                        }, 1200);
+                    });
                 }
 
                 @Override
                 public void onError(Exception e) {
-                    Logger.w("DailyScheduleWidget.onReceive", "Daily refresh error (offline fallback): " + Logger.formatException(e));
+                    Logger.w("DailyScheduleWidget.onReceive", "Daily refresh error: " + Logger.formatException(e));
+                    mainHandler.post(() -> {
+                        Toast.makeText(appContext, R.string.no_internet_connection, Toast.LENGTH_SHORT).show();
+
+                        if (widgetIds != null && widgetIds.length > 0) {
+                            for (int id : widgetIds) {
+                                RemoteViews views = new RemoteViews(appContext.getPackageName(), R.layout.widget_daily_schedule);
+                                views.setViewVisibility(R.id.widget_daily_refresh_icon, View.GONE);
+                                views.setViewVisibility(R.id.widget_daily_refresh_progress, View.GONE);
+                                views.setViewVisibility(R.id.widget_daily_refresh_check, View.GONE);
+                                views.setViewVisibility(R.id.widget_daily_refresh_error, View.VISIBLE);
+                                appWidgetManager.partiallyUpdateAppWidget(id, views);
+                            }
+                        }
+
+                        mainHandler.postDelayed(() -> {
+                            isManualRefreshing = false;
+                            WidgetUpdateManager.updateAllWidgets(appContext);
+                            try {
+                                pendingResult.finish();
+                            } catch (Exception ignored) {}
+                        }, 1200);
+                    });
                 }
             });
         } else if (ACTION_DAILY_ITEM_CLICK.equals(action)) {
@@ -194,6 +298,12 @@ public class DailyScheduleWidget extends AppWidgetProvider {
 
         views.setViewVisibility(R.id.widget_daily_btn_excel, showExcel ? View.VISIBLE : View.GONE);
         views.setViewVisibility(R.id.widget_daily_btn_refresh, showRefresh ? View.VISIBLE : View.GONE);
+        if (!isManualRefreshing) {
+            views.setViewVisibility(R.id.widget_daily_refresh_icon, View.VISIBLE);
+            views.setViewVisibility(R.id.widget_daily_refresh_progress, View.GONE);
+            views.setViewVisibility(R.id.widget_daily_refresh_check, View.GONE);
+            views.setViewVisibility(R.id.widget_daily_refresh_error, View.GONE);
+        }
         views.setViewVisibility(R.id.widget_daily_btn_app, showApp ? View.VISIBLE : View.GONE);
 
         views.setOnClickPendingIntent(R.id.widget_daily_btn_excel, createActionPendingIntent(context, widgetId, ACTION_DAILY_OPEN_EXCEL));

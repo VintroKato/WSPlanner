@@ -61,15 +61,50 @@
                 android:padding="5dp"
                 android:src="@drawable/ic_file_excel" />
 
-            <ImageView
+            <FrameLayout
                 android:id="@+id/widget_daily_btn_refresh"
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:layout_marginEnd="6dp"
                 android:background="@drawable/bg_widget_icon_btn"
-                android:contentDescription="@string/widget_action_refresh"
-                android:padding="5dp"
-                android:src="@drawable/ic_refresh" />
+                android:contentDescription="@string/widget_action_refresh">
+
+                <ImageView
+                    android:id="@+id/widget_daily_refresh_icon"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="5dp"
+                    android:src="@drawable/ic_refresh"
+                    android:contentDescription="@null" />
+
+                <ProgressBar
+                    android:id="@+id/widget_daily_refresh_progress"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:indeterminate="true"
+                    android:indeterminateTint="#FFFFFF"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/widget_daily_refresh_check"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="5dp"
+                    android:src="@drawable/ic_widget_check"
+                    android:visibility="gone"
+                    android:contentDescription="@null" />
+
+                <ImageView
+                    android:id="@+id/widget_daily_refresh_error"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="5dp"
+                    android:src="@drawable/ic_widget_error"
+                    android:visibility="gone"
+                    android:contentDescription="@null" />
+            </FrameLayout>
 
             <ImageView
                 android:id="@+id/widget_daily_btn_app"

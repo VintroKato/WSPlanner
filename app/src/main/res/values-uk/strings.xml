@@ -153,7 +153,7 @@
     <string name="widget_theme_system">Системний</string>
     <string name="widget_theme_dark">Темний</string>
     <string name="widget_theme_light">Світлий</string>
-    <string name="widget_preview_title">Живий передперегляд</string>
+    <string name="widget_preview_title">Попередій нперегляд</string>
     <string name="widget_save_settings">Зберегти налаштування</string>
     <string name="widget_no_classes_now">Зараз пари немає</string>
     <string name="widget_no_classes_today">Сьогодні пар немає ☕</string>
@@ -167,4 +167,8 @@
     <string name="widget_setup_required_title">Потрібне налаштування</string>
     <string name="widget_setup_required_desc">Натисніть, щоб увійти в акаунт</string>
     <string name="widget_offline_badge">Офлайн</string>
+    <string name="widget_preview_tap_to_add">Натисніть на віджет, щоб додати на екран</string>
+    <string name="widget_pin_unsupported_hint">Додайте віджет через головний екран</string>
+    <string name="widget_pin_unsupported_toast">Додайте віджет через головний екран</string>
+    <string name="schedule_updated">Розклад оновлено</string>
 </resources>

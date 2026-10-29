@@ -71,7 +71,8 @@ public class SubjectDetailsActivity extends AppCompatActivity {
 
     // views
     private ImageButton buttonBack;
-    private ImageButton buttonOpenCourse;
+    private View buttonOpenCourse;
+    private ProgressBar progressOpenCourse;
     private TextView heroBadgeLocation;
     private TextView heroBadgeType;
     private TextView heroSubjectTitle;
@@ -140,6 +141,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
     private void initViews() {
         buttonBack = findViewById(R.id.button_back);
         buttonOpenCourse = findViewById(R.id.button_open_course);
+        progressOpenCourse = findViewById(R.id.progress_open_course);
         heroBadgeLocation = findViewById(R.id.hero_badge_location);
         heroBadgeType = findViewById(R.id.hero_badge_type);
         heroSubjectTitle = findViewById(R.id.hero_subject_title);
@@ -499,6 +501,14 @@ public class SubjectDetailsActivity extends AppCompatActivity {
     private void handleOpenPuwCourse() {
         Toast.makeText(this, getString(R.string.subject_opening_puw_course), Toast.LENGTH_SHORT).show();
 
+        if (progressOpenCourse != null) {
+            progressOpenCourse.setVisibility(View.VISIBLE);
+            progressOpenCourse.animate().alpha(0.6f).setDuration(150).start();
+        }
+        if (buttonOpenCourse != null) {
+            buttonOpenCourse.setEnabled(false);
+        }
+
         new Thread(() -> {
             try {
                 OkHttpClient client = PUW.globalLogin(SubjectDetailsActivity.this);
@@ -526,6 +536,15 @@ public class SubjectDetailsActivity extends AppCompatActivity {
                 final String safeFinalUrl = targetUrl;
 
                 runOnUiThread(() -> {
+                    if (progressOpenCourse != null) {
+                        progressOpenCourse.animate().alpha(0f).setDuration(250).withEndAction(() -> {
+                            if (progressOpenCourse != null) progressOpenCourse.setVisibility(View.GONE);
+                        }).start();
+                    }
+                    if (buttonOpenCourse != null) {
+                        buttonOpenCourse.setEnabled(true);
+                    }
+
                     if (courseUrl == null) {
                         Toast.makeText(SubjectDetailsActivity.this, getString(R.string.subject_course_not_found), Toast.LENGTH_SHORT).show();
                     }
@@ -540,6 +559,15 @@ public class SubjectDetailsActivity extends AppCompatActivity {
             } catch (Exception e) {
                 Logger.e("SubjectDetailsActivity.handleOpenPuwCourse", "Error in handleOpenPuwCourse: " + e.getMessage());
                 runOnUiThread(() -> {
+                    if (progressOpenCourse != null) {
+                        progressOpenCourse.animate().alpha(0f).setDuration(250).withEndAction(() -> {
+                            if (progressOpenCourse != null) progressOpenCourse.setVisibility(View.GONE);
+                        }).start();
+                    }
+                    if (buttonOpenCourse != null) {
+                        buttonOpenCourse.setEnabled(true);
+                    }
+
                     try {
                         startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://puw.wspa.pl/my/")));
                     } catch (Exception ignored) {}

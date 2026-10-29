@@ -1,8 +1,11 @@
 package com.vintro.wsplanner.ui.activities;
 
+import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProviderInfo;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -26,12 +29,15 @@ import com.google.android.material.materialswitch.MaterialSwitch;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
+import com.vintro.wsplanner.ui.widgets.CurrentLessonWidget;
 import com.vintro.wsplanner.ui.widgets.DailyScheduleWidget;
 import com.vintro.wsplanner.ui.widgets.WidgetUpdateManager;
 import com.vintro.wsplanner.utils.Logger;
 
 // activity for configuring widget appearance and click actions
 public class WidgetConfigureActivity extends AppCompatActivity {
+    public static final String EXTRA_PIN_SKIP_CONFIGURE = "pin_skip_configure";
+
     private MaterialButtonToggleGroup widgetTypeToggleGroup;
 
     // Small widget preview views
@@ -54,6 +60,9 @@ public class WidgetConfigureActivity extends AppCompatActivity {
     private TextView previewCard1Time;
     private TextView previewCard1Subject;
     private TextView previewCard1Room;
+
+    // Preview Pin Hint
+    private TextView previewPinHint;
 
     // Sections
     private LinearLayout sectionSmallWidgetOptions;
@@ -109,6 +118,33 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             );
         }
         Logger.d("WidgetConfigureActivity.onCreate", "Initializing widget configuration (widgetId=" + appWidgetId + ")");
+
+        // If placed as a widget, check if it was placed via settings pin request
+        if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+            setResult(RESULT_CANCELED);
+
+            boolean fromPin = false;
+            AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
+            Bundle options = appWidgetManager.getAppWidgetOptions(appWidgetId);
+            if (options != null && options.getBoolean(EXTRA_PIN_SKIP_CONFIGURE, false)) {
+                fromPin = true;
+            }
+            if (!fromPin && PreferencesManager.wasPinWidgetRequestedRecently(this)) {
+                fromPin = true;
+            }
+
+            if (fromPin) {
+                Logger.i("WidgetConfigureActivity.onCreate", "Widget " + appWidgetId + " was added via settings pin request. Skipping configuration.");
+                PreferencesManager.clearPinWidgetRequested(this);
+                WidgetUpdateManager.updateAllWidgets(this);
+
+                Intent resultValue = new Intent();
+                resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+                setResult(RESULT_OK, resultValue);
+                finish();
+                return;
+            }
+        }
 
         initViews();
         loadSettings();
@@ -175,6 +211,8 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         switchShowRefresh = findViewById(R.id.switch_show_refresh);
         switchShowApp = findViewById(R.id.switch_show_app);
 
+        previewPinHint = findViewById(R.id.preview_pin_hint);
+
         MaterialButton buttonSave = findViewById(R.id.button_save);
         buttonSave.setOnClickListener(v -> saveSettings());
     }
@@ -189,6 +227,13 @@ public class WidgetConfigureActivity extends AppCompatActivity {
 
             // Hide the toggle group completely when opened for a specific widget
             widgetTypeToggleGroup.setVisibility(View.GONE);
+            if (previewPinHint != null) {
+                previewPinHint.setVisibility(View.GONE);
+            }
+            previewContainer.setClickable(false);
+            previewDailyRoot.setClickable(false);
+            previewContainer.setForeground(null);
+            previewDailyRoot.setForeground(null);
 
             if (isDaily) {
                 if (titleLabel != null) titleLabel.setText(R.string.widget_daily_schedule_name);
@@ -203,6 +248,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         Logger.d("WidgetConfigureActivity.determineInitialTab", "Opened from settings: showing general widget tabs");
         // Opened from SettingsActivity: show tabs so user can choose
         widgetTypeToggleGroup.setVisibility(View.VISIBLE);
+        setupPinAffordance();
         showSmallWidgetUI();
     }
 
@@ -236,14 +282,14 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         String clickAction = PreferencesManager.getWidgetClickAction(this);
         if (PreferencesManager.WIDGET_CLICK_OPEN_DETAILS.equals(clickAction)) {
             radioClickDetails.setChecked(true);
-        } else if (PreferencesManager.WIDGET_CLICK_OPEN_APP.equals(clickAction)) {
-            radioClickApp.setChecked(true);
+        } else if (PreferencesManager.WIDGET_CLICK_TOGGLE.equals(clickAction)) {
+            radioClickToggle.setChecked(true);
         } else if (PreferencesManager.WIDGET_CLICK_OPEN_EXCEL.equals(clickAction)) {
             radioClickExcel.setChecked(true);
         } else if (PreferencesManager.WIDGET_CLICK_REFRESH.equals(clickAction)) {
             radioClickRefresh.setChecked(true);
         } else {
-            radioClickToggle.setChecked(true);
+            radioClickApp.setChecked(true);
         }
 
         // Break Action
@@ -357,8 +403,101 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         }
     }
 
-    // persist widget preferences and broadcast update to all widget instances
-    private void saveSettings() {
+    // setup interactive click-to-pin affordance on preview cards
+    private void setupPinAffordance() {
+        if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) return;
+
+        AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
+        boolean isPinSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && appWidgetManager.isRequestPinAppWidgetSupported();
+
+        if (previewPinHint != null) {
+            previewPinHint.setVisibility(View.VISIBLE);
+            if (isPinSupported) {
+                previewPinHint.setText(R.string.widget_preview_tap_to_add);
+                previewPinHint.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_arrow_outward, 0, 0, 0);
+            } else {
+                previewPinHint.setText(R.string.widget_pin_unsupported_hint);
+                previewPinHint.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_info, 0, 0, 0);
+            }
+        }
+
+        previewContainer.setOnClickListener(v -> {
+            if (isPinSupported) {
+                requestPinWidget(false);
+            } else {
+                showPinUnsupportedToast();
+            }
+        });
+
+        previewDailyRoot.setOnClickListener(v -> {
+            if (isPinSupported) {
+                requestPinWidget(true);
+            } else {
+                showPinUnsupportedToast();
+            }
+        });
+
+        if (previewPinHint != null) {
+            previewPinHint.setOnClickListener(v -> {
+                if (isPinSupported) {
+                    boolean isDaily = (widgetTypeToggleGroup != null && widgetTypeToggleGroup.getCheckedButtonId() == R.id.tab_daily_widget);
+                    requestPinWidget(isDaily);
+                } else {
+                    showPinUnsupportedToast();
+                }
+            });
+        }
+    }
+
+    // request system dialog to pin widget to home screen
+    private void requestPinWidget(boolean isDaily) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            showPinUnsupportedToast();
+            return;
+        }
+
+        AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
+        if (!appWidgetManager.isRequestPinAppWidgetSupported()) {
+            showPinUnsupportedToast();
+            return;
+        }
+
+        // Persist currently selected options first so newly placed widget has latest configuration
+        savePreferences();
+
+        Class<?> widgetClass = isDaily ? DailyScheduleWidget.class : CurrentLessonWidget.class;
+        ComponentName provider = new ComponentName(this, widgetClass);
+
+        // Record pin request timestamp to skip redundant configuration activity when placed
+        PreferencesManager.setPinWidgetRequested(this);
+
+        Bundle pinOptions = new Bundle();
+        pinOptions.putBoolean(EXTRA_PIN_SKIP_CONFIGURE, true);
+
+        Intent callbackIntent = new Intent(this, WidgetUpdateManager.class);
+        callbackIntent.setAction(WidgetUpdateManager.ACTION_REFRESH_WIDGETS);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent successCallback = PendingIntent.getBroadcast(this, 0, callbackIntent, flags);
+
+        Logger.d("WidgetConfigureActivity.requestPinWidget", "Requesting widget pinning for " + widgetClass.getSimpleName());
+        boolean success = appWidgetManager.requestPinAppWidget(provider, pinOptions, successCallback);
+        if (!success) {
+            Logger.w("WidgetConfigureActivity.requestPinWidget", "requestPinAppWidget returned false");
+            PreferencesManager.clearPinWidgetRequested(this);
+            showPinUnsupportedToast();
+        }
+    }
+
+    private void showPinUnsupportedToast() {
+        Toast.makeText(this, R.string.widget_pin_unsupported_toast, Toast.LENGTH_SHORT).show();
+    }
+
+    // persist current widget settings to preferences and broadcast update
+    private void savePreferences() {
         // Save Theme
         String theme = radioThemeLight.isChecked() ? PreferencesManager.WIDGET_THEME_LIGHT : PreferencesManager.WIDGET_THEME_DARK;
         PreferencesManager.setWidgetTheme(this, theme);
@@ -384,10 +523,15 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         String dailyAction = radioDailyClickApp.isChecked() ? PreferencesManager.DAILY_WIDGET_CLICK_OPEN_APP : PreferencesManager.DAILY_WIDGET_CLICK_OPEN_DETAILS;
         PreferencesManager.setDailyWidgetLessonAction(this, dailyAction);
 
-        Logger.i("WidgetConfigureActivity.saveSettings", "Saved widget settings: theme=" + theme + ", click=" + clickAction + ", break=" + breakAction + ", dailyAction=" + dailyAction);
+        Logger.i("WidgetConfigureActivity.savePreferences", "Saved widget settings: theme=" + theme + ", click=" + clickAction + ", break=" + breakAction + ", dailyAction=" + dailyAction);
 
         // Update all widget instances immediately
         WidgetUpdateManager.updateAllWidgets(this);
+    }
+
+    // persist widget preferences and broadcast update to all widget instances
+    private void saveSettings() {
+        savePreferences();
 
         // If opened as configuration activity for widget placement
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {

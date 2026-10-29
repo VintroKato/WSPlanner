@@ -459,4 +459,23 @@ public class PreferencesManager {
     public static void setWidgetShowingForcedNext(Context context, int widgetId, boolean next) {
         getPreferences(context).edit().putBoolean(KEY_WIDGET_FORCED_NEXT + widgetId, next).apply();
     }
+
+    private static final String KEY_PIN_WIDGET_REQUEST_TIMESTAMP = "pin_widget_request_timestamp";
+    private static final long PIN_WIDGET_TIMEOUT_MS = 60_000L;
+
+    // record timestamp when user requests widget pinning from inside settings
+    public static void setPinWidgetRequested(Context context) {
+        getPreferences(context).edit().putLong(KEY_PIN_WIDGET_REQUEST_TIMESTAMP, System.currentTimeMillis()).apply();
+    }
+
+    // check if a widget pin request was initiated within the last minute
+    public static boolean wasPinWidgetRequestedRecently(Context context) {
+        long timestamp = getPreferences(context).getLong(KEY_PIN_WIDGET_REQUEST_TIMESTAMP, 0L);
+        return (System.currentTimeMillis() - timestamp) <= PIN_WIDGET_TIMEOUT_MS;
+    }
+
+    // clear the widget pin request flag once handled
+    public static void clearPinWidgetRequested(Context context) {
+        getPreferences(context).edit().remove(KEY_PIN_WIDGET_REQUEST_TIMESTAMP).apply();
+    }
 }

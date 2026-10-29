@@ -13,12 +13,14 @@ import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.view.ContextThemeWrapper;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
 import androidx.core.graphics.drawable.DrawableCompat;
@@ -51,7 +53,8 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
-    private ImageButton buttonOpenFile;
+    private View buttonOpenFile;
+    private ProgressBar progressOpenFile;
     private ImageButton buttonMenu;
     private ImageButton buttonPrevDay;
     private ImageButton buttonToday;
@@ -163,6 +166,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void initViews() {
         buttonOpenFile = findViewById(R.id.button_open_file);
+        progressOpenFile = findViewById(R.id.progress_open_file);
         buttonMenu = findViewById(R.id.button_menu);
         buttonPrevDay = findViewById(R.id.button_prev_day);
         buttonToday = findViewById(R.id.button_today);
@@ -172,6 +176,27 @@ public class MainActivity extends AppCompatActivity {
         lastSyncText = findViewById(R.id.last_sync_text);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
         recyclerSchedule = findViewById(R.id.recycler_schedule);
+
+        setupSwipeRefreshColors();
+    }
+
+    private void setupSwipeRefreshColors() {
+        if (swipeRefreshLayout == null) return;
+        boolean isNight = UIHelper.isNightMode(this);
+        int progressBgColor = ContextCompat.getColor(this, isNight ? R.color.card_bg_dark : R.color.card_bg_light);
+        swipeRefreshLayout.setProgressBackgroundColorSchemeColor(progressBgColor);
+
+        if (isNight) {
+            swipeRefreshLayout.setColorSchemeColors(
+                    ContextCompat.getColor(this, R.color.active_lesson_border),
+                    ContextCompat.getColor(this, R.color.next_lesson_border)
+            );
+        } else {
+            swipeRefreshLayout.setColorSchemeColors(
+                    ContextCompat.getColor(this, R.color.btn_bg),
+                    ContextCompat.getColor(this, R.color.active_lesson_border)
+            );
+        }
     }
 
     private void setupRecyclerView() {
@@ -319,11 +344,33 @@ public class MainActivity extends AppCompatActivity {
         loadSchedule(true);
     }
 
-    // open excel schedule file with external viewer
+    // open excel schedule file with external viewer and smooth surrounding spinner
     private void openScheduleFile() {
         Logger.d("MainActivity.openScheduleFile", "User requested to open schedule Excel file");
         Toast.makeText(this, getString(R.string.schedule_opening_file), Toast.LENGTH_SHORT).show();
-        ScheduleFileOpener.openExcelSchedule(this);
+
+        if (progressOpenFile != null) {
+            progressOpenFile.setVisibility(View.VISIBLE);
+            progressOpenFile.animate().alpha(0.6f).setDuration(100).start();
+        }
+        if (buttonOpenFile != null) {
+            buttonOpenFile.setEnabled(false);
+        }
+
+        tickerHandler.postDelayed(() -> {
+            try {
+                ScheduleFileOpener.openExcelSchedule(MainActivity.this);
+            } finally {
+                if (progressOpenFile != null) {
+                    progressOpenFile.animate().alpha(0f).setDuration(250).withEndAction(() -> {
+                        if (progressOpenFile != null) progressOpenFile.setVisibility(View.GONE);
+                    }).start();
+                }
+                if (buttonOpenFile != null) {
+                    buttonOpenFile.setEnabled(true);
+                }
+            }
+        }, 150);
     }
 
     private void openCalendarPicker() {
@@ -433,6 +480,7 @@ public class MainActivity extends AppCompatActivity {
 
         updateDateUI();
         updateLastSyncUI();
+        setupSwipeRefreshColors();
         startMinuteTicker();
 
         // Immediately update timeline states on resume so "NOW" / "NEXT" match the real current time
