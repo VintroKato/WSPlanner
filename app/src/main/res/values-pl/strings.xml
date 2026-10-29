@@ -127,6 +127,7 @@
     <string name="all_courses_empty_title">Nic nie znaleziono</string>
     <string name="all_courses_empty_desc">Sprawdź poprawność wpisanego tekstu</string>
     <string name="all_courses_strefa_title">Strefa Studenta</string>
+    <string name="all_courses_strefa_zero_year_title">Strefa uczestnika kursu "ROK ZEROWY"</string>
     <string name="all_courses_strefa_desc">Plany zajęć, dni wolne, dane kontaktowe dziekana i pełnomocników…</string>
     <string name="all_courses_progress_format">%1$d z %2$d</string>
     <string name="all_courses_count_format">%1$d przedmiotów</string>

@@ -429,4 +429,187 @@ public class ParserTest {
         assertEquals(LocalTime.of(16, 50), jan18.getEndTime());
         assertEquals("WSPA", jan18.getLocation().getDisplayText());
     }
+
+    @Test
+    public void testRokZerowyMultipleDatyClausesWithDifferentTimes() {
+        BachelorFullTimeParser parser = new BachelorFullTimeParser();
+        parser.setAcademicYears(2026, 2027);
+
+        // Środa from Rok zerowy screenshot:
+        String rawBlock = "Język polski - słownictwo i komunikacja ustna - 50h\n" +
+                "dr Agnieszka Mehmegdolu\n" +
+                "daty: 14.10 w godz. 11:45-16:00\n" +
+                "daty: 04.11, 25.11, 02.12, 09.12, 16.12, 13.01, 20.01, 27.01 w godz. 13:30-16:00\n" +
+                "sala 111\n" +
+                "zajęcia w siedzibie Uczelni";
+
+        List<Lesson> lessons = parser.parseLessonBlock(rawBlock, null, LocalTime.of(11, 45), LocalTime.of(16, 0), null, null);
+        // 1 date on first daty line + 8 dates on second daty line = 9 lessons
+        assertEquals(9, lessons.size());
+
+        // Check 14.10 lesson
+        Lesson oct14 = lessons.stream().filter(l -> l.getDate() != null && l.getDate().equals(LocalDate.of(2026, 10, 14))).findFirst().orElse(null);
+        assertNotNull(oct14);
+        assertEquals(LocalTime.of(11, 45), oct14.getStartTime());
+        assertEquals(LocalTime.of(16, 0), oct14.getEndTime());
+        assertEquals("Sala 111", oct14.getLocation().getDisplayText());
+        assertEquals("dr Agnieszka Mehmegdolu", oct14.getTeacherName());
+        assertEquals("Język polski - słownictwo i komunikacja ustna", oct14.getSubjectName());
+
+        // Check 04.11 and 27.01 lessons (have 13:30 - 16:00)
+        Lesson nov04 = lessons.stream().filter(l -> l.getDate() != null && l.getDate().equals(LocalDate.of(2026, 11, 4))).findFirst().orElse(null);
+        assertNotNull(nov04);
+        assertEquals(LocalTime.of(13, 30), nov04.getStartTime());
+        assertEquals(LocalTime.of(16, 0), nov04.getEndTime());
+        assertEquals("Sala 111", nov04.getLocation().getDisplayText());
+
+        Lesson jan27 = lessons.stream().filter(l -> l.getDate() != null && l.getDate().equals(LocalDate.of(2027, 1, 27))).findFirst().orElse(null);
+        assertNotNull(jan27);
+        assertEquals(LocalTime.of(13, 30), jan27.getStartTime());
+        assertEquals(LocalTime.of(16, 0), jan27.getEndTime());
+    }
+
+    @Test
+    public void testRokZerowyWdnMultiDatesOverride() {
+        BachelorFullTimeParser parser = new BachelorFullTimeParser();
+        parser.setAcademicYears(2026, 2027);
+
+        // Czwartek from Rok zerowy screenshot:
+        String rawBlock = "Język polski - pisanie - 25h\n" +
+                "mgr Violetta Wołoch\n" +
+                "daty: 12.11, 19.11, 26.11, 03.12, 10.12, 17.12, 14.01, 21.01, 28.01\n" +
+                "w dn. 12.11 oraz 19.11 zajęcia w godz. 13:30-15:05\n" +
+                "sala\n" +
+                "zajęcia w siedzibie Uczelni";
+
+        List<Lesson> lessons = parser.parseLessonBlock(rawBlock, null, LocalTime.of(11, 45), LocalTime.of(13, 20), null, null);
+        assertEquals(9, lessons.size());
+
+        // 12.11 and 19.11 must have overridden time 13:30 - 15:05
+        Lesson nov12 = lessons.stream().filter(l -> l.getDate() != null && l.getDate().equals(LocalDate.of(2026, 11, 12))).findFirst().orElse(null);
+        assertNotNull(nov12);
+        assertEquals(LocalTime.of(13, 30), nov12.getStartTime());
+        assertEquals(LocalTime.of(15, 5), nov12.getEndTime());
+        assertEquals("WSPA", nov12.getLocation().getDisplayText());
+
+        Lesson nov19 = lessons.stream().filter(l -> l.getDate() != null && l.getDate().equals(LocalDate.of(2026, 11, 19))).findFirst().orElse(null);
+        assertNotNull(nov19);
+        assertEquals(LocalTime.of(13, 30), nov19.getStartTime());
+        assertEquals(LocalTime.of(15, 5), nov19.getEndTime());
+
+        // Other dates (e.g. 26.11) keep the cell's default hours (11:45 - 13:20)
+        Lesson nov26 = lessons.stream().filter(l -> l.getDate() != null && l.getDate().equals(LocalDate.of(2026, 11, 26))).findFirst().orElse(null);
+        assertNotNull(nov26);
+        assertEquals(LocalTime.of(11, 45), nov26.getStartTime());
+        assertEquals(LocalTime.of(13, 20), nov26.getEndTime());
+    }
+
+    @Test
+    public void testRokZerowyDuplicateUczelniaLocationAndSala111() {
+        BachelorFullTimeParser parser = new BachelorFullTimeParser();
+        parser.setAcademicYears(2026, 2027);
+
+        // Czwartek from Rok zerowy screenshot with duplicate "zajęcia w siedzibie Uczelni" and sala 111:
+        String blockSala111 = "Język polski - słownictwo i komunikacja ustna - 50h\n" +
+                "dr Agnieszka Mehmegdolu\n" +
+                "daty: 22.10 w godz. 11:45-15:05\n" +
+                "daty: 05.11 w godz. 11:45-16:00\n" +
+                "sala 111\n" +
+                "zajęcia w siedzibie Uczelni\n" +
+                "zajęcia w siedzibie Uczelni";
+
+        List<Lesson> lessons111 = parser.parseLessonBlock(blockSala111, null, LocalTime.of(11, 45), LocalTime.of(15, 5), null, null);
+        assertEquals(2, lessons111.size());
+        for (Lesson l : lessons111) {
+            assertEquals("Sala 111", l.getLocation().getDisplayText());
+            assertEquals("111", l.getLocation().getRoomNumber());
+            assertFalse(l.getLocation().isOffsite());
+            assertFalse(l.getLocation().isOnline());
+        }
+
+        // Poniedziałek from Rok zerowy screenshot with bare "sala" and duplicate "zajęcia w siedzibie Uczelni":
+        String blockBareSala = "Język polski - słownictwo i komunikacja ustna - 50h\n" +
+                "dr Agnieszka Mehmegdolu\n" +
+                "daty: 19.10 w godz. 11:45-13:20\n" +
+                "daty: 18.01, 25.01 w godz. 11:45-14:15\n" +
+                "sala\n" +
+                "zajęcia w siedzibie Uczelni\n" +
+                "zajęcia w siedzibie Uczelni";
+
+        List<Lesson> lessonsBare = parser.parseLessonBlock(blockBareSala, null, LocalTime.of(12, 35), LocalTime.of(14, 15), null, null);
+        assertEquals(3, lessonsBare.size());
+        for (Lesson l : lessonsBare) {
+            assertEquals("WSPA", l.getLocation().getDisplayText());
+            assertNull(l.getLocation().getRoomNumber());
+        }
+
+        Lesson oct19 = lessonsBare.stream().filter(l -> l.getDate() != null && l.getDate().equals(LocalDate.of(2026, 10, 19))).findFirst().orElse(null);
+        assertNotNull(oct19);
+        assertEquals(LocalTime.of(11, 45), oct19.getStartTime());
+        assertEquals(LocalTime.of(13, 20), oct19.getEndTime());
+
+        Lesson jan18 = lessonsBare.stream().filter(l -> l.getDate() != null && l.getDate().equals(LocalDate.of(2027, 1, 18))).findFirst().orElse(null);
+        assertNotNull(jan18);
+        assertEquals(LocalTime.of(11, 45), jan18.getStartTime());
+        assertEquals(LocalTime.of(14, 15), jan18.getEndTime());
+    }
+
+    @Test
+    public void testRokZerowyFindTargetColumnsWhenNoGroups() throws Exception {
+        // Construct an in-memory sheet mimicking Rok zerowy:
+        // Row 0: "Rok zerowy I SEMESTR rok akademicki 2026/2027"
+        // Row 1: Col 0: "DNI", Col 1: "PONIEDZIAŁEK", Col 2: "WTOREK", Col 3: "ŚRODA", Col 4: "CZWARTEK", Col 5: "PIĄTEK"
+        // Row 2: Col 0: "GRUPA" (no groups under any day!)
+        // Row 3: Col 0: "GODZ."
+        java.util.Map<Integer, java.util.Map<Integer, String>> rowMap = new java.util.HashMap<>();
+        
+        java.util.Map<Integer, String> r0 = new java.util.HashMap<>();
+        r0.put(0, "Rok zerowy I SEMESTR rok akademicki 2026/2027");
+        rowMap.put(0, r0);
+
+        java.util.Map<Integer, String> r1 = new java.util.HashMap<>();
+        r1.put(0, "DNI");
+        r1.put(1, "PONIEDZIAŁEK");
+        r1.put(2, "WTOREK");
+        r1.put(3, "ŚRODA");
+        r1.put(4, "CZWARTEK");
+        r1.put(5, "PIĄTEK");
+        rowMap.put(1, r1);
+
+        java.util.Map<Integer, String> r2 = new java.util.HashMap<>();
+        r2.put(0, "GRUPA");
+        rowMap.put(2, r2);
+
+        java.util.Map<Integer, String> r3 = new java.util.HashMap<>();
+        r3.put(0, "GODZ.");
+        rowMap.put(3, r3);
+
+        ExcelSheet sheet = new ExcelSheet("I semestr", rowMap, java.util.Collections.emptyList());
+
+        BachelorFullTimeParser parser = new BachelorFullTimeParser();
+        java.lang.reflect.Method m = BachelorFullTimeParser.class.getDeclaredMethod("findTargetColumns", ExcelSheet.class, String.class, String.class);
+        m.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        java.util.List<Integer> cols = (java.util.List<Integer>) m.invoke(parser, sheet, "Ivanov", null);
+
+        // All 5 days (columns 1, 2, 3, 4, 5) must be included!
+        assertEquals(5, cols.size());
+        assertTrue(cols.contains(1));
+        assertTrue(cols.contains(2));
+        assertTrue(cols.contains(3));
+        assertTrue(cols.contains(4));
+        assertTrue(cols.contains(5));
+    }
+
+    @Test
+    public void testParserFactoryZeroYear() {
+        com.vintro.wsplanner.parser.ScheduleParser parser =
+                com.vintro.wsplanner.parser.ParserFactory.getParser(
+                        com.vintro.wsplanner.enums.DegreeLevel.ZERO_YEAR,
+                        com.vintro.wsplanner.enums.StudyMode.FULL_TIME
+                );
+        assertNotNull(parser);
+        assertTrue(parser instanceof BachelorFullTimeParser);
+    }
 }

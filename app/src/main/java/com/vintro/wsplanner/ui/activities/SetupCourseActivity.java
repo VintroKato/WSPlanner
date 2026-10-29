@@ -150,8 +150,26 @@ public class SetupCourseActivity extends AppCompatActivity {
         // get primary course
         selectedCourse = courseSetupService.determinePrimaryCourse(availableCourses);
         if (selectedCourse != null && selectedCourse.fieldOfStudy != null) {
-            majorText.setText(selectedCourse.fieldOfStudy);
+            majorText.setText(selectedCourse.degreeLevel == DegreeLevel.ZERO_YEAR ? "ROK ZEROWY" : selectedCourse.fieldOfStudy);
             majorCard.setChecked(true);
+        }
+
+        // If Rok Zerowy, skip degree/mode/year configuration
+        if (selectedCourse != null && selectedCourse.degreeLevel == DegreeLevel.ZERO_YEAR) {
+            selectedLevel = DegreeLevel.ZERO_YEAR;
+            selectedMode = StudyMode.FULL_TIME;
+            selectedYear = 1;
+
+            levelLabel.setVisibility(View.GONE);
+            levelLayout.setVisibility(View.GONE);
+            modeLabel.setVisibility(View.GONE);
+            modeLayout.setVisibility(View.GONE);
+            yearLabel.setVisibility(View.GONE);
+            yearLayout.setVisibility(View.GONE);
+
+            confirmButton.setEnabled(true);
+            confirmButton.setAlpha(1.0f);
+            return;
         }
 
         // load degree levels
@@ -263,6 +281,8 @@ public class SetupCourseActivity extends AppCompatActivity {
                 return getString(R.string.degree_level_masters_code);
             case LONG_MASTERS:
                 return getString(R.string.degree_level_long_masters_code);
+            case ZERO_YEAR:
+                return "ROK ZEROWY";
             default:
                 return level.name();
         }

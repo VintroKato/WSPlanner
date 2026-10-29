@@ -36,6 +36,7 @@ import android.view.animation.LayoutAnimationController;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
+import com.vintro.wsplanner.enums.DegreeLevel;
 import com.vintro.wsplanner.models.DaySchedule;
 import com.vintro.wsplanner.ui.adapters.ScheduleAdapter;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
@@ -117,8 +118,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (!isSpecialtyDone || PreferencesManager.ONBOARDING_STAGE_SPECIALTY.equals(stage)) {
-            if (PreferencesManager.getGlobalYearPref(this) == 1) {
-                Logger.d("MainActivity.onCreate", "Year 1 student skipping specialty setup, advancing to SetupAdditionalActivity");
+            if (PreferencesManager.getGlobalDegreeLevelPref(this) == DegreeLevel.ZERO_YEAR || PreferencesManager.getGlobalYearPref(this) == 1) {
+                Logger.d("MainActivity.onCreate", "Year 1 or Rok Zerowy student skipping specialty setup, advancing to SetupAdditionalActivity");
                 PreferencesManager.setGlobalSpecialtyPref(this, null);
                 PreferencesManager.setGlobalSpecialtyConfigured(this, true);
                 PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_ADDITIONAL);

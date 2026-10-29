@@ -83,49 +83,61 @@ public class SetupAdditionalActivity extends AppCompatActivity {
     }
 
     private void initData() {
-        // pre-fill english group
-        String savedEnglish = PreferencesManager.getGlobalEnglishGroupPref(this);
-        Integer detectedEnglish = courseSetupService.getCachedEnglishGroup();
-        if (detectedEnglish == null) {
-            detectedEnglish = PreferencesManager.getDetectedEnglishGroup(this);
-        }
-        String effectiveEnglish = (savedEnglish != null && !savedEnglish.trim().isEmpty())
-                ? savedEnglish
-                : (detectedEnglish != null ? String.valueOf(detectedEnglish) : null);
+        DegreeLevel degreeLevel = PreferencesManager.getGlobalDegreeLevelPref(this);
+        boolean isZeroYear = (degreeLevel == DegreeLevel.ZERO_YEAR);
 
-        if (effectiveEnglish != null && !effectiveEnglish.trim().isEmpty()) {
-            englishSwitch.setChecked(true);
-            englishInput.setText(effectiveEnglish);
-            englishInput.setVisibility(View.VISIBLE);
-        } else {
-            englishSwitch.setChecked(false);
-            englishInput.setVisibility(View.GONE);
-        }
-
-        // pre-fill diploma seminar for senior year
+        String effectiveEnglish = null;
+        String effectiveSeminar = null;
         int year = PreferencesManager.getGlobalYearPref(this);
-        String savedSeminar = PreferencesManager.getGlobalSeminarTeacherPref(this);
-        String detectedSeminar = courseSetupService.getCachedSeminarTeacher();
-        if (detectedSeminar == null) {
-            detectedSeminar = PreferencesManager.getDetectedSeminarTeacher(this);
-        }
-        String effectiveSeminar = (savedSeminar != null && !savedSeminar.trim().isEmpty())
-                ? savedSeminar
-                : detectedSeminar;
+        final boolean isSeniorYear = !isZeroYear && (year >= 3 || year <= 0);
 
-        boolean isSeniorYear = (year >= 3 || year <= 0);
-        if (isSeniorYear || (effectiveSeminar != null && !effectiveSeminar.isEmpty())) {
-            seminarContainer.setVisibility(View.VISIBLE);
-            if (effectiveSeminar != null && !effectiveSeminar.trim().isEmpty()) {
-                seminarSwitch.setChecked(true);
-                seminarInput.setText(effectiveSeminar);
-                seminarInput.setVisibility(View.VISIBLE);
-            } else {
-                seminarSwitch.setChecked(false);
-                seminarInput.setVisibility(View.GONE);
-            }
-        } else {
+        if (isZeroYear) {
+            englishSwitch.setVisibility(View.GONE);
+            englishInput.setVisibility(View.GONE);
             seminarContainer.setVisibility(View.GONE);
+        } else {
+            // pre-fill english group
+            String savedEnglish = PreferencesManager.getGlobalEnglishGroupPref(this);
+            Integer detectedEnglish = courseSetupService.getCachedEnglishGroup();
+            if (detectedEnglish == null) {
+                detectedEnglish = PreferencesManager.getDetectedEnglishGroup(this);
+            }
+            effectiveEnglish = (savedEnglish != null && !savedEnglish.trim().isEmpty())
+                    ? savedEnglish
+                    : (detectedEnglish != null ? String.valueOf(detectedEnglish) : null);
+
+            if (effectiveEnglish != null && !effectiveEnglish.trim().isEmpty()) {
+                englishSwitch.setChecked(true);
+                englishInput.setText(effectiveEnglish);
+                englishInput.setVisibility(View.VISIBLE);
+            } else {
+                englishSwitch.setChecked(false);
+                englishInput.setVisibility(View.GONE);
+            }
+
+            // pre-fill diploma seminar for senior year
+            String savedSeminar = PreferencesManager.getGlobalSeminarTeacherPref(this);
+            String detectedSeminar = courseSetupService.getCachedSeminarTeacher();
+            if (detectedSeminar == null) {
+                detectedSeminar = PreferencesManager.getDetectedSeminarTeacher(this);
+            }
+            effectiveSeminar = (savedSeminar != null && !savedSeminar.trim().isEmpty())
+                    ? savedSeminar
+                    : detectedSeminar;
+
+            if (isSeniorYear || (effectiveSeminar != null && !effectiveSeminar.isEmpty())) {
+                seminarContainer.setVisibility(View.VISIBLE);
+                if (effectiveSeminar != null && !effectiveSeminar.trim().isEmpty()) {
+                    seminarSwitch.setChecked(true);
+                    seminarInput.setText(effectiveSeminar);
+                    seminarInput.setVisibility(View.VISIBLE);
+                } else {
+                    seminarSwitch.setChecked(false);
+                    seminarInput.setVisibility(View.GONE);
+                }
+            } else {
+                seminarContainer.setVisibility(View.GONE);
+            }
         }
 
         // pre-fill student surname
@@ -152,6 +164,48 @@ public class SetupAdditionalActivity extends AppCompatActivity {
         boolean missingEnglish = (effectiveEnglish == null);
         boolean missingSeminar = isSeniorYear && (effectiveSeminar == null || effectiveSeminar.trim().isEmpty());
         boolean missingSurname = (studentSurnameInput.getText() == null || studentSurnameInput.getText().toString().trim().isEmpty());
+
+        if (isZeroYear) {
+            // For Rok Zerowy, English group and seminar teacher are not applicable
+            if (missingSurname && NetworkUtils.isNetworkAvailable(this)) {
+                if (searchingContainer != null) {
+                    searchingContainer.setVisibility(View.VISIBLE);
+                }
+                courseSetupService.loadAdditionalSetupData(this, new CourseSetupService.OnAdditionalDataLoadedCallback() {
+                    @Override
+                    public void onSuccess(Integer engGroup, String fullName, String semTeacher) {
+                        runOnUiThread(() -> {
+                            if (isFinishing() || isDestroyed()) return;
+                            if (searchingContainer != null) {
+                                TransitionManager.beginDelayedTransition(contentLayout, new AutoTransition());
+                                searchingContainer.setVisibility(View.GONE);
+                            }
+                            if (studentSurnameInput.getText() == null || studentSurnameInput.getText().toString().trim().isEmpty()) {
+                                if (fullName != null && !fullName.trim().isEmpty()) {
+                                    String[] parts = fullName.trim().split("\\s+");
+                                    if (parts.length > 0) {
+                                        studentSurnameInput.setText(parts[parts.length - 1]);
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        runOnUiThread(() -> {
+                            if (isFinishing() || isDestroyed()) return;
+                            if (searchingContainer != null) {
+                                searchingContainer.setVisibility(View.GONE);
+                            }
+                        });
+                    }
+                });
+            } else if (searchingContainer != null) {
+                searchingContainer.setVisibility(View.GONE);
+            }
+            return;
+        }
 
         if ((missingEnglish || missingSeminar || missingSurname) && NetworkUtils.isNetworkAvailable(this)) {
             if (searchingContainer != null) {
@@ -208,8 +262,11 @@ public class SetupAdditionalActivity extends AppCompatActivity {
     }
 
     private void finishSetup() {
+        DegreeLevel degreeLevel = PreferencesManager.getGlobalDegreeLevelPref(this);
+        boolean isZeroYear = (degreeLevel == DegreeLevel.ZERO_YEAR);
+
         String englishGroup = null;
-        if (englishSwitch.isChecked()) {
+        if (!isZeroYear && englishSwitch.isChecked()) {
             String val = englishInput.getText().toString().trim();
             if (!val.isEmpty()) {
                 englishGroup = val;
@@ -218,7 +275,7 @@ public class SetupAdditionalActivity extends AppCompatActivity {
         PreferencesManager.setGlobalEnglishGroupPref(this, englishGroup);
 
         String seminarTeacher = null;
-        if (seminarContainer.getVisibility() == View.VISIBLE && seminarSwitch.isChecked()) {
+        if (!isZeroYear && seminarContainer.getVisibility() == View.VISIBLE && seminarSwitch.isChecked()) {
             String val = seminarInput.getText().toString().trim();
             if (!val.isEmpty()) {
                 seminarTeacher = val;
@@ -233,7 +290,6 @@ public class SetupAdditionalActivity extends AppCompatActivity {
         String login = PreferencesManager.getGlobalLoginPref(this);
         String password = PreferencesManager.getGlobalPasswordPref(this);
         String major = PreferencesManager.getGlobalMajorPref(this);
-        DegreeLevel degreeLevel = PreferencesManager.getGlobalDegreeLevelPref(this);
         StudyMode studyMode = PreferencesManager.getGlobalStudyModePref(this);
         int year = PreferencesManager.getGlobalYearPref(this);
         String specialty = PreferencesManager.getGlobalSpecialtyPref(this);

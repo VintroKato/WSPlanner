@@ -121,9 +121,14 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
         void bind(String major, boolean isLoading, OnStrefaClickListener listener) {
             Context ctx = itemView.getContext();
-            String title = ctx.getString(R.string.all_courses_strefa_title);
-            if (major != null && !major.trim().isEmpty()) {
-                title += " – " + major.trim();
+            String title;
+            if (major != null && major.toLowerCase().contains("rok zerowy")) {
+                title = ctx.getString(R.string.all_courses_strefa_zero_year_title);
+            } else {
+                title = ctx.getString(R.string.all_courses_strefa_title);
+                if (major != null && !major.trim().isEmpty()) {
+                    title += " – " + major.trim();
+                }
             }
             textStrefaTitle.setText(title);
             textStrefaDesc.setText(R.string.all_courses_strefa_desc);

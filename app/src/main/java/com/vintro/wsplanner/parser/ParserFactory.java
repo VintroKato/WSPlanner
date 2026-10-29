@@ -10,7 +10,9 @@ public class ParserFactory {
     // return matching parser implementation for study program
     public static ScheduleParser getParser(DegreeLevel degree, StudyMode mode) {
         Logger.d("ParserFactory.getParser", "Resolving parser for degree: " + degree + ", mode: " + mode);
-        if (degree == DegreeLevel.BACHELORS) {
+        if (degree == DegreeLevel.ZERO_YEAR) {
+            return new BachelorFullTimeParser();
+        } else if (degree == DegreeLevel.BACHELORS) {
             if (mode == StudyMode.FULL_TIME) {
                 return new BachelorFullTimeParser();
             } else {

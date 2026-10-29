@@ -161,20 +161,42 @@ public class StudyPlanScraper {
     // get available courses from home page
     public static List<ParsedCourse> getAvailableCourses(OkHttpClient client) {
         Logger.d("StudyPlanScraper.getAvailableCourses", "Fetching available courses from PUW home page");
-        List<ParsedCourse> courses = new ArrayList<>();
-
         Request request = new Request.Builder().url(PUW.homeUrl).build();
         try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
+            if (!response.isSuccessful() || response.body() == null) {
                 Logger.e("StudyPlanScraper.getAvailableCourses", "Home page request failed with code: " + response.code());
-                return courses;
+                return new ArrayList<>();
             }
+            String html = response.body().string();
+            return parseAvailableCoursesFromHtml(html, client);
+        } catch (Exception e) {
+            Logger.e("StudyPlanScraper.getAvailableCourses", "Error parsing courses: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
 
-            Document doc = Jsoup.parse(response.body().string());
-            // find student zone links
-            Elements courseLinks = doc.select("a[title*='Strefa studenta']");
+    static List<ParsedCourse> parseAvailableCoursesFromHtml(String html) {
+        return parseAvailableCoursesFromHtml(html, null);
+    }
 
-            for (Element link : courseLinks) {
+    static List<ParsedCourse> parseAvailableCoursesFromHtml(String html, OkHttpClient client) {
+        List<ParsedCourse> courses = new ArrayList<>();
+        if (html == null) return courses;
+        Document doc = Jsoup.parse(html, PUW.baseUrl);
+
+        // find student zone links
+        Elements allCourseLinks = doc.select("a[title*='Strefa studenta'], a[title*='strefa studenta']");
+        List<Element> regularCourseLinks = new ArrayList<>();
+        for (Element el : allCourseLinks) {
+            String title = el.attr("title").toLowerCase();
+            if (!title.contains("rok zerowy") && !title.contains("uczestnika")) {
+                regularCourseLinks.add(el);
+            }
+        }
+
+        if (!regularCourseLinks.isEmpty()) {
+            // Strict priority: active degree student zone(s)
+            for (Element link : regularCourseLinks) {
                 ParsedCourse course = new ParsedCourse();
                 course.courseUrl = link.attr("href");
 
@@ -189,12 +211,41 @@ public class StudyPlanScraper {
                     course.degreeLevel = parseDegreeLevel(parts[2]);
                 }
 
-                // load course details
-                fetchCourseDetails(client, course);
+                if (client != null) {
+                    fetchCourseDetails(client, course);
+                }
                 courses.add(course);
             }
-        } catch (Exception e) {
-            Logger.e("StudyPlanScraper.getAvailableCourses", "Error parsing courses: " + e.getMessage());
+        } else {
+            // Fallback for preparatory program: Strefa uczestnika kursu "ROK ZEROWY"
+            Elements zeroYearLinks = doc.select("a[title*='ROK ZEROWY'], a[title*='Rok zerowy'], a[title*='rok zerowy'], a[title*='Strefa uczestnika'], a[title*='strefa uczestnika']");
+            if (zeroYearLinks.isEmpty()) {
+                for (Element a : doc.select("a[href*='course/view.php']")) {
+                    String t = (a.attr("title") + " " + a.text()).toLowerCase();
+                    if (t.contains("rok zerowy") || t.contains("uczestnika")) {
+                        zeroYearLinks.add(a);
+                        break;
+                    }
+                }
+            }
+
+            if (!zeroYearLinks.isEmpty()) {
+                Element link = zeroYearLinks.first();
+                ParsedCourse course = new ParsedCourse();
+                course.courseUrl = link.attr("href");
+                course.fieldOfStudy = "Rok zerowy";
+                course.degreeLevel = DegreeLevel.ZERO_YEAR;
+                course.availableModesAndYears.put("st", new ArrayList<>(List.of(1)));
+
+                if (client != null) {
+                    fetchCourseDetails(client, course);
+                }
+                course.availableModesAndYears.putIfAbsent("st", new ArrayList<>());
+                if (!course.availableModesAndYears.get("st").contains(1)) {
+                    course.availableModesAndYears.get("st").add(1);
+                }
+                courses.add(course);
+            }
         }
         Logger.i("StudyPlanScraper.getAvailableCourses", "Parsed " + courses.size() + " available course(s): " + courses.stream().map(Object::toString).collect(Collectors.joining(", ")));
         return courses;
@@ -207,11 +258,19 @@ public class StudyPlanScraper {
             if (!response.isSuccessful() || response.body() == null) return;
 
             Document doc = Jsoup.parse(response.body().string());
-            Elements folderLinks = doc.select("div.activityinstance > a");
+            Elements folderLinks = doc.select("div.activityinstance > a, a[href*='folder/view.php']");
+
+            boolean isZeroYear = (course.degreeLevel == DegreeLevel.ZERO_YEAR);
 
             for (Element folderLink : folderLinks) {
                 String folderName = folderLink.select("span.instancename").text().toLowerCase();
-                if (!folderName.contains("plany zajęć")) continue;
+                if (folderName.isEmpty()) folderName = folderLink.text().toLowerCase();
+
+                if (!isZeroYear && !folderName.contains("plany zajęć") && !folderName.contains("plan zajęć")
+                        && !folderName.contains("rozklad") && !folderName.contains("harmonogram")
+                        && !folderName.contains("rok zerowy")) {
+                    continue;
+                }
 
                 // try getting study mode from folder name
                 String folderMode = determineStudyMode(folderName);
@@ -233,11 +292,19 @@ public class StudyPlanScraper {
             if (!response.isSuccessful() || response.body() == null) return;
 
             Document doc = Jsoup.parse(response.body().string());
-            Elements files = doc.select("span.fp-filename");
+            Elements files = doc.select("span.fp-filename, a[href*='pluginfile.php']");
 
             for (Element file : files) {
                 String fileName = file.text();
                 if (!fileName.endsWith(".xlsx")) continue;
+
+                if (course.degreeLevel == DegreeLevel.ZERO_YEAR) {
+                    course.availableModesAndYears.putIfAbsent("st", new ArrayList<>());
+                    if (!course.availableModesAndYears.get("st").contains(1)) {
+                        course.availableModesAndYears.get("st").add(1);
+                    }
+                    continue;
+                }
 
                 // extract mode and roman numeral year
                 Pattern pattern = Pattern.compile("(nst puw|nst|st)\\s+([IV]+)\\s*-", Pattern.CASE_INSENSITIVE);
@@ -264,6 +331,7 @@ public class StudyPlanScraper {
                     if (lowerFileName.contains("i stopnia")) course.degreeLevel = DegreeLevel.BACHELORS;
                     else if (lowerFileName.contains("ii stopnia")) course.degreeLevel = DegreeLevel.MASTERS;
                     else if (lowerFileName.contains("jednolite")) course.degreeLevel = DegreeLevel.LONG_MASTERS;
+                    else if (lowerFileName.contains("rok zerowy") || lowerFileName.contains("uczestnika")) course.degreeLevel = DegreeLevel.ZERO_YEAR;
                 }
             }
         } catch (Exception e) {
@@ -278,15 +346,33 @@ public class StudyPlanScraper {
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful() || response.body() == null) return null;
             Document doc = Jsoup.parse(response.body().string());
-            Elements courseLinks = doc.select("a[title*='Strefa studenta']");
-            
+
+            boolean isZeroYear = (degreeLevel == DegreeLevel.ZERO_YEAR)
+                    || (major != null && major.toLowerCase().contains("rok zerowy"));
+
             String courseUrl = null;
-            for (Element link : courseLinks) {
-                String title = link.attr("title").toLowerCase();
-                if (title.contains(major.toLowerCase()) && 
-                    title.contains(getDegreeLevelString(degreeLevel).toLowerCase())) {
-                    courseUrl = link.attr("href");
-                    break;
+            if (isZeroYear) {
+                Elements zeroLinks = doc.select("a[title*='ROK ZEROWY'], a[title*='Rok zerowy'], a[title*='rok zerowy'], a[title*='Strefa uczestnika'], a[title*='strefa uczestnika']");
+                if (!zeroLinks.isEmpty()) {
+                    courseUrl = zeroLinks.first().attr("href");
+                } else {
+                    for (Element link : doc.select("a[href*='course/view.php']")) {
+                        String t = (link.attr("title") + " " + link.text()).toLowerCase();
+                        if (t.contains("rok zerowy") || t.contains("uczestnika")) {
+                            courseUrl = link.attr("href");
+                            break;
+                        }
+                    }
+                }
+            } else {
+                Elements courseLinks = doc.select("a[title*='Strefa studenta']");
+                for (Element link : courseLinks) {
+                    String title = link.attr("title").toLowerCase();
+                    if (title.contains(major.toLowerCase()) && 
+                        title.contains(getDegreeLevelString(degreeLevel).toLowerCase())) {
+                        courseUrl = link.attr("href");
+                        break;
+                    }
                 }
             }
             if (courseUrl == null) return null;
@@ -295,47 +381,54 @@ public class StudyPlanScraper {
             try (Response response2 = client.newCall(request).execute()) {
                 if (!response2.isSuccessful() || response2.body() == null) return null;
                 Document doc2 = Jsoup.parse(response2.body().string());
-                Elements folderLinks = doc2.select("div.activityinstance > a");
+
+                // Direct file link on course view (common for single-course participants)
+                if (isZeroYear) {
+                    Elements directLinks = doc2.select("a[href*='pluginfile.php']");
+                    String fallbackDirectUrl = null;
+                    for (Element link : directLinks) {
+                        String name = link.text();
+                        Element span = link.selectFirst("span.fp-filename");
+                        if (span != null) name = span.text();
+
+                        if (isRokZerowyScheduleFile(name)) {
+                            String downloadUrl = link.attr("href");
+                            if (!downloadUrl.contains("forcedownload=1")) {
+                                downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                            }
+                            Logger.d("StudyPlanScraper.getScheduleFileUrl", "Resolved Rok Zerowy direct schedule file URL: " + downloadUrl);
+                            return downloadUrl;
+                        } else if (name.toLowerCase().endsWith(".xlsx") && fallbackDirectUrl == null) {
+                            String downloadUrl = link.attr("href");
+                            if (!downloadUrl.contains("forcedownload=1")) {
+                                downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                            }
+                            fallbackDirectUrl = downloadUrl;
+                        }
+                    }
+                    if (fallbackDirectUrl != null) {
+                        Logger.d("StudyPlanScraper.getScheduleFileUrl", "Resolved Rok Zerowy fallback direct schedule file URL: " + fallbackDirectUrl);
+                        return fallbackDirectUrl;
+                    }
+                }
+
+                Elements folderLinks = doc2.select("div.activityinstance > a, a[href*='folder/view.php']");
                 
                 for (Element folderLink : folderLinks) {
                     String folderName = folderLink.select("span.instancename").text().toLowerCase();
-                    if (!folderName.contains("plany zajęć")) continue;
+                    if (folderName.isEmpty()) folderName = folderLink.text().toLowerCase();
+
+                    if (!isZeroYear && !folderName.contains("plany zajęć") && !folderName.contains("plan zajęć")) continue;
                     
                     String folderUrl = folderLink.attr("href");
                     Request req3 = new Request.Builder().url(folderUrl).build();
                     try (Response response3 = client.newCall(req3).execute()) {
                         if (!response3.isSuccessful() || response3.body() == null) continue;
                         Document doc3 = Jsoup.parse(response3.body().string());
-                        
-                        // moodle file links contain pluginfile.php
-                        Elements fileLinks = doc3.select("a[href*='pluginfile.php']");
-                        for (Element fileLink : fileLinks) {
-                            String fileName = fileLink.text().toLowerCase();
-                            Element span = fileLink.selectFirst("span.fp-filename");
-                            if (span != null) fileName = span.text().toLowerCase();
-                            
-                            if (fileName.endsWith(".xlsx")) {
-                                Pattern pattern = Pattern.compile("(nst puw|nst|st)\\s+([IV]+)\\s*-", Pattern.CASE_INSENSITIVE);
-                                Matcher matcher = pattern.matcher(fileName);
-                                if (matcher.find()) {
-                                    String fileModeStr = matcher.group(1).toLowerCase();
-                                    int fileYear = romanToInt(matcher.group(2));
-                                    
-                                    StudyMode fileMode = StudyMode.fromString(fileModeStr);
-                                    if (fileMode == null && determineStudyMode(folderName) != null) {
-                                         fileMode = StudyMode.fromString(determineStudyMode(folderName));
-                                    }
-                                    
-                                    if (fileMode == studyMode && fileYear == year) {
-                                        String downloadUrl = fileLink.attr("href");
-                                        if (!downloadUrl.contains("forcedownload=1")) {
-                                            downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
-                                        }
-                                        Logger.d("StudyPlanScraper.getScheduleFileUrl", "Resolved schedule file URL: " + downloadUrl);
-                                        return downloadUrl;
-                                    }
-                                }
-                            }
+                        String downloadUrl = extractScheduleFileFromFolderDoc(doc3, isZeroYear, studyMode, year, folderName);
+                        if (downloadUrl != null) {
+                            Logger.d("StudyPlanScraper.getScheduleFileUrl", "Resolved schedule file URL: " + downloadUrl);
+                            return downloadUrl;
                         }
                     }
                 }
@@ -346,19 +439,91 @@ public class StudyPlanScraper {
         return null;
     }
 
-    private static String getDegreeLevelString(DegreeLevel level) {
+    static boolean isRokZerowyScheduleFile(String fileName) {
+        if (fileName == null) return false;
+        String lower = fileName.toLowerCase().trim();
+        if (!lower.endsWith(".xlsx")) return false;
+        return lower.contains("rok zerowy")
+                || lower.contains("semestr zimowy")
+                || lower.contains("semestr letni")
+                || lower.contains("semestr")
+                || lower.contains("plan")
+                || lower.contains("harmonogram")
+                || lower.contains("rozklad");
+    }
+
+    static String extractScheduleFileFromFolderDoc(Document doc, boolean isZeroYear, StudyMode studyMode, int year, String folderName) {
+        if (doc == null) return null;
+        Elements fileLinks = doc.select("a[href*='pluginfile.php']");
+
+        if (isZeroYear) {
+            String fallbackXlsxUrl = null;
+            for (Element fileLink : fileLinks) {
+                String fileName = fileLink.text();
+                Element span = fileLink.selectFirst("span.fp-filename");
+                if (span != null) fileName = span.text();
+
+                if (isRokZerowyScheduleFile(fileName)) {
+                    String downloadUrl = fileLink.attr("href");
+                    if (!downloadUrl.contains("forcedownload=1")) {
+                        downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                    }
+                    return downloadUrl;
+                } else if (fileName.toLowerCase().endsWith(".xlsx") && fallbackXlsxUrl == null) {
+                    String downloadUrl = fileLink.attr("href");
+                    if (!downloadUrl.contains("forcedownload=1")) {
+                        downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                    }
+                    fallbackXlsxUrl = downloadUrl;
+                }
+            }
+            return fallbackXlsxUrl;
+        }
+
+        for (Element fileLink : fileLinks) {
+            String fileName = fileLink.text().toLowerCase();
+            Element span = fileLink.selectFirst("span.fp-filename");
+            if (span != null) fileName = span.text().toLowerCase();
+
+            if (fileName.endsWith(".xlsx")) {
+                Pattern pattern = Pattern.compile("(nst puw|nst|st)\\s+([IV]+)\\s*-", Pattern.CASE_INSENSITIVE);
+                Matcher matcher = pattern.matcher(fileName);
+                if (matcher.find()) {
+                    String fileModeStr = matcher.group(1).toLowerCase();
+                    int fileYear = romanToInt(matcher.group(2));
+
+                    StudyMode fileMode = StudyMode.fromString(fileModeStr);
+                    if (fileMode == null && folderName != null && determineStudyMode(folderName) != null) {
+                        fileMode = StudyMode.fromString(determineStudyMode(folderName));
+                    }
+
+                    if (fileMode == studyMode && fileYear == year) {
+                        String downloadUrl = fileLink.attr("href");
+                        if (!downloadUrl.contains("forcedownload=1")) {
+                            downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                        }
+                        return downloadUrl;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    static String getDegreeLevelString(DegreeLevel level) {
         if (level == DegreeLevel.BACHELORS) return "I stopnia";
         if (level == DegreeLevel.MASTERS) return "II stopnia";
         if (level == DegreeLevel.LONG_MASTERS) return "jednolite";
+        if (level == DegreeLevel.ZERO_YEAR) return "rok zerowy";
         return "";
     }
 
-    private static DegreeLevel parseDegreeLevel(String text) {
+    static DegreeLevel parseDegreeLevel(String text) {
         text = text.toLowerCase();
         if (text.contains("ii stopnia")) return DegreeLevel.MASTERS;
         if (text.contains("i stopnia")) return DegreeLevel.BACHELORS;
-
         if (text.contains("jednolite")) return DegreeLevel.LONG_MASTERS;
+        if (text.contains("rok zerowy") || text.contains("uczestnika")) return DegreeLevel.ZERO_YEAR;
         return null;
     }
 
@@ -467,6 +632,30 @@ public class StudyPlanScraper {
             degreeTokens.add(" magisterskie ");
         }
 
+        boolean isZeroYear = (degreeLevel == DegreeLevel.ZERO_YEAR)
+                || (major != null && major.toLowerCase().contains("rok zerowy"));
+
+        if (isZeroYear) {
+            for (Element link : courseLinks) {
+                String rawText = link.text();
+                if (rawText == null || rawText.trim().isEmpty()) continue;
+                String lower = rawText.toLowerCase();
+                if ((lower.contains("rok zerowy") || lower.contains("uczestnika")) && lower.contains("strefa")) {
+                    String url = link.attr("abs:href");
+                    if (url != null && !url.isEmpty()) return url;
+                }
+            }
+            for (Element link : courseLinks) {
+                String rawText = link.text();
+                if (rawText == null || rawText.trim().isEmpty()) continue;
+                String lower = rawText.toLowerCase();
+                if (lower.contains("rok zerowy") || lower.contains("uczestnika")) {
+                    String url = link.attr("abs:href");
+                    if (url != null && !url.isEmpty()) return url;
+                }
+            }
+        }
+
         String bestP1Url = null;
         String bestP2Url = null;
         String bestP3Url = null;
@@ -479,6 +668,12 @@ public class StudyPlanScraper {
             String paddedText = " " + rawText.toLowerCase().replace('-', ' ').replace('_', ' ').replaceAll("\\s+", " ") + " ";
 
             if (!paddedText.contains("strefa")) {
+                continue;
+            }
+
+            // Priority rule: Regular student zone takes strict precedence over finished rok zerowy
+            boolean isZeroYearLink = paddedText.contains("rok zerowy") || paddedText.contains("uczestnika");
+            if (!isZeroYear && isZeroYearLink) {
                 continue;
             }
 

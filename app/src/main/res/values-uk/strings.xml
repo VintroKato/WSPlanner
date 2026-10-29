@@ -127,6 +127,7 @@
     <string name="all_courses_empty_title">Нічого не знайдено</string>
     <string name="all_courses_empty_desc">Перевірте написання або змініть запит</string>
     <string name="all_courses_strefa_title">Студентська зона</string>
+    <string name="all_courses_strefa_zero_year_title">Зона учасника курсу "ROK ZEROWY"</string>
     <string name="all_courses_strefa_desc">Розклади, дні без занять, контактні дані декана і представників….</string>
     <string name="all_courses_progress_format">%1$d з %2$d</string>
     <string name="all_courses_count_format">%1$d курсів</string>
