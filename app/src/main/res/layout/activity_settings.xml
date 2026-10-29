@@ -180,7 +180,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:text="@string/widget_settings_desc"
-                    android:textColor="@color/input_hint_dark"
+                    android:textColor="?attr/app_text"
+                    android:alpha="0.7"
                     android:textSize="12sp" />
             </LinearLayout>
 

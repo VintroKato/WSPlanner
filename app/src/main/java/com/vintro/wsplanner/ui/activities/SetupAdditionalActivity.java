@@ -24,6 +24,7 @@ import com.vintro.wsplanner.enums.StudyMode;
 import com.vintro.wsplanner.services.CourseSetupService;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.utils.NetworkUtils;
 
 public class SetupAdditionalActivity extends AppCompatActivity {
     private ImageButton backButton;
@@ -36,6 +37,7 @@ public class SetupAdditionalActivity extends AppCompatActivity {
     private EditText studentSurnameInput;
     private Button confirmButton;
 
+    private View searchingContainer;
     private final CourseSetupService courseSetupService = CourseSetupService.getInstance();
 
     @Override
@@ -54,6 +56,7 @@ public class SetupAdditionalActivity extends AppCompatActivity {
 
         backButton = findViewById(R.id.back_button);
         contentLayout = findViewById(R.id.content_layout);
+        searchingContainer = findViewById(R.id.searching_container);
         englishSwitch = findViewById(R.id.english_switch);
         englishInput = findViewById(R.id.english_input);
         seminarContainer = findViewById(R.id.seminar_container);
@@ -83,6 +86,9 @@ public class SetupAdditionalActivity extends AppCompatActivity {
         // pre-fill english group
         String savedEnglish = PreferencesManager.getGlobalEnglishGroupPref(this);
         Integer detectedEnglish = courseSetupService.getCachedEnglishGroup();
+        if (detectedEnglish == null) {
+            detectedEnglish = PreferencesManager.getDetectedEnglishGroup(this);
+        }
         String effectiveEnglish = (savedEnglish != null && !savedEnglish.trim().isEmpty())
                 ? savedEnglish
                 : (detectedEnglish != null ? String.valueOf(detectedEnglish) : null);
@@ -100,6 +106,9 @@ public class SetupAdditionalActivity extends AppCompatActivity {
         int year = PreferencesManager.getGlobalYearPref(this);
         String savedSeminar = PreferencesManager.getGlobalSeminarTeacherPref(this);
         String detectedSeminar = courseSetupService.getCachedSeminarTeacher();
+        if (detectedSeminar == null) {
+            detectedSeminar = PreferencesManager.getDetectedSeminarTeacher(this);
+        }
         String effectiveSeminar = (savedSeminar != null && !savedSeminar.trim().isEmpty())
                 ? savedSeminar
                 : detectedSeminar;
@@ -121,15 +130,79 @@ public class SetupAdditionalActivity extends AppCompatActivity {
 
         // pre-fill student surname
         String currentSurname = PreferencesManager.getGlobalStudentSurnamePref(this);
+        if (currentSurname == null || currentSurname.trim().isEmpty()) {
+            currentSurname = PreferencesManager.getDetectedStudentSurname(this);
+        }
         if (currentSurname != null && !currentSurname.trim().isEmpty()) {
             studentSurnameInput.setText(currentSurname.trim());
         } else {
             String fullName = courseSetupService.getCachedStudentFullName();
+            if (fullName == null) {
+                fullName = PreferencesManager.getDetectedStudentName(this);
+            }
             if (fullName != null && !fullName.trim().isEmpty()) {
                 String[] parts = fullName.trim().split("\\s+");
                 if (parts.length > 0) {
                     studentSurnameInput.setText(parts[parts.length - 1]);
                 }
+            }
+        }
+
+        // Check if we need to search PUW in the background for missing data
+        boolean missingEnglish = (effectiveEnglish == null);
+        boolean missingSeminar = isSeniorYear && (effectiveSeminar == null || effectiveSeminar.trim().isEmpty());
+        boolean missingSurname = (studentSurnameInput.getText() == null || studentSurnameInput.getText().toString().trim().isEmpty());
+
+        if ((missingEnglish || missingSeminar || missingSurname) && NetworkUtils.isNetworkAvailable(this)) {
+            if (searchingContainer != null) {
+                searchingContainer.setVisibility(View.VISIBLE);
+            }
+            courseSetupService.loadAdditionalSetupData(this, new CourseSetupService.OnAdditionalDataLoadedCallback() {
+                @Override
+                public void onSuccess(Integer engGroup, String fullName, String semTeacher) {
+                    runOnUiThread(() -> {
+                        if (isFinishing() || isDestroyed()) return;
+                        if (searchingContainer != null) {
+                            TransitionManager.beginDelayedTransition(contentLayout, new AutoTransition());
+                            searchingContainer.setVisibility(View.GONE);
+                        }
+                        if (engGroup != null && !englishSwitch.isChecked() && englishInput.getText().toString().trim().isEmpty()) {
+                            englishSwitch.setChecked(true);
+                            englishInput.setText(String.valueOf(engGroup));
+                            englishInput.setVisibility(View.VISIBLE);
+                        }
+                        if (semTeacher != null && !semTeacher.trim().isEmpty() && isSeniorYear) {
+                            seminarContainer.setVisibility(View.VISIBLE);
+                            if (!seminarSwitch.isChecked() && seminarInput.getText().toString().trim().isEmpty()) {
+                                seminarSwitch.setChecked(true);
+                                seminarInput.setText(semTeacher.trim());
+                                seminarInput.setVisibility(View.VISIBLE);
+                            }
+                        }
+                        if (studentSurnameInput.getText() == null || studentSurnameInput.getText().toString().trim().isEmpty()) {
+                            if (fullName != null && !fullName.trim().isEmpty()) {
+                                String[] parts = fullName.trim().split("\\s+");
+                                if (parts.length > 0) {
+                                    studentSurnameInput.setText(parts[parts.length - 1]);
+                                }
+                            }
+                        }
+                    });
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    runOnUiThread(() -> {
+                        if (isFinishing() || isDestroyed()) return;
+                        if (searchingContainer != null) {
+                            searchingContainer.setVisibility(View.GONE);
+                        }
+                    });
+                }
+            });
+        } else {
+            if (searchingContainer != null) {
+                searchingContainer.setVisibility(View.GONE);
             }
         }
     }

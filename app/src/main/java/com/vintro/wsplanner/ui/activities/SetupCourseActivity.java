@@ -1,9 +1,11 @@
 package com.vintro.wsplanner.ui.activities;
 
 import android.content.Intent;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.transition.AutoTransition;
 import android.transition.TransitionManager;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -159,7 +161,7 @@ public class SetupCourseActivity extends AppCompatActivity {
         levelLayout.removeAllViews();
         levelLayout.setColumnCount(Math.max(1, levels.size()));
         for (DegreeLevel level : levels) {
-            MaterialCardView card = createCard(getDegreeLevelLabel(level));
+            MaterialCardView card = createTwoLineCard(getDegreeLevelTitle(level), getDegreeLevelSubtitle(level));
             card.setOnClickListener(v -> {
                 TransitionManager.beginDelayedTransition(contentLayout, new AutoTransition());
                 selectCard(levelLayout, card);
@@ -201,7 +203,7 @@ public class SetupCourseActivity extends AppCompatActivity {
 
         modeLayout.setColumnCount(Math.max(1, validModes.size()));
         for (StudyMode mode : validModes) {
-            MaterialCardView card = createCard(getStudyModeLabel(mode));
+            MaterialCardView card = createTwoLineCard(getStudyModeTitle(mode), getStudyModeSubtitle(mode));
             card.setOnClickListener(v -> {
                 TransitionManager.beginDelayedTransition(contentLayout, new AutoTransition());
                 selectCard(modeLayout, card);
@@ -252,32 +254,105 @@ public class SetupCourseActivity extends AppCompatActivity {
         }
     }
 
-    private String getDegreeLevelLabel(DegreeLevel level) {
+    private String getDegreeLevelTitle(DegreeLevel level) {
         if (level == null) return "";
         switch (level) {
             case BACHELORS:
-                return getString(R.string.degree_level_bachelors);
+                return getString(R.string.degree_level_bachelors_code);
             case MASTERS:
-                return getString(R.string.degree_level_masters);
+                return getString(R.string.degree_level_masters_code);
             case LONG_MASTERS:
-                return getString(R.string.degree_level_long_masters);
+                return getString(R.string.degree_level_long_masters_code);
             default:
                 return level.name();
         }
     }
 
-    private String getStudyModeLabel(StudyMode mode) {
+    private String getDegreeLevelSubtitle(DegreeLevel level) {
+        if (level == null) return "";
+        switch (level) {
+            case BACHELORS:
+                return getString(R.string.degree_level_bachelors_sub);
+            case MASTERS:
+                return getString(R.string.degree_level_masters_sub);
+            case LONG_MASTERS:
+                return getString(R.string.degree_level_long_masters_sub);
+            default:
+                return "";
+        }
+    }
+
+    private String getStudyModeTitle(StudyMode mode) {
         if (mode == null) return "";
         switch (mode) {
             case FULL_TIME:
-                return getString(R.string.study_mode_full_time);
+                return getString(R.string.study_mode_st_code);
             case PART_TIME:
-                return getString(R.string.study_mode_part_time);
+                return getString(R.string.study_mode_nst_code);
             case PART_TIME_PUW:
-                return getString(R.string.study_mode_online);
+                return getString(R.string.study_mode_puw_code);
             default:
                 return mode.getValue();
         }
+    }
+
+    private String getStudyModeSubtitle(StudyMode mode) {
+        if (mode == null) return "";
+        switch (mode) {
+            case FULL_TIME:
+                return getString(R.string.study_mode_full_time_sub);
+            case PART_TIME:
+                return getString(R.string.study_mode_part_time_sub);
+            case PART_TIME_PUW:
+                return getString(R.string.study_mode_online_sub);
+            default:
+                return "";
+        }
+    }
+
+    private MaterialCardView createTwoLineCard(String title, String subtitle) {
+        MaterialCardView card = new MaterialCardView(this);
+        GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+        params.width = 0;
+        params.height = GridLayout.LayoutParams.WRAP_CONTENT;
+        params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+        float density = getResources().getDisplayMetrics().density;
+        int margin = (int) (4 * density);
+        params.setMargins(margin, margin, margin, margin);
+        card.setLayoutParams(params);
+
+        card.setCheckable(true);
+        card.setCheckedIcon(null);
+        card.setCardElevation(0);
+        card.setStrokeWidth((int) (2 * density));
+        card.setStrokeColor(UIHelper.getThemeColor(this, R.attr.card_border));
+        card.setCardBackgroundColor(UIHelper.getThemeColor(this, R.attr.card_bg));
+        card.setRadius(16 * density);
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setGravity(Gravity.CENTER);
+        layout.setPadding((int) (6 * density), (int) (12 * density), (int) (6 * density), (int) (12 * density));
+
+        TextView tvTitle = new TextView(this);
+        tvTitle.setText(title);
+        tvTitle.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+        tvTitle.setTextColor(UIHelper.getThemeColor(this, R.attr.app_text));
+        tvTitle.setTextSize(18);
+        tvTitle.setTypeface(null, Typeface.BOLD);
+
+        TextView tvSubtitle = new TextView(this);
+        tvSubtitle.setText(subtitle);
+        tvSubtitle.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+        tvSubtitle.setTextColor(UIHelper.getThemeColor(this, R.attr.app_text));
+        tvSubtitle.setTextSize(12);
+        tvSubtitle.setAlpha(0.7f);
+        tvSubtitle.setPadding(0, (int) (2 * density), 0, 0);
+
+        layout.addView(tvTitle);
+        layout.addView(tvSubtitle);
+        card.addView(layout);
+        return card;
     }
 
     private MaterialCardView createCard(String text) {
@@ -304,7 +379,8 @@ public class SetupCourseActivity extends AppCompatActivity {
         tv.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
         tv.setPadding(0, (int) (14 * density), 0, (int) (14 * density));
         tv.setTextColor(UIHelper.getThemeColor(this, R.attr.app_text));
-        tv.setTextSize(16);
+        tv.setTextSize(18);
+        tv.setTypeface(null, Typeface.BOLD);
 
         card.addView(tv);
         return card;
@@ -340,11 +416,13 @@ public class SetupCourseActivity extends AppCompatActivity {
 
         if (loadedStudentFullName != null && !loadedStudentFullName.trim().isEmpty()) {
             PreferencesManager.setGlobalStudentNamePref(this, loadedStudentFullName.trim());
+            PreferencesManager.setDetectedStudentName(this, loadedStudentFullName.trim());
             String[] parts = loadedStudentFullName.trim().split("\\s+");
             if (parts.length > 0) {
                 // assume last word is surname
                 String surname = parts[parts.length - 1];
                 PreferencesManager.setGlobalStudentSurnamePref(this, surname);
+                PreferencesManager.setDetectedStudentSurname(this, surname);
             }
         }
 

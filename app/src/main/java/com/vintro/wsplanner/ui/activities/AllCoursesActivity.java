@@ -27,6 +27,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
+import com.vintro.wsplanner.enums.DegreeLevel;
 import com.vintro.wsplanner.models.SubjectDetails;
 import com.vintro.wsplanner.network.PUW;
 import com.vintro.wsplanner.network.StudyPlanScraper;
@@ -272,7 +273,8 @@ public class AllCoursesActivity extends AppCompatActivity {
             try {
                 OkHttpClient client = PUW.globalLogin(this);
                 if (client != null) {
-                    url = StudyPlanScraper.getStudentZoneUrl(client);
+                    DegreeLevel degree = PreferencesManager.getGlobalDegreeLevelPref(this);
+                    url = StudyPlanScraper.getStudentZoneUrl(client, studentMajor, degree);
                 }
             } catch (Exception e) {
                 Logger.e("AllCoursesActivity.openStudentZone", "Error resolving student zone url: " + e.getMessage());

@@ -28,6 +28,10 @@ public class PreferencesManager {
     private static final String key_seminar_teacher = "data_seminar_teacher_";
     private static final String key_student_name = "data_student_name_";
     private static final String key_student_surname = "data_student_surname_";
+    private static final String key_detected_english = "detected_english_group";
+    private static final String key_detected_seminar = "detected_seminar_teacher";
+    private static final String key_detected_student_name = "detected_student_name";
+    private static final String key_detected_student_surname = "detected_student_surname";
     private static final String key_theme = "settings_theme";
     private static final String key_language = "settings_language";
     private static final String key_onboarding_stage = "onboarding_stage";
@@ -273,7 +277,67 @@ public class PreferencesManager {
                 .remove(key_specialty_configured + widgetId)
                 .apply();
         if (widgetId == GLOBAL_ID) {
+            getPreferences(context).edit()
+                    .remove(key_detected_english)
+                    .remove(key_detected_seminar)
+                    .remove(key_detected_student_name)
+                    .remove(key_detected_student_surname)
+                    .apply();
             setOnboardingStage(context, ONBOARDING_STAGE_LOGIN);
+        }
+    }
+
+    public static Integer getDetectedEnglishGroup(Context context) {
+        String val = getPreferences(context).getString(key_detected_english, null);
+        if (val != null) {
+            try {
+                return Integer.parseInt(val);
+            } catch (NumberFormatException ignored) {}
+        }
+        return null;
+    }
+
+    public static void setDetectedEnglishGroup(Context context, Integer group) {
+        if (group != null) {
+            getPreferences(context).edit().putString(key_detected_english, String.valueOf(group)).apply();
+        } else {
+            getPreferences(context).edit().remove(key_detected_english).apply();
+        }
+    }
+
+    public static String getDetectedSeminarTeacher(Context context) {
+        return getPreferences(context).getString(key_detected_seminar, null);
+    }
+
+    public static void setDetectedSeminarTeacher(Context context, String teacher) {
+        if (teacher != null && !teacher.trim().isEmpty()) {
+            getPreferences(context).edit().putString(key_detected_seminar, teacher.trim()).apply();
+        } else {
+            getPreferences(context).edit().remove(key_detected_seminar).apply();
+        }
+    }
+
+    public static String getDetectedStudentName(Context context) {
+        return getPreferences(context).getString(key_detected_student_name, null);
+    }
+
+    public static void setDetectedStudentName(Context context, String name) {
+        if (name != null && !name.trim().isEmpty()) {
+            getPreferences(context).edit().putString(key_detected_student_name, name.trim()).apply();
+        } else {
+            getPreferences(context).edit().remove(key_detected_student_name).apply();
+        }
+    }
+
+    public static String getDetectedStudentSurname(Context context) {
+        return getPreferences(context).getString(key_detected_student_surname, null);
+    }
+
+    public static void setDetectedStudentSurname(Context context, String surname) {
+        if (surname != null && !surname.trim().isEmpty()) {
+            getPreferences(context).edit().putString(key_detected_student_surname, surname.trim()).apply();
+        } else {
+            getPreferences(context).edit().remove(key_detected_student_surname).apply();
         }
     }
 

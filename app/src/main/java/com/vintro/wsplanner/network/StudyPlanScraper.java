@@ -394,7 +394,139 @@ public class StudyPlanScraper {
     }
 
     public static String getStudentZoneUrl(OkHttpClient client) {
-        return searchCourseByKeywords(client, "strefa studenta");
+        return getStudentZoneUrl(client, null, null);
+    }
+
+    public static String getStudentZoneUrl(OkHttpClient client, String major, DegreeLevel degreeLevel) {
+        try {
+            Request request = new Request.Builder()
+                    .url(PUW.baseUrl + "/my/courses.php")
+                    .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    String html = response.body().string();
+                    String foundUrl = extractStudentZoneUrlFromHtml(html, major, degreeLevel);
+                    if (foundUrl != null) {
+                        return foundUrl;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            Logger.e("StudyPlanScraper.getStudentZoneUrl", "Error fetching courses: " + e.getMessage());
+        }
+
+        // fallback to /my/
+        try {
+            Request request = new Request.Builder()
+                    .url(PUW.baseUrl + "/my/")
+                    .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    String html = response.body().string();
+                    return extractStudentZoneUrlFromHtml(html, major, degreeLevel);
+                }
+            }
+        } catch (IOException e) {
+            Logger.e("StudyPlanScraper.getStudentZoneUrl", "Error fetching my page: " + e.getMessage());
+        }
+
+        return null;
+    }
+
+    static String extractStudentZoneUrlFromHtml(String html, String major, DegreeLevel degreeLevel) {
+        if (html == null) return null;
+        Document doc = Jsoup.parse(html, PUW.baseUrl);
+        Elements courseLinks = doc.select("a[href*='course/view.php']");
+        if (courseLinks.isEmpty()) return null;
+
+        // Prepare major keywords
+        List<String> majorKeywords = new ArrayList<>();
+        if (major != null && !major.trim().isEmpty()) {
+            String cleanMajor = major.replaceAll("[^a-zA-Zа-яА-Я0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ ]", " ").toLowerCase().trim();
+            for (String part : cleanMajor.split("\\s+")) {
+                if (part.length() >= 3) {
+                    majorKeywords.add(part);
+                }
+            }
+        }
+
+        // Prepare degree tokens with spaces around, e.g. " i "
+        List<String> degreeTokens = new ArrayList<>();
+        if (degreeLevel == DegreeLevel.BACHELORS) {
+            degreeTokens.add(" i ");
+            degreeTokens.add(" 1 ");
+            degreeTokens.add(" i stopnia");
+        } else if (degreeLevel == DegreeLevel.MASTERS) {
+            degreeTokens.add(" ii ");
+            degreeTokens.add(" 2 ");
+            degreeTokens.add(" ii stopnia");
+        } else if (degreeLevel == DegreeLevel.LONG_MASTERS) {
+            degreeTokens.add(" jednolite ");
+            degreeTokens.add(" magisterskie ");
+        }
+
+        String bestP1Url = null;
+        String bestP2Url = null;
+        String bestP3Url = null;
+        String bestP4Url = null;
+
+        for (Element link : courseLinks) {
+            String rawText = link.text();
+            if (rawText == null || rawText.trim().isEmpty()) continue;
+            // Pad text with spaces for accurate token boundary checks (e.g. " i ")
+            String paddedText = " " + rawText.toLowerCase().replace('-', ' ').replace('_', ' ').replaceAll("\\s+", " ") + " ";
+
+            if (!paddedText.contains("strefa")) {
+                continue;
+            }
+
+            boolean matchesMajor = false;
+            if (!majorKeywords.isEmpty()) {
+                for (String kw : majorKeywords) {
+                    if (paddedText.contains(kw)) {
+                        matchesMajor = true;
+                        break;
+                    }
+                }
+            }
+
+            boolean matchesDegree = false;
+            if (!degreeTokens.isEmpty()) {
+                for (String dt : degreeTokens) {
+                    if (paddedText.contains(dt)) {
+                        matchesDegree = true;
+                        break;
+                    }
+                }
+            }
+
+            String url = link.attr("abs:href");
+            if (url == null || url.isEmpty()) continue;
+
+            // Priority 1: "strefa" + major + degree (with spaces e.g. " i ")
+            if (matchesMajor && matchesDegree) {
+                if (bestP1Url == null) bestP1Url = url;
+            }
+            // Priority 2: "strefa" + major
+            else if (matchesMajor) {
+                if (bestP2Url == null) bestP2Url = url;
+            }
+            // Priority 3: "strefa" + "studenta"
+            else if (paddedText.contains("studenta")) {
+                if (bestP3Url == null) bestP3Url = url;
+            }
+            // Priority 4: any "strefa"
+            else {
+                if (bestP4Url == null) bestP4Url = url;
+            }
+        }
+
+        if (bestP1Url != null) return bestP1Url;
+        if (bestP2Url != null) return bestP2Url;
+        if (bestP3Url != null) return bestP3Url;
+        return bestP4Url;
     }
 
     private static String searchBestCourse(OkHttpClient client, String subjectName, String lessonType) {

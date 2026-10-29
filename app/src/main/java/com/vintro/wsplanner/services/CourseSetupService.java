@@ -64,6 +64,11 @@ public class CourseSetupService {
         void onError(@NonNull Exception e);
     }
 
+    public interface OnAdditionalDataLoadedCallback {
+        void onSuccess(@Nullable Integer englishGroup, @Nullable String studentFullName, @Nullable String seminarTeacher);
+        void onError(@NonNull Exception e);
+    }
+
     // load course setup data asynchronously
     public void loadCourseSetupData(@NonNull Context context, @NonNull OnSetupDataLoadedCallback callback) {
         if (cachedCourses != null && !cachedCourses.isEmpty()) {
@@ -90,10 +95,84 @@ public class CourseSetupService {
                 cachedStudentFullName = studentFullName;
                 cachedSeminarTeacher = seminarTeacher;
 
+                // Persist detected information for resilience across activity and process restarts
+                if (englishGroup != null) {
+                    PreferencesManager.setDetectedEnglishGroup(context, englishGroup);
+                }
+                if (studentFullName != null) {
+                    PreferencesManager.setDetectedStudentName(context, studentFullName);
+                    String[] parts = studentFullName.trim().split("\\s+");
+                    if (parts.length > 0) {
+                        PreferencesManager.setDetectedStudentSurname(context, parts[parts.length - 1]);
+                    }
+                }
+                if (seminarTeacher != null) {
+                    PreferencesManager.setDetectedSeminarTeacher(context, seminarTeacher);
+                }
+
                 Logger.i("CourseSetupService.loadCourseSetupData", "Course setup data loaded successfully: " + cachedCourses.size() + " courses, EnglishGroup=" + englishGroup + ", StudentName='" + studentFullName + "', SeminarTeacher='" + seminarTeacher + "'");
                 callback.onSuccess(cachedCourses, cachedEnglishGroup, cachedStudentFullName, cachedSeminarTeacher);
             } catch (Exception e) {
                 Logger.e("CourseSetupService.loadCourseSetupData", "Error: " + e.getMessage());
+                callback.onError(e);
+            }
+        }).start();
+    }
+
+    // load additional data (english group, seminar, student name) if missing after process restart
+    public void loadAdditionalSetupData(@NonNull Context context, @NonNull OnAdditionalDataLoadedCallback callback) {
+        if (cachedEnglishGroup != null || cachedSeminarTeacher != null || cachedStudentFullName != null) {
+            Logger.d("CourseSetupService.loadAdditionalSetupData", "Reusing memory-cached additional setup data");
+            callback.onSuccess(cachedEnglishGroup, cachedStudentFullName, cachedSeminarTeacher);
+            return;
+        }
+
+        Integer detectedEnglish = PreferencesManager.getDetectedEnglishGroup(context);
+        String detectedSeminar = PreferencesManager.getDetectedSeminarTeacher(context);
+        String detectedFullName = PreferencesManager.getDetectedStudentName(context);
+
+        if (detectedEnglish != null || detectedSeminar != null || detectedFullName != null) {
+            Logger.d("CourseSetupService.loadAdditionalSetupData", "Reusing persisted detected additional setup data");
+            cachedEnglishGroup = detectedEnglish;
+            cachedSeminarTeacher = detectedSeminar;
+            cachedStudentFullName = detectedFullName;
+            callback.onSuccess(cachedEnglishGroup, cachedStudentFullName, cachedSeminarTeacher);
+            return;
+        }
+
+        Logger.d("CourseSetupService.loadAdditionalSetupData", "Fetching missing additional data from PUW");
+        new Thread(() -> {
+            try {
+                OkHttpClient client = PUW.globalLogin(context);
+                if (client == null) {
+                    throw new IllegalStateException("Failed to login to PUW");
+                }
+                Integer englishGroup = StudyPlanScraper.getEnglishGroup(client);
+                String studentFullName = PUW.getStudentFullName(client);
+                String seminarTeacher = StudyPlanScraper.getSeminarTeacher(client);
+
+                cachedEnglishGroup = englishGroup;
+                cachedStudentFullName = studentFullName;
+                cachedSeminarTeacher = seminarTeacher;
+
+                if (englishGroup != null) {
+                    PreferencesManager.setDetectedEnglishGroup(context, englishGroup);
+                }
+                if (studentFullName != null) {
+                    PreferencesManager.setDetectedStudentName(context, studentFullName);
+                    String[] parts = studentFullName.trim().split("\\s+");
+                    if (parts.length > 0) {
+                        PreferencesManager.setDetectedStudentSurname(context, parts[parts.length - 1]);
+                    }
+                }
+                if (seminarTeacher != null) {
+                    PreferencesManager.setDetectedSeminarTeacher(context, seminarTeacher);
+                }
+
+                Logger.i("CourseSetupService.loadAdditionalSetupData", "Additional setup data fetched: English=" + englishGroup + ", FullName='" + studentFullName + "', Seminar='" + seminarTeacher + "'");
+                callback.onSuccess(englishGroup, studentFullName, seminarTeacher);
+            } catch (Exception e) {
+                Logger.e("CourseSetupService.loadAdditionalSetupData", "Error: " + e.getMessage());
                 callback.onError(e);
             }
         }).start();
