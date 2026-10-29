@@ -3,6 +3,7 @@ package com.vintro.wsplanner.ui.activities;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
 import android.widget.GridLayout;
 import android.widget.TextView;
@@ -24,6 +25,8 @@ import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.utils.Logger;
 
 public class SettingsActivity extends AppCompatActivity {
+    public static final String EXTRA_HIDE_WIDGET_SETTINGS = "hide_widget_settings";
+
     ConstraintLayout root;
     TextView titleLabel;
     TextView themeHeader;
@@ -80,8 +83,19 @@ public class SettingsActivity extends AppCompatActivity {
             finish();
         });
 
+        TextView widgetSectionHeader = findViewById(R.id.widget_section_header);
         MaterialCardView cardWidgetSettings = findViewById(R.id.card_widget_settings);
-        if (cardWidgetSettings != null) {
+        boolean hideWidgets = getIntent().getBooleanExtra(EXTRA_HIDE_WIDGET_SETTINGS, false)
+                || !PreferencesManager.isOnboardingCompleted(this);
+
+        if (hideWidgets) {
+            if (widgetSectionHeader != null) {
+                widgetSectionHeader.setVisibility(View.GONE);
+            }
+            if (cardWidgetSettings != null) {
+                cardWidgetSettings.setVisibility(View.GONE);
+            }
+        } else if (cardWidgetSettings != null) {
             cardWidgetSettings.setOnClickListener(v -> {
                 Logger.d("SettingsActivity.cardWidgetSettings", "Navigating to WidgetConfigureActivity");
                 Intent widgetConfigIntent = new Intent(this, WidgetConfigureActivity.class);

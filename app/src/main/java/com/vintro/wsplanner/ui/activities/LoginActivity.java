@@ -14,6 +14,7 @@ import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -27,7 +28,9 @@ import androidx.core.view.WindowInsetsCompat;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.network.PUW;
+import com.vintro.wsplanner.enums.AppTheme;
 import com.vintro.wsplanner.enums.InputState;
+import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.utils.Logger;
@@ -40,10 +43,13 @@ public class LoginActivity extends AppCompatActivity {
     ProgressBar progressBar;
     TextView errorLabel;
     Button confirmButton;
+    ImageButton buttonSettings;
     Handler handler = new Handler(Looper.getMainLooper());
 
     private InputState loginInputState = InputState.NORMAL;
     private InputState passwordInputState = InputState.NORMAL;
+    private Language currentLanguage;
+    private AppTheme currentTheme;
 
     @Override
     public void onCreate(Bundle icicle) {
@@ -65,6 +71,19 @@ public class LoginActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progress_bar);
         errorLabel = findViewById(R.id.error_label);
         confirmButton = findViewById(R.id.confirm_button);
+        buttonSettings = findViewById(R.id.button_settings);
+
+        currentLanguage = PreferencesManager.getLanguagePref(this);
+        currentTheme = PreferencesManager.getThemePref(this);
+
+        if (buttonSettings != null) {
+            buttonSettings.setOnClickListener(v -> {
+                Logger.d("LoginActivity", "Opening SettingsActivity from LoginActivity");
+                Intent intent = new Intent(this, SettingsActivity.class);
+                intent.putExtra(SettingsActivity.EXTRA_HIDE_WIDGET_SETTINGS, true);
+                startActivity(intent);
+            });
+        }
 
         confirmButton.setEnabled(false);
         AnimationHelper.animateAlpha(confirmButton, 0.7f);
@@ -76,6 +95,17 @@ public class LoginActivity extends AppCompatActivity {
 
         loginInput.setOnFocusChangeListener((v, hasFocus) -> updateInputBackgrounds());
         passwordInput.setOnFocusChangeListener((v, hasFocus) -> updateInputBackgrounds());
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Language lang = PreferencesManager.getLanguagePref(this);
+        AppTheme theme = PreferencesManager.getThemePref(this);
+        if (lang != currentLanguage || theme != currentTheme) {
+            Logger.i("LoginActivity.onResume", "Language or theme changed (" + currentLanguage + "->" + lang + ", " + currentTheme + "->" + theme + "), recreating activity");
+            recreate();
+        }
     }
 
     private void updateLoginState() {
