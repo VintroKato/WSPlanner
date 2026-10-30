@@ -47,6 +47,10 @@ public class PUW {
             return null;
         }
 
+        if (degreeLevel == DegreeLevel.ZERO_YEAR) {
+            Logger.i("PUW.getFileUrl", "Fetching Rok Zerowy schedule file URL for widget " + widgetId);
+        }
+
         String url = StudyPlanScraper.getScheduleFileUrl(client, major, degreeLevel, studyMode, year);
         Logger.d("PUW.getFileUrl", "Getting dynamic file url for widget " + widgetId + ", major=" + major + ", degree=" + degreeLevel + ", mode=" + studyMode + ", year=" + year + ", url: " + url);
         return url;

@@ -249,7 +249,7 @@ public class TeacherEmailService {
                 deliverResult(callback, finalResult);
 
             } catch (Exception e) {
-                Logger.e("TeacherEmailService.getTeacherEmail", "Error fetching teacher email for: " + teacherQuery + ", " + e.getMessage());
+                Logger.e("TeacherEmailService.getTeacherEmail", "Error fetching teacher email for: " + teacherQuery + ", " + Logger.formatException(e));
                 boolean isNetworkIssue = !NetworkUtils.isNetworkAvailable(appContext) ||
                         (e instanceof java.io.IOException) ||
                         (e instanceof java.net.UnknownHostException) ||
@@ -334,7 +334,7 @@ public class TeacherEmailService {
                 }
             }
         } catch (Exception e) {
-            Logger.e("TeacherEmailService.scrapeTeacherEmail", "Error scraping profile " + profileUrl + ": " + e.getMessage());
+            Logger.e("TeacherEmailService.scrapeTeacherEmail", "Error scraping profile " + profileUrl + ": " + Logger.formatException(e));
         }
         return null;
     }
@@ -409,7 +409,7 @@ public class TeacherEmailService {
                 return entries;
             }
         } catch (Exception e) {
-            Logger.e("TeacherEmailService.getOrFetchDirectory", "Error downloading teacher directory: " + e.getMessage());
+            Logger.e("TeacherEmailService.getOrFetchDirectory", "Error downloading teacher directory: " + Logger.formatException(e));
             return cachedDirectory != null ? cachedDirectory : Collections.emptyList();
         }
     }
@@ -578,7 +578,7 @@ public class TeacherEmailService {
                 }
                 Logger.d("TeacherEmailService.saveResultToCache", "Saved teacher email result to cache for [" + normalizedKey + "] (email=" + Logger.maskSensitiveData(result.email) + ")");
             } catch (Exception e) {
-                Logger.e("TeacherEmailService.saveResultToCache", "Failed to save teacher result to disk cache: " + e.getMessage());
+                Logger.e("TeacherEmailService.saveResultToCache", "Failed to save teacher result to disk cache: " + Logger.formatException(e));
             }
         });
     }
@@ -625,7 +625,7 @@ public class TeacherEmailService {
             }
             Logger.d("TeacherEmailService.loadDiskCache", "Loaded " + memoryCache.size() + " teacher records from disk cache");
         } catch (Exception e) {
-            Logger.e("TeacherEmailService.loadDiskCache", "Error reading disk cache: " + e.getMessage());
+            Logger.e("TeacherEmailService.loadDiskCache", "Error reading disk cache: " + Logger.formatException(e));
         }
     }
 
@@ -661,7 +661,7 @@ public class TeacherEmailService {
             Logger.d("TeacherEmailService.loadDirectoryCacheFromDisk", "Loaded " + entries.size() + " teachers from directory disk cache");
             return true;
         } catch (Exception e) {
-            Logger.e("TeacherEmailService.loadDirectoryCacheFromDisk", "Error loading directory cache: " + e.getMessage());
+            Logger.e("TeacherEmailService.loadDirectoryCacheFromDisk", "Error loading directory cache: " + Logger.formatException(e));
             return false;
         }
     }
@@ -687,7 +687,7 @@ public class TeacherEmailService {
                 }
                 Logger.d("TeacherEmailService.saveDirectoryCacheToDisk", "Directory cache written to disk (" + entries.size() + " items)");
             } catch (Exception e) {
-                Logger.e("TeacherEmailService.saveDirectoryCacheToDisk", "Failed to save directory cache: " + e.getMessage());
+                Logger.e("TeacherEmailService.saveDirectoryCacheToDisk", "Failed to save directory cache: " + Logger.formatException(e));
             }
         });
     }

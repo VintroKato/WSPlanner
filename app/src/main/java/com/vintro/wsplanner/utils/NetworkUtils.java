@@ -33,7 +33,7 @@ public class NetworkUtils {
             }
             return available;
         } catch (Exception e) {
-            Logger.e("NetworkUtils.isNetworkAvailable", "Exception checking network availability: " + e.getMessage());
+            Logger.e("NetworkUtils.isNetworkAvailable", "Exception checking network availability: " + Logger.formatException(e));
             return false;
         }
     }

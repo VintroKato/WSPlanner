@@ -161,7 +161,7 @@ public class AllCoursesActivity extends AppCompatActivity {
 
             @Override
             public void onError(Exception e) {
-                Logger.e("AllCoursesActivity.loadCourses", "Error loading all courses (offline/no cache): " + e.getMessage());
+                Logger.e("AllCoursesActivity.loadCourses", "Error loading all courses (offline/no cache): " + Logger.formatException(e));
                 runOnUiThread(() -> {
                     progressLoading.setVisibility(View.GONE);
                     filterCourses(editSearch.getText().toString());
@@ -174,7 +174,7 @@ public class AllCoursesActivity extends AppCompatActivity {
         String cleanQuery = rawQuery != null ? rawQuery.trim() : "";
 
         if (cleanQuery.isEmpty()) {
-            // Search is empty: Show Strefa Studenta first, then all courses
+            // search is empty: show student zone first, then all courses
             adapter.setData(allCourses, true, studentMajor);
             updateVisibility(allCourses.size() > 0 || !studentMajor.isEmpty());
             updateCount(allCourses.size());
@@ -184,11 +184,11 @@ public class AllCoursesActivity extends AppCompatActivity {
         String normalizedQuery = normalizePolishText(cleanQuery);
         String[] tokens = normalizedQuery.split("\\s+");
 
-        // Check if Strefa Studenta matches query
+        // check if student zone matches query
         String strefaSearchable = normalizePolishText("strefa studenta " + studentMajor);
         boolean strefaMatches = matchesAllTokens(strefaSearchable, tokens);
 
-        // Filter regular courses
+        // filter regular courses
         List<SubjectDetails> filtered = new ArrayList<>();
         for (SubjectDetails course : allCourses) {
             String searchable = normalizePolishText(
@@ -274,10 +274,13 @@ public class AllCoursesActivity extends AppCompatActivity {
                 OkHttpClient client = PUW.globalLogin(this);
                 if (client != null) {
                     DegreeLevel degree = PreferencesManager.getGlobalDegreeLevelPref(this);
+                    if (degree == DegreeLevel.ZERO_YEAR) {
+                        Logger.i("AllCoursesActivity.openStudentZone", "Resolving student zone for Rok Zerowy participant");
+                    }
                     url = StudyPlanScraper.getStudentZoneUrl(client, studentMajor, degree);
                 }
             } catch (Exception e) {
-                Logger.e("AllCoursesActivity.openStudentZone", "Error resolving student zone url: " + e.getMessage());
+                Logger.e("AllCoursesActivity.openStudentZone", "Error resolving student zone url: " + Logger.formatException(e));
             }
 
             if (url == null || url.trim().isEmpty()) {
@@ -294,7 +297,7 @@ public class AllCoursesActivity extends AppCompatActivity {
                     Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl));
                     startActivity(browserIntent);
                 } catch (Exception e) {
-                    Logger.e("AllCoursesActivity.openStudentZone", "Error opening browser: " + e.getMessage());
+                    Logger.e("AllCoursesActivity.openStudentZone", "Error opening browser: " + Logger.formatException(e));
                 }
             });
         }).start();

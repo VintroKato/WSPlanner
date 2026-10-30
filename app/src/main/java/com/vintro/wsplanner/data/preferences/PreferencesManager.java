@@ -56,8 +56,8 @@ public class PreferencesManager {
             encryptedPrefsInstance = SecurePreferences.create(context, secure_prefs_name);
             return encryptedPrefsInstance;
         } catch (GeneralSecurityException | IOException e) {
-            Logger.e("PreferencesManager.getEncryptedPreferences", "Failed to initialize encrypted preferences: " + e.getMessage());
-            // Do not fall back to unencrypted preferences for credentials
+            Logger.e("PreferencesManager.getEncryptedPreferences", "Failed to initialize encrypted preferences: " + Logger.formatException(e));
+            // do not fall back to unencrypted preferences for credentials
             throw new IllegalStateException("Secure storage unavailable", e);
         }
     }
@@ -68,7 +68,7 @@ public class PreferencesManager {
             getEncryptedPreferences(context);
             return true;
         } catch (Exception e) {
-            Logger.e("PreferencesManager.checkKeystoreHealth", "Keystore health check failed: " + e.getMessage());
+            Logger.e("PreferencesManager.checkKeystoreHealth", "Keystore health check failed: " + Logger.formatException(e));
             return false;
         }
     }
@@ -81,7 +81,7 @@ public class PreferencesManager {
             context.deleteSharedPreferences(secure_prefs_name);
             Logger.i("PreferencesManager.resetCorruptedStorage", "Corrupted storage reset successfully");
         } catch (Exception e) {
-            Logger.e("PreferencesManager.resetCorruptedStorage", "Failed to reset corrupted storage: " + e.getMessage());
+            Logger.e("PreferencesManager.resetCorruptedStorage", "Failed to reset corrupted storage: " + Logger.formatException(e));
         }
     }
 

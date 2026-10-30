@@ -150,7 +150,7 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
 
             @Override
             public void onError(Exception e) {
-                Logger.e("SetupSpecialtyActivity.fetchSpecialties", "loadSpecialties error: " + e.getMessage());
+                Logger.e("SetupSpecialtyActivity.fetchSpecialties", "loadSpecialties error: " + Logger.formatException(e));
                 runOnUiThread(() -> {
                     TransitionManager.beginDelayedTransition((ViewGroup) findViewById(R.id.main), new AutoTransition());
                     loadingLayout.setVisibility(View.GONE);

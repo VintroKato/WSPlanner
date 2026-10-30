@@ -54,30 +54,58 @@ public class Logger {
         return sb.toString();
     }
 
+    // format exception to string ensuring class name and cause details are never null
     public static String formatException(Throwable t) {
         if (t == null) return "Unknown error (null exception)";
         String className = t.getClass().getSimpleName();
         String msg = t.getMessage();
-        if (msg != null && !msg.trim().isEmpty()) {
+        if (msg != null && !msg.trim().isEmpty() && !"null".equalsIgnoreCase(msg.trim())) {
             return className + ": " + msg.trim();
         }
         Throwable cause = t.getCause();
         if (cause != null && cause != t) {
             String causeMsg = cause.getMessage();
-            if (causeMsg != null && !causeMsg.trim().isEmpty()) {
+            if (causeMsg != null && !causeMsg.trim().isEmpty() && !"null".equalsIgnoreCase(causeMsg.trim())) {
                 return className + " (cause: " + cause.getClass().getSimpleName() + ": " + causeMsg.trim() + ")";
             }
+            return className + " (cause: " + cause.getClass().getSimpleName() + ")";
         }
-        return t.toString();
+        String toStr = t.toString();
+        if (toStr != null && !toStr.trim().isEmpty() && !"null".equalsIgnoreCase(toStr.trim())) {
+            return toStr;
+        }
+        return className;
     }
 
+    // convenience alias to get safe error description without null output
+    public static String getErrorMessage(Throwable t) {
+        return formatException(t);
+    }
+
+    // sanitize log message to prevent null error output and mask sensitive data
+    public static String sanitizeLogMessage(String message) {
+        if (message == null) return "[null]";
+        String cleaned = message;
+        if (cleaned.contains("Error: null")) {
+            cleaned = cleaned.replace("Error: null", "Error: [Unknown/No message]");
+        }
+        if (cleaned.contains("error: null")) {
+            cleaned = cleaned.replace("error: null", "error: [Unknown/No message]");
+        }
+        if (cleaned.contains(": null")) {
+            cleaned = cleaned.replace(": null", ": [No message]");
+        }
+        return maskSensitiveData(cleaned);
+    }
+
+    // mask password credentials, emails, and student surnames in logs
     public static String maskSensitiveData(String message) {
         if (message == null || message.isEmpty()) return "";
         
-        // Mask passwords
+        // mask passwords
         String masked = PASSWORD_PATTERN.matcher(message).replaceAll("$1=***");
 
-        // Mask emails: keep first up to 3 chars, mask the rest up to the domain ending
+        // mask emails: keep first up to 3 chars, mask the rest up to the domain ending
         Matcher emailMatcher = EMAIL_PATTERN.matcher(masked);
         StringBuffer sb = new StringBuffer();
         while (emailMatcher.find()) {
@@ -93,7 +121,7 @@ public class Logger {
         emailMatcher.appendTail(sb);
         masked = sb.toString();
 
-        // Mask student surnames: e.g. Kowalski -> K******i in standard log patterns
+        // mask student surnames: e.g. Kowalski -> K******i in standard log patterns
         Pattern surnamePattern = Pattern.compile("(?i)(surname\\s*=\\s*['\"]?|StudentSurname:\\s*['\"]|for student\\s*['\"]|surname:\\s*['\"]|student\\s*['\"])([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]{2,})(['\"]?)");
         Matcher surnameMatcher = surnamePattern.matcher(masked);
         StringBuffer surnameSb = new StringBuffer();
@@ -140,20 +168,22 @@ public class Logger {
                 tempFile.delete();
             }
         } catch (Exception e) {
+            String err = formatException(e);
             try {
-                Log.e("Logger.trim", "Error trimming log file: " + e.getMessage());
+                Log.e("Logger.trim", "Error trimming log file: " + err);
             } catch (Throwable ignored) {
-                System.err.println("Logger.trim: Error trimming log file: " + e.getMessage());
+                System.err.println("Logger.trim: Error trimming log file: " + err);
             }
         }
     }
 
+    // append formatted log record to local file
     private static synchronized void writeToFile(String level, String tag, String message) {
         if (logFile == null) return;
 
         trimLogFileIfNeeded();
 
-        String safeMsg = maskSensitiveData(message);
+        String safeMsg = sanitizeLogMessage(message);
         String time = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss.SSS", Locale.getDefault())
                 .format(new Date());
         String fullMessage = String.format("%s | [%s|%s]: %s\n", time, level, tag, safeMsg);
@@ -169,8 +199,9 @@ public class Logger {
         }
     }
 
+    // write debug log
     public static void d(String tag, String msg) {
-        String safe = maskSensitiveData(msg);
+        String safe = sanitizeLogMessage(msg);
         try {
             Log.d(tag, safe);
         } catch (Throwable ignored) {
@@ -179,8 +210,9 @@ public class Logger {
         writeToFile("DEBUG", tag, safe);
     }
 
+    // write informational log
     public static void i(String tag, String msg) {
-        String safe = maskSensitiveData(msg);
+        String safe = sanitizeLogMessage(msg);
         try {
             Log.i(tag, safe);
         } catch (Throwable ignored) {
@@ -189,8 +221,9 @@ public class Logger {
         writeToFile("INFO", tag, safe);
     }
 
+    // write warning log
     public static void w(String tag, String msg) {
-        String safe = maskSensitiveData(msg);
+        String safe = sanitizeLogMessage(msg);
         try {
             Log.w(tag, safe);
         } catch (Throwable ignored) {
@@ -199,13 +232,15 @@ public class Logger {
         writeToFile("WARN", tag, safe);
     }
 
+    // write warning log with exception details
     public static void w(String tag, String msg, Throwable t) {
         String detail = (t != null) ? (msg + " | Exception: " + formatException(t)) : msg;
         w(tag, detail);
     }
 
+    // write error log
     public static void e(String tag, String msg) {
-        String safe = maskSensitiveData(msg);
+        String safe = sanitizeLogMessage(msg);
         try {
             Log.e(tag, safe);
         } catch (Throwable ignored) {
@@ -214,13 +249,15 @@ public class Logger {
         writeToFile("ERROR", tag, safe);
     }
 
+    // write error log with exception details
     public static void e(String tag, String msg, Throwable t) {
         String detail = (t != null) ? (msg + " | Exception: " + formatException(t)) : msg;
         e(tag, detail);
     }
 
+    // write verbose log
     public static void v(String tag, String msg) {
-        String safe = maskSensitiveData(msg);
+        String safe = sanitizeLogMessage(msg);
         try {
             Log.v(tag, safe);
         } catch (Throwable ignored) {
@@ -229,8 +266,9 @@ public class Logger {
         writeToFile("VERBOSE", tag, safe);
     }
 
+    // write assert failure log
     public static void wtf(String tag, String msg) {
-        String safe = maskSensitiveData(msg);
+        String safe = sanitizeLogMessage(msg);
         try {
             Log.wtf(tag, safe);
         } catch (Throwable ignored) {

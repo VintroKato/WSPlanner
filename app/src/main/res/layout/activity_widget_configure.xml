@@ -378,12 +378,10 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="10dp"
-                android:drawableStart="@drawable/ic_arrow_outward"
-                android:drawablePadding="6dp"
-                android:drawableTint="?attr/colorPrimary"
                 android:gravity="center_vertical"
                 android:text="@string/widget_preview_tap_to_add"
-                android:textColor="?attr/colorPrimary"
+                android:textColor="?attr/app_text"
+                android:alpha="0.8"
                 android:textSize="12.5sp"
                 android:textStyle="bold" />
 

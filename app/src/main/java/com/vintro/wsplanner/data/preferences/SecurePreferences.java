@@ -88,7 +88,7 @@ public class SecurePreferences implements SharedPreferences {
             buffer.put(cipherText);
             return Base64.encodeToString(buffer.array(), Base64.NO_WRAP);
         } catch (Exception e) {
-            Logger.e("SecurePreferences.encrypt", "Encryption failed: " + e.getMessage());
+            Logger.e("SecurePreferences.encrypt", "Encryption failed: " + Logger.formatException(e));
             return null;
         }
     }
@@ -113,7 +113,7 @@ public class SecurePreferences implements SharedPreferences {
             byte[] plainBytes = cipher.doFinal(cipherText);
             return new String(plainBytes, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            Logger.e("SecurePreferences.decrypt", "Decryption failed: " + e.getMessage());
+            Logger.e("SecurePreferences.decrypt", "Decryption failed: " + Logger.formatException(e));
             return null;
         }
     }

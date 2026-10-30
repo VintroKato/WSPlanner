@@ -170,7 +170,7 @@ public class ScheduleRepository {
                             }
                         }
                     } catch (Exception e) {
-                        Logger.w("ScheduleRepository.getScheduleFileForOpen", "Download failed, checking cached file: " + e.getMessage());
+                        Logger.w("ScheduleRepository.getScheduleFileForOpen", "Download failed, checking cached file: " + Logger.formatException(e));
                         if (!cacheFile.exists() || cacheFile.length() == 0) {
                             throw e;
                         }
@@ -185,7 +185,7 @@ public class ScheduleRepository {
 
                 callback.onFileReady(cacheFile);
             } catch (Exception e) {
-                Logger.e("ScheduleRepository.getScheduleFileForOpen", "Error: " + e.getMessage());
+                Logger.e("ScheduleRepository.getScheduleFileForOpen", "Error getting schedule file: " + Logger.formatException(e));
                 callback.onError(e);
             }
         }).start();
@@ -206,7 +206,7 @@ public class ScheduleRepository {
                 Logger.d("ScheduleRepository.getScheduleForDate", "Returning " + daySchedule.getLessons().size() + " lesson(s) for " + date);
                 callback.onSuccess(daySchedule);
             } catch (Exception e) {
-                Logger.e("ScheduleRepository.getScheduleForDate", "Error: " + e.getMessage());
+                Logger.e("ScheduleRepository.getScheduleForDate", "Error getting schedule for date: " + Logger.formatException(e));
                 callback.onError(e);
             }
         }).start();
@@ -324,7 +324,7 @@ public class ScheduleRepository {
                 Logger.d("ScheduleRepository.getAllCourses", "Returning " + courses.size() + " unique course(s)");
                 callback.onSuccess(courses);
             } catch (Exception e) {
-                Logger.e("ScheduleRepository.getAllCourses", "Error: " + e.getMessage());
+                Logger.e("ScheduleRepository.getAllCourses", "Error getting all courses: " + Logger.formatException(e));
                 callback.onError(e);
             }
         }).start();

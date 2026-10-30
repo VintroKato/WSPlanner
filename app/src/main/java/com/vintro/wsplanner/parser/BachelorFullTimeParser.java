@@ -50,7 +50,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
     // lesson duration in hours: 15h or 30h
     private final Pattern subjectTypeFilter = Pattern.compile("\\s*[-–—]?\\s*\\d{1,2}h\\b", Pattern.CASE_INSENSITIVE);
 
-    // additional dates: +17.06 (środa) w godz. 17:00-21:15 or + 02.06 i 16.06 (wtorek)
+    // additional dates pattern: +17.06 or + 02.06
     private final Pattern plusDatePattern = Pattern.compile("^\\+\\s*((?:0?[1-9]|[12][0-9]|3[01])\\.(?:0[1-9]|1[0-2]))");
 
     private static String normalizeSuperscript(String input) {
@@ -234,7 +234,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
             }
             Logger.i("BachelorFullTimeParser.parse", "Finished schedule parsing successfully. Total lessons extracted: " + schedule.getLessons().size());
         } catch (Exception e) {
-            Logger.e("BachelorFullTimeParser.parse", "Error parsing Excel schedule: " + e.getMessage());
+            Logger.e("BachelorFullTimeParser.parse", "Error parsing Excel schedule: " + Logger.formatException(e));
         }
 
         return schedule;
@@ -252,7 +252,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
         String[] rawLines = block.split("\\n");
         if (rawLines.length == 0) return lessons;
 
-        // Preprocess lines: merge continuation lines (e.g. "... zajęcia w formie" + "on-line")
+        // preprocess lines: merge multi-line continuations such as online forms
         List<String> lines = new ArrayList<>();
         for (String rawLine : rawLines) {
             String trimmed = rawLine.trim();
@@ -461,8 +461,8 @@ public class BachelorFullTimeParser implements ScheduleParser {
                 continue;
             }
 
-            // additional dates (e.g. "+17.06 (środa) w godz. 17:00-21:15" or "+ 02.06 i 16.06 (wtorek)")
-            // Ignore non-specific additions like "+4h w terminie uzgodnionym z prowadzącym"
+            // parse additional dates with specific time or date patterns
+            // ignore non-specific additions like consultation hours
             if (lowerLine.startsWith("+") && plusDatePattern.matcher(lowerLine).find()) {
                 List<String> additionalDates = new ArrayList<>();
                 Matcher m = singleDatePattern.matcher(lowerLine);
@@ -787,12 +787,12 @@ public class BachelorFullTimeParser implements ScheduleParser {
             if (hasAnyGroupsOrSpecs) break;
         }
 
-        // If there are no group or specialization headers defined anywhere in the sheet (e.g. Rok zerowy)
+        // if there are no group or specialization headers defined anywhere in the sheet (e.g. Rok Zerowy)
         if (!hasAnyGroupsOrSpecs) {
             for (int i = 1; i < maxCols; i++) {
                 cols.add(i);
             }
-            Logger.d("BachelorFullTimeParser.findTargetColumns", "No groups or specializations defined in sheet. All day columns selected: " + cols);
+            Logger.i("BachelorFullTimeParser.findTargetColumns", "Single cohort without subgroups detected (Rok Zerowy / full-cohort schedule). Selected all " + cols.size() + " column(s): " + cols);
             return cols;
         }
 

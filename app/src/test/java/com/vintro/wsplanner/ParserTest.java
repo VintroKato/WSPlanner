@@ -435,7 +435,7 @@ public class ParserTest {
         BachelorFullTimeParser parser = new BachelorFullTimeParser();
         parser.setAcademicYears(2026, 2027);
 
-        // Środa from Rok zerowy screenshot:
+        // Wednesday test case from Rok Zerowy timetable
         String rawBlock = "Język polski - słownictwo i komunikacja ustna - 50h\n" +
                 "dr Agnieszka Mehmegdolu\n" +
                 "daty: 14.10 w godz. 11:45-16:00\n" +
@@ -444,10 +444,10 @@ public class ParserTest {
                 "zajęcia w siedzibie Uczelni";
 
         List<Lesson> lessons = parser.parseLessonBlock(rawBlock, null, LocalTime.of(11, 45), LocalTime.of(16, 0), null, null);
-        // 1 date on first daty line + 8 dates on second daty line = 9 lessons
+        // 1 date on first line + 8 dates on second line = 9 lessons
         assertEquals(9, lessons.size());
 
-        // Check 14.10 lesson
+        // check 14.10 lesson
         Lesson oct14 = lessons.stream().filter(l -> l.getDate() != null && l.getDate().equals(LocalDate.of(2026, 10, 14))).findFirst().orElse(null);
         assertNotNull(oct14);
         assertEquals(LocalTime.of(11, 45), oct14.getStartTime());
@@ -456,7 +456,7 @@ public class ParserTest {
         assertEquals("dr Agnieszka Mehmegdolu", oct14.getTeacherName());
         assertEquals("Język polski - słownictwo i komunikacja ustna", oct14.getSubjectName());
 
-        // Check 04.11 and 27.01 lessons (have 13:30 - 16:00)
+        // check 04.11 and 27.01 lessons with custom hours 13:30-16:00
         Lesson nov04 = lessons.stream().filter(l -> l.getDate() != null && l.getDate().equals(LocalDate.of(2026, 11, 4))).findFirst().orElse(null);
         assertNotNull(nov04);
         assertEquals(LocalTime.of(13, 30), nov04.getStartTime());
@@ -474,7 +474,7 @@ public class ParserTest {
         BachelorFullTimeParser parser = new BachelorFullTimeParser();
         parser.setAcademicYears(2026, 2027);
 
-        // Czwartek from Rok zerowy screenshot:
+        // Thursday test case from Rok Zerowy timetable
         String rawBlock = "Język polski - pisanie - 25h\n" +
                 "mgr Violetta Wołoch\n" +
                 "daty: 12.11, 19.11, 26.11, 03.12, 10.12, 17.12, 14.01, 21.01, 28.01\n" +
@@ -485,7 +485,7 @@ public class ParserTest {
         List<Lesson> lessons = parser.parseLessonBlock(rawBlock, null, LocalTime.of(11, 45), LocalTime.of(13, 20), null, null);
         assertEquals(9, lessons.size());
 
-        // 12.11 and 19.11 must have overridden time 13:30 - 15:05
+        // dates 12.11 and 19.11 must have overridden time 13:30 - 15:05
         Lesson nov12 = lessons.stream().filter(l -> l.getDate() != null && l.getDate().equals(LocalDate.of(2026, 11, 12))).findFirst().orElse(null);
         assertNotNull(nov12);
         assertEquals(LocalTime.of(13, 30), nov12.getStartTime());
@@ -497,7 +497,7 @@ public class ParserTest {
         assertEquals(LocalTime.of(13, 30), nov19.getStartTime());
         assertEquals(LocalTime.of(15, 5), nov19.getEndTime());
 
-        // Other dates (e.g. 26.11) keep the cell's default hours (11:45 - 13:20)
+        // other dates keep the default cell time 11:45 - 13:20
         Lesson nov26 = lessons.stream().filter(l -> l.getDate() != null && l.getDate().equals(LocalDate.of(2026, 11, 26))).findFirst().orElse(null);
         assertNotNull(nov26);
         assertEquals(LocalTime.of(11, 45), nov26.getStartTime());
@@ -509,7 +509,7 @@ public class ParserTest {
         BachelorFullTimeParser parser = new BachelorFullTimeParser();
         parser.setAcademicYears(2026, 2027);
 
-        // Czwartek from Rok zerowy screenshot with duplicate "zajęcia w siedzibie Uczelni" and sala 111:
+        // Thursday test case with duplicate room text and sala 111
         String blockSala111 = "Język polski - słownictwo i komunikacja ustna - 50h\n" +
                 "dr Agnieszka Mehmegdolu\n" +
                 "daty: 22.10 w godz. 11:45-15:05\n" +
@@ -527,7 +527,7 @@ public class ParserTest {
             assertFalse(l.getLocation().isOnline());
         }
 
-        // Poniedziałek from Rok zerowy screenshot with bare "sala" and duplicate "zajęcia w siedzibie Uczelni":
+        // Monday test case with bare room keyword and duplicate room text
         String blockBareSala = "Język polski - słownictwo i komunikacja ustna - 50h\n" +
                 "dr Agnieszka Mehmegdolu\n" +
                 "daty: 19.10 w godz. 11:45-13:20\n" +
@@ -556,11 +556,11 @@ public class ParserTest {
 
     @Test
     public void testRokZerowyFindTargetColumnsWhenNoGroups() throws Exception {
-        // Construct an in-memory sheet mimicking Rok zerowy:
-        // Row 0: "Rok zerowy I SEMESTR rok akademicki 2026/2027"
-        // Row 1: Col 0: "DNI", Col 1: "PONIEDZIAŁEK", Col 2: "WTOREK", Col 3: "ŚRODA", Col 4: "CZWARTEK", Col 5: "PIĄTEK"
-        // Row 2: Col 0: "GRUPA" (no groups under any day!)
-        // Row 3: Col 0: "GODZ."
+        // in-memory sheet mimicking Rok Zerowy timetable
+        // row 0: academic year header
+        // row 1: days of week headers
+        // row 2: group header without subgroup values
+        // row 3: hours column header
         java.util.Map<Integer, java.util.Map<Integer, String>> rowMap = new java.util.HashMap<>();
         
         java.util.Map<Integer, String> r0 = new java.util.HashMap<>();
@@ -593,7 +593,7 @@ public class ParserTest {
         @SuppressWarnings("unchecked")
         java.util.List<Integer> cols = (java.util.List<Integer>) m.invoke(parser, sheet, "Ivanov", null);
 
-        // All 5 days (columns 1, 2, 3, 4, 5) must be included!
+        // all five day columns must be selected
         assertEquals(5, cols.size());
         assertTrue(cols.contains(1));
         assertTrue(cols.contains(2));

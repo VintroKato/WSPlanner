@@ -113,7 +113,7 @@ public class CourseSetupService {
                 Logger.i("CourseSetupService.loadCourseSetupData", "Course setup data loaded successfully: " + cachedCourses.size() + " courses, EnglishGroup=" + englishGroup + ", StudentName='" + studentFullName + "', SeminarTeacher='" + seminarTeacher + "'");
                 callback.onSuccess(cachedCourses, cachedEnglishGroup, cachedStudentFullName, cachedSeminarTeacher);
             } catch (Exception e) {
-                Logger.e("CourseSetupService.loadCourseSetupData", "Error: " + e.getMessage());
+                Logger.e("CourseSetupService.loadCourseSetupData", "Error loading course setup data: " + Logger.formatException(e));
                 callback.onError(e);
             }
         }).start();
@@ -172,7 +172,7 @@ public class CourseSetupService {
                 Logger.i("CourseSetupService.loadAdditionalSetupData", "Additional setup data fetched: English=" + englishGroup + ", FullName='" + studentFullName + "', Seminar='" + seminarTeacher + "'");
                 callback.onSuccess(englishGroup, studentFullName, seminarTeacher);
             } catch (Exception e) {
-                Logger.e("CourseSetupService.loadAdditionalSetupData", "Error: " + e.getMessage());
+                Logger.e("CourseSetupService.loadAdditionalSetupData", "Error loading additional setup data: " + Logger.formatException(e));
                 callback.onError(e);
             }
         }).start();
@@ -193,7 +193,7 @@ public class CourseSetupService {
             }
         }
         ParsedCourse fallback = source.get(0);
-        Logger.d("CourseSetupService.determinePrimaryCourse", "Fallback primary course: " + fallback.fieldOfStudy);
+        Logger.d("CourseSetupService.determinePrimaryCourse", "Fallback primary course: " + fallback.fieldOfStudy + " (level=" + fallback.degreeLevel + ")");
         return fallback;
     }
 
@@ -276,6 +276,12 @@ public class CourseSetupService {
 
                 Logger.d("CourseSetupService.loadSpecialties", "Loading specializations for " + major + ", " + degreeLevel + ", " + studyMode + ", year " + year);
 
+                if (degreeLevel == DegreeLevel.ZERO_YEAR || (major != null && major.toLowerCase().contains("rok zerowy"))) {
+                    Logger.i("CourseSetupService.loadSpecialties", "Rok Zerowy has no specializations; returning empty list directly");
+                    callback.onSuccess(Collections.emptyList());
+                    return;
+                }
+
                 if (major == null || degreeLevel == null || studyMode == null) {
                     throw new IllegalStateException("Missing course configuration");
                 }
@@ -302,7 +308,7 @@ public class CourseSetupService {
                 Logger.i("CourseSetupService.loadSpecialties", "Loaded " + specializations.size() + " specialization(s)");
                 callback.onSuccess(specializations != null ? specializations : Collections.emptyList());
             } catch (Exception e) {
-                Logger.e("CourseSetupService.loadSpecialties", "Error: " + e.getMessage());
+                Logger.e("CourseSetupService.loadSpecialties", "Error loading specialties: " + Logger.formatException(e));
                 callback.onError(e);
             }
         }).start();

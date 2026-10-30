@@ -415,7 +415,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             previewPinHint.setVisibility(View.VISIBLE);
             if (isPinSupported) {
                 previewPinHint.setText(R.string.widget_preview_tap_to_add);
-                previewPinHint.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_arrow_outward, 0, 0, 0);
+                previewPinHint.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
             } else {
                 previewPinHint.setText(R.string.widget_pin_unsupported_hint);
                 previewPinHint.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_info, 0, 0, 0);

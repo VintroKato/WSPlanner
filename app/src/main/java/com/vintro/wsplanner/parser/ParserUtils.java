@@ -122,8 +122,7 @@ public class ParserUtils {
                 }
             }
         } catch (Exception e) {
-            Logger.e("ParserUtils.extractSpecializations", "Error extracting specializations: " + e.getMessage());
-            e.printStackTrace();
+            Logger.e("ParserUtils.extractSpecializations", "Error extracting specializations: " + Logger.formatException(e));
         }
         Logger.i("ParserUtils.extractSpecializations", "Extracted specializations count: " + specializations.size() + " -> " + specializations.stream().map(Object::toString).collect(Collectors.joining(", ")));
         return new ArrayList<>(specializations);

@@ -251,7 +251,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
 
             @Override
             public void onError(Exception e) {
-                Logger.e("SubjectDetailsActivity.loadSubjectDetails", "Error loading subject details: " + e.getMessage());
+                Logger.e("SubjectDetailsActivity.loadSubjectDetails", "Error loading subject details: " + Logger.formatException(e));
             }
         });
     }
@@ -553,11 +553,11 @@ public class SubjectDetailsActivity extends AppCompatActivity {
                         Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(safeFinalUrl));
                         startActivity(browserIntent);
                     } catch (Exception e) {
-                        Logger.e("SubjectDetailsActivity.handleOpenPuwCourse", "Failed to open browser: " + e.getMessage());
+                        Logger.e("SubjectDetailsActivity.handleOpenPuwCourse", "Failed to open browser: " + Logger.formatException(e));
                     }
                 });
             } catch (Exception e) {
-                Logger.e("SubjectDetailsActivity.handleOpenPuwCourse", "Error in handleOpenPuwCourse: " + e.getMessage());
+                Logger.e("SubjectDetailsActivity.handleOpenPuwCourse", "Error in handleOpenPuwCourse: " + Logger.formatException(e));
                 runOnUiThread(() -> {
                     if (progressOpenCourse != null) {
                         progressOpenCourse.animate().alpha(0f).setDuration(250).withEndAction(() -> {

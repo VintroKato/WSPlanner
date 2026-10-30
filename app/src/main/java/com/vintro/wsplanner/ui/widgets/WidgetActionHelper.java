@@ -31,7 +31,7 @@ public class WidgetActionHelper {
             mapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(mapIntent);
         } catch (Exception e) {
-            Logger.e("WidgetActionHelper.openLocationInMaps", "Error opening map: " + e.getMessage());
+            Logger.e("WidgetActionHelper.openLocationInMaps", "Error opening map: " + Logger.formatException(e));
         }
     }
 }

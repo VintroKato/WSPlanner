@@ -121,7 +121,7 @@ public class SetupCourseActivity extends AppCompatActivity {
 
             @Override
             public void onError(Exception e) {
-                Logger.e("SetupCourseActivity.fetchCourses", "Error loading courses: " + e.getMessage());
+                Logger.e("SetupCourseActivity.fetchCourses", "Error loading courses: " + Logger.formatException(e));
                 runOnUiThread(() -> {
                     showCourseLoadError(getString(R.string.no_internet_onboarding_desc));
                 });
@@ -154,8 +154,9 @@ public class SetupCourseActivity extends AppCompatActivity {
             majorCard.setChecked(true);
         }
 
-        // If Rok Zerowy, skip degree/mode/year configuration
+        // if Rok Zerowy, skip degree/mode/year configuration
         if (selectedCourse != null && selectedCourse.degreeLevel == DegreeLevel.ZERO_YEAR) {
+            Logger.i("SetupCourseActivity.populateUI", "Rok Zerowy detected; auto-configuring DegreeLevel=ZERO_YEAR, Mode=FULL_TIME, Year=1");
             selectedLevel = DegreeLevel.ZERO_YEAR;
             selectedMode = StudyMode.FULL_TIME;
             selectedYear = 1;

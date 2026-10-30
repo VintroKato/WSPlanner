@@ -92,6 +92,7 @@ public class SetupAdditionalActivity extends AppCompatActivity {
         final boolean isSeniorYear = !isZeroYear && (year >= 3 || year <= 0);
 
         if (isZeroYear) {
+            Logger.i("SetupAdditionalActivity.initData", "Rok Zerowy detected; English group and seminar teacher are hidden");
             englishSwitch.setVisibility(View.GONE);
             englishInput.setVisibility(View.GONE);
             seminarContainer.setVisibility(View.GONE);
@@ -193,6 +194,7 @@ public class SetupAdditionalActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(Exception e) {
+                        Logger.e("SetupAdditionalActivity.initData", "Error loading additional setup data for Rok Zerowy: " + Logger.formatException(e));
                         runOnUiThread(() -> {
                             if (isFinishing() || isDestroyed()) return;
                             if (searchingContainer != null) {
@@ -246,6 +248,7 @@ public class SetupAdditionalActivity extends AppCompatActivity {
 
                 @Override
                 public void onError(Exception e) {
+                    Logger.e("SetupAdditionalActivity.initData", "Error loading additional setup data: " + Logger.formatException(e));
                     runOnUiThread(() -> {
                         if (isFinishing() || isDestroyed()) return;
                         if (searchingContainer != null) {

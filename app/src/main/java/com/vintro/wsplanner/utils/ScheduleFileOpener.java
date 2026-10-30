@@ -40,10 +40,11 @@ public class ScheduleFileOpener {
 
             @Override
             public void onError(Exception e) {
-                Logger.e("ScheduleFileOpener.openExcelSchedule", "Failed to get schedule file: " + e.getMessage());
+                String errorMsg = Logger.formatException(e);
+                Logger.e("ScheduleFileOpener.openExcelSchedule", "Failed to get schedule file: " + errorMsg);
                 runOnMainThread(context, () -> Toast.makeText(
                         context,
-                        context.getString(R.string.schedule_open_file_error) + (e.getMessage() != null ? ": " + e.getMessage() : ""),
+                        context.getString(R.string.schedule_open_file_error) + (!errorMsg.isEmpty() ? ": " + errorMsg : ""),
                         Toast.LENGTH_SHORT
                 ).show());
             }
@@ -63,7 +64,7 @@ public class ScheduleFileOpener {
             context.startActivity(directIntent);
             Logger.i("ScheduleFileOpener.openFileWithChooserFallback", "Schedule file opened directly");
         } catch (ActivityNotFoundException e) {
-            Logger.w("ScheduleFileOpener.openFileWithChooserFallback", "Direct open failed, falling back to Android chooser dialog: " + e.getMessage());
+            Logger.w("ScheduleFileOpener.openFileWithChooserFallback", "Direct open failed, falling back to Android chooser dialog: " + Logger.formatException(e));
             try {
                 Uri uri = FileProvider.getUriForFile(context, context.getPackageName() + ".provider", file);
                 Intent viewIntent = new Intent(Intent.ACTION_VIEW);
@@ -77,11 +78,11 @@ public class ScheduleFileOpener {
                 context.startActivity(chooserIntent);
                 Logger.i("ScheduleFileOpener.openFileWithChooserFallback", "System chooser dialog opened");
             } catch (Exception ex) {
-                Logger.e("ScheduleFileOpener.openFileWithChooserFallback", "Chooser fallback also failed: " + ex.getMessage());
+                Logger.e("ScheduleFileOpener.openFileWithChooserFallback", "Chooser fallback also failed: " + Logger.formatException(ex));
                 Toast.makeText(context, context.getString(R.string.schedule_open_file_error), Toast.LENGTH_SHORT).show();
             }
         } catch (Exception e) {
-            Logger.e("ScheduleFileOpener.openFileWithChooserFallback", "Error opening schedule file: " + e.getMessage());
+            Logger.e("ScheduleFileOpener.openFileWithChooserFallback", "Error opening schedule file: " + Logger.formatException(e));
             Toast.makeText(context, context.getString(R.string.schedule_open_file_error), Toast.LENGTH_SHORT).show();
         }
     }

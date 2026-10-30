@@ -115,7 +115,7 @@ public class StudyPlanScraper {
                 }
             }
         } catch (Exception e) {
-            Logger.e("StudyPlanScraper.findSeminarTeacherInUrl", "Error fetching seminar teacher from " + url + ": " + e.getMessage());
+            Logger.e("StudyPlanScraper.findSeminarTeacherInUrl", "Error fetching seminar teacher from " + url + ": " + Logger.formatException(e));
         }
         return null;
     }
@@ -152,7 +152,7 @@ public class StudyPlanScraper {
                 }
             }
         } catch (Exception e) {
-            Logger.e("StudyPlanScraper.getEnglishGroup", "Error fetching English group: " + e.getMessage());
+            Logger.e("StudyPlanScraper.getEnglishGroup", "Error fetching English group: " + Logger.formatException(e));
         }
 
         return null; // not found
@@ -170,7 +170,7 @@ public class StudyPlanScraper {
             String html = response.body().string();
             return parseAvailableCoursesFromHtml(html, client);
         } catch (Exception e) {
-            Logger.e("StudyPlanScraper.getAvailableCourses", "Error parsing courses: " + e.getMessage());
+            Logger.e("StudyPlanScraper.getAvailableCourses", "Error parsing courses: " + Logger.formatException(e));
             return new ArrayList<>();
         }
     }
@@ -195,7 +195,8 @@ public class StudyPlanScraper {
         }
 
         if (!regularCourseLinks.isEmpty()) {
-            // Strict priority: active degree student zone(s)
+            // regular degree student zones take precedence
+            Logger.d("StudyPlanScraper.parseAvailableCoursesFromHtml", "Found " + regularCourseLinks.size() + " regular student zone link(s)");
             for (Element link : regularCourseLinks) {
                 ParsedCourse course = new ParsedCourse();
                 course.courseUrl = link.attr("href");
@@ -217,7 +218,8 @@ public class StudyPlanScraper {
                 courses.add(course);
             }
         } else {
-            // Fallback for preparatory program: Strefa uczestnika kursu "ROK ZEROWY"
+            // fallback for preparatory program: Strefa uczestnika kursu Rok Zerowy
+            Logger.d("StudyPlanScraper.parseAvailableCoursesFromHtml", "No regular student zones found, checking Rok Zerowy links");
             Elements zeroYearLinks = doc.select("a[title*='ROK ZEROWY'], a[title*='Rok zerowy'], a[title*='rok zerowy'], a[title*='Strefa uczestnika'], a[title*='strefa uczestnika']");
             if (zeroYearLinks.isEmpty()) {
                 for (Element a : doc.select("a[href*='course/view.php']")) {
@@ -231,8 +233,11 @@ public class StudyPlanScraper {
 
             if (!zeroYearLinks.isEmpty()) {
                 Element link = zeroYearLinks.first();
+                String href = link.attr("href");
+                String title = link.attr("title");
+                Logger.i("StudyPlanScraper.parseAvailableCoursesFromHtml", "Rok Zerowy participant zone detected: title=" + title + ", url=" + href);
                 ParsedCourse course = new ParsedCourse();
-                course.courseUrl = link.attr("href");
+                course.courseUrl = href;
                 course.fieldOfStudy = "Rok zerowy";
                 course.degreeLevel = DegreeLevel.ZERO_YEAR;
                 course.availableModesAndYears.put("st", new ArrayList<>(List.of(1)));
@@ -245,6 +250,8 @@ public class StudyPlanScraper {
                     course.availableModesAndYears.get("st").add(1);
                 }
                 courses.add(course);
+            } else {
+                Logger.d("StudyPlanScraper.parseAvailableCoursesFromHtml", "No Rok Zerowy participant links found on page");
             }
         }
         Logger.i("StudyPlanScraper.getAvailableCourses", "Parsed " + courses.size() + " available course(s): " + courses.stream().map(Object::toString).collect(Collectors.joining(", ")));
@@ -280,7 +287,7 @@ public class StudyPlanScraper {
                 processFolderFiles(client, folderUrl, course, folderMode);
             }
         } catch (Exception e) {
-            Logger.e("StudyPlanScraper.fetchCourseDetails", "Error fetching course details: " + e.getMessage());
+            Logger.e("StudyPlanScraper.fetchCourseDetails", "Error fetching course details: " + Logger.formatException(e));
         }
     }
 
@@ -299,6 +306,7 @@ public class StudyPlanScraper {
                 if (!fileName.endsWith(".xlsx")) continue;
 
                 if (course.degreeLevel == DegreeLevel.ZERO_YEAR) {
+                    Logger.d("StudyPlanScraper.processFolderFiles", "Detected Rok Zerowy schedule file: " + fileName);
                     course.availableModesAndYears.putIfAbsent("st", new ArrayList<>());
                     if (!course.availableModesAndYears.get("st").contains(1)) {
                         course.availableModesAndYears.get("st").add(1);
@@ -335,7 +343,7 @@ public class StudyPlanScraper {
                 }
             }
         } catch (Exception e) {
-            Logger.e("StudyPlanScraper.processFolderFiles", "Error processing folder files: " + e.getMessage());
+            Logger.e("StudyPlanScraper.processFolderFiles", "Error processing folder files: " + Logger.formatException(e));
         }
     }
 
@@ -352,6 +360,7 @@ public class StudyPlanScraper {
 
             String courseUrl = null;
             if (isZeroYear) {
+                Logger.i("StudyPlanScraper.getScheduleFileUrl", "Resolving schedule file for Rok Zerowy (major=" + major + ")");
                 Elements zeroLinks = doc.select("a[title*='ROK ZEROWY'], a[title*='Rok zerowy'], a[title*='rok zerowy'], a[title*='Strefa uczestnika'], a[title*='strefa uczestnika']");
                 if (!zeroLinks.isEmpty()) {
                     courseUrl = zeroLinks.first().attr("href");
@@ -364,6 +373,7 @@ public class StudyPlanScraper {
                         }
                     }
                 }
+                Logger.d("StudyPlanScraper.getScheduleFileUrl", "Rok Zerowy course URL resolved: " + courseUrl);
             } else {
                 Elements courseLinks = doc.select("a[title*='Strefa studenta']");
                 for (Element link : courseLinks) {
@@ -375,28 +385,33 @@ public class StudyPlanScraper {
                     }
                 }
             }
-            if (courseUrl == null) return null;
+            if (courseUrl == null) {
+                Logger.w("StudyPlanScraper.getScheduleFileUrl", "No course URL found for major=" + major + ", degreeLevel=" + degreeLevel);
+                return null;
+            }
             
             request = new Request.Builder().url(courseUrl).build();
             try (Response response2 = client.newCall(request).execute()) {
                 if (!response2.isSuccessful() || response2.body() == null) return null;
                 Document doc2 = Jsoup.parse(response2.body().string());
 
-                // Direct file link on course view (common for single-course participants)
+                // direct file link on course view (common for single-course participants)
                 if (isZeroYear) {
                     Elements directLinks = doc2.select("a[href*='pluginfile.php']");
+                    Logger.d("StudyPlanScraper.getScheduleFileUrl", "Scanning " + directLinks.size() + " direct file links in Rok Zerowy course");
                     String fallbackDirectUrl = null;
                     for (Element link : directLinks) {
                         String name = link.text();
                         Element span = link.selectFirst("span.fp-filename");
                         if (span != null) name = span.text();
 
+                        Logger.d("StudyPlanScraper.getScheduleFileUrl", "Inspecting file link: " + name);
                         if (isRokZerowyScheduleFile(name)) {
                             String downloadUrl = link.attr("href");
                             if (!downloadUrl.contains("forcedownload=1")) {
                                 downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
                             }
-                            Logger.d("StudyPlanScraper.getScheduleFileUrl", "Resolved Rok Zerowy direct schedule file URL: " + downloadUrl);
+                            Logger.i("StudyPlanScraper.getScheduleFileUrl", "Resolved Rok Zerowy direct schedule file URL: " + downloadUrl);
                             return downloadUrl;
                         } else if (name.toLowerCase().endsWith(".xlsx") && fallbackDirectUrl == null) {
                             String downloadUrl = link.attr("href");
@@ -407,7 +422,7 @@ public class StudyPlanScraper {
                         }
                     }
                     if (fallbackDirectUrl != null) {
-                        Logger.d("StudyPlanScraper.getScheduleFileUrl", "Resolved Rok Zerowy fallback direct schedule file URL: " + fallbackDirectUrl);
+                        Logger.i("StudyPlanScraper.getScheduleFileUrl", "Resolved Rok Zerowy fallback direct schedule file URL: " + fallbackDirectUrl);
                         return fallbackDirectUrl;
                     }
                 }
@@ -427,14 +442,14 @@ public class StudyPlanScraper {
                         Document doc3 = Jsoup.parse(response3.body().string());
                         String downloadUrl = extractScheduleFileFromFolderDoc(doc3, isZeroYear, studyMode, year, folderName);
                         if (downloadUrl != null) {
-                            Logger.d("StudyPlanScraper.getScheduleFileUrl", "Resolved schedule file URL: " + downloadUrl);
+                            Logger.i("StudyPlanScraper.getScheduleFileUrl", "Resolved schedule file URL: " + downloadUrl);
                             return downloadUrl;
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            Logger.e("StudyPlanScraper.getScheduleFileUrl", "Error fetching schedule file url: " + e.getMessage());
+            Logger.e("StudyPlanScraper.getScheduleFileUrl", "Error fetching schedule file url: " + Logger.formatException(e));
         }
         return null;
     }
@@ -457,17 +472,20 @@ public class StudyPlanScraper {
         Elements fileLinks = doc.select("a[href*='pluginfile.php']");
 
         if (isZeroYear) {
+            Logger.d("StudyPlanScraper.extractScheduleFileFromFolderDoc", "Inspecting folder files for Rok Zerowy (" + fileLinks.size() + " files)");
             String fallbackXlsxUrl = null;
             for (Element fileLink : fileLinks) {
                 String fileName = fileLink.text();
                 Element span = fileLink.selectFirst("span.fp-filename");
                 if (span != null) fileName = span.text();
 
+                Logger.d("StudyPlanScraper.extractScheduleFileFromFolderDoc", "Inspecting folder file: " + fileName);
                 if (isRokZerowyScheduleFile(fileName)) {
                     String downloadUrl = fileLink.attr("href");
                     if (!downloadUrl.contains("forcedownload=1")) {
                         downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
                     }
+                    Logger.i("StudyPlanScraper.extractScheduleFileFromFolderDoc", "Matched Rok Zerowy schedule file: " + fileName + " -> " + downloadUrl);
                     return downloadUrl;
                 } else if (fileName.toLowerCase().endsWith(".xlsx") && fallbackXlsxUrl == null) {
                     String downloadUrl = fileLink.attr("href");
@@ -476,6 +494,9 @@ public class StudyPlanScraper {
                     }
                     fallbackXlsxUrl = downloadUrl;
                 }
+            }
+            if (fallbackXlsxUrl != null) {
+                Logger.i("StudyPlanScraper.extractScheduleFileFromFolderDoc", "Using fallback xlsx URL for Rok Zerowy: " + fallbackXlsxUrl);
             }
             return fallbackXlsxUrl;
         }
@@ -578,7 +599,7 @@ public class StudyPlanScraper {
                 }
             }
         } catch (IOException e) {
-            Logger.e("StudyPlanScraper.getStudentZoneUrl", "Error fetching courses: " + e.getMessage());
+            Logger.e("StudyPlanScraper.getStudentZoneUrl", "Error fetching courses: " + Logger.formatException(e));
         }
 
         // fallback to /my/
@@ -594,7 +615,7 @@ public class StudyPlanScraper {
                 }
             }
         } catch (IOException e) {
-            Logger.e("StudyPlanScraper.getStudentZoneUrl", "Error fetching my page: " + e.getMessage());
+            Logger.e("StudyPlanScraper.getStudentZoneUrl", "Error fetching my page: " + Logger.formatException(e));
         }
 
         return null;
@@ -636,13 +657,17 @@ public class StudyPlanScraper {
                 || (major != null && major.toLowerCase().contains("rok zerowy"));
 
         if (isZeroYear) {
+            Logger.d("StudyPlanScraper.extractStudentZoneUrlFromHtml", "Searching for Rok Zerowy participant zone in course links");
             for (Element link : courseLinks) {
                 String rawText = link.text();
                 if (rawText == null || rawText.trim().isEmpty()) continue;
                 String lower = rawText.toLowerCase();
                 if ((lower.contains("rok zerowy") || lower.contains("uczestnika")) && lower.contains("strefa")) {
                     String url = link.attr("abs:href");
-                    if (url != null && !url.isEmpty()) return url;
+                    if (url != null && !url.isEmpty()) {
+                        Logger.i("StudyPlanScraper.extractStudentZoneUrlFromHtml", "Found Rok Zerowy student zone URL: " + url);
+                        return url;
+                    }
                 }
             }
             for (Element link : courseLinks) {
@@ -651,9 +676,13 @@ public class StudyPlanScraper {
                 String lower = rawText.toLowerCase();
                 if (lower.contains("rok zerowy") || lower.contains("uczestnika")) {
                     String url = link.attr("abs:href");
-                    if (url != null && !url.isEmpty()) return url;
+                    if (url != null && !url.isEmpty()) {
+                        Logger.i("StudyPlanScraper.extractStudentZoneUrlFromHtml", "Found Rok Zerowy course URL: " + url);
+                        return url;
+                    }
                 }
             }
+            Logger.d("StudyPlanScraper.extractStudentZoneUrlFromHtml", "No Rok Zerowy course link matched");
         }
 
         String bestP1Url = null;
@@ -740,7 +769,7 @@ public class StudyPlanScraper {
                 }
             }
         } catch (IOException e) {
-            Logger.e("StudyPlanScraper.searchBestCourse", "Error searching best course: " + e.getMessage());
+            Logger.e("StudyPlanScraper.searchBestCourse", "Error searching best course: " + Logger.formatException(e));
         }
 
         // fallback to my page
@@ -754,7 +783,7 @@ public class StudyPlanScraper {
                 }
             }
         } catch (IOException e) {
-            Logger.e("StudyPlanScraper.searchBestCourse", "Error searching best course fallback: " + e.getMessage());
+            Logger.e("StudyPlanScraper.searchBestCourse", "Error searching best course fallback: " + Logger.formatException(e));
         }
 
         return null;
@@ -842,7 +871,7 @@ public class StudyPlanScraper {
                 return searchCourseByKeywordsOnUrl(client, PUW.baseUrl + "/my/", keywords);
             }
         } catch (IOException e) {
-            Logger.e("StudyPlanScraper.searchCourseByKeywords", "Error searching course by keywords: " + e.getMessage());
+            Logger.e("StudyPlanScraper.searchCourseByKeywords", "Error searching course by keywords: " + Logger.formatException(e));
             return null;
         }
     }
@@ -857,7 +886,7 @@ public class StudyPlanScraper {
                 return extractCourseUrlFromHtml(response.body().string(), keywords);
             }
         } catch (IOException e) {
-            Logger.e("StudyPlanScraper.searchCourseByKeywordsOnUrl", "Error searching course on url " + pageUrl + ": " + e.getMessage());
+            Logger.e("StudyPlanScraper.searchCourseByKeywordsOnUrl", "Error searching course on url " + pageUrl + ": " + Logger.formatException(e));
             return null;
         }
     }
