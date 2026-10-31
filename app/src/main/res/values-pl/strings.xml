@@ -11,6 +11,8 @@
 
     <string name="configure_email_label">Email</string>
     <string name="configure_password_label">Hasło</string>
+    <string name="show_password">Pokaż hasło</string>
+    <string name="hide_password">Ukryj hasło</string>
     <string name="configure_status_checking">Sprawdzenie danych</string>
     <string name="configure_status_ok">Dane poprawne</string>
     <string name="configure_status_error">Niepoprawny email lub hasło</string>

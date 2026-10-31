@@ -11,6 +11,8 @@
 
     <string name="configure_email_label">Пошта</string>
     <string name="configure_password_label">Пароль</string>
+    <string name="show_password">Показати пароль</string>
+    <string name="hide_password">Приховати пароль</string>
     <string name="configure_status_checking">Перевірка ланих</string>
     <string name="configure_status_ok">Дані правильні</string>
     <string name="configure_status_error">Неправильна пошта або пароль</string>

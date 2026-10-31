@@ -11,6 +11,8 @@
 
     <string name="configure_email_label">Почта</string>
     <string name="configure_password_label">Пароль</string>
+    <string name="show_password">Показать пароль</string>
+    <string name="hide_password">Скрыть пароль</string>
     <string name="configure_status_checking">Проверка данных</string>
     <string name="configure_status_ok">Данные верны</string>
     <string name="configure_status_error">Неверный логин или пароль</string>

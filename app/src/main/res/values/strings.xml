@@ -19,6 +19,8 @@
     <string name="configure_email_hint" translatable="false">example@gmail.com</string>
     <string name="configure_password_label">Password</string>
     <string name="configure_password_hint" translatable="false">My_password123</string>
+    <string name="show_password">Show password</string>
+    <string name="hide_password">Hide password</string>
     <string name="configure_status_checking">Checking data</string>
     <string name="configure_status_ok">Data is correct</string>
     <string name="configure_status_error">Incorrect email or password</string>

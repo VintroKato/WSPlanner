@@ -4,8 +4,11 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.graphics.Typeface;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.text.method.HideReturnsTransformationMethod;
+import android.text.method.PasswordTransformationMethod;
 import android.transition.ChangeBounds;
 import android.transition.Transition;
 import android.transition.TransitionManager;
@@ -44,12 +47,14 @@ public class LoginActivity extends AppCompatActivity {
     TextView errorLabel;
     Button confirmButton;
     ImageButton buttonSettings;
+    ImageButton buttonTogglePassword;
     Handler handler = new Handler(Looper.getMainLooper());
 
     private InputState loginInputState = InputState.NORMAL;
     private InputState passwordInputState = InputState.NORMAL;
     private Language currentLanguage;
     private AppTheme currentTheme;
+    private boolean isPasswordVisible = false;
 
     @Override
     public void onCreate(Bundle icicle) {
@@ -72,6 +77,7 @@ public class LoginActivity extends AppCompatActivity {
         errorLabel = findViewById(R.id.error_label);
         confirmButton = findViewById(R.id.confirm_button);
         buttonSettings = findViewById(R.id.button_settings);
+        buttonTogglePassword = findViewById(R.id.button_toggle_password);
 
         currentLanguage = PreferencesManager.getLanguagePref(this);
         currentTheme = PreferencesManager.getThemePref(this);
@@ -83,6 +89,16 @@ public class LoginActivity extends AppCompatActivity {
                 intent.putExtra(SettingsActivity.EXTRA_HIDE_WIDGET_SETTINGS, true);
                 startActivity(intent);
             });
+        }
+
+        if (icicle != null) {
+            isPasswordVisible = icicle.getBoolean("is_password_visible", false);
+        }
+        applyPasswordVisibility();
+
+        if (buttonTogglePassword != null) {
+            buttonTogglePassword.bringToFront();
+            buttonTogglePassword.setOnClickListener(v -> togglePasswordVisibility());
         }
 
         confirmButton.setEnabled(false);
@@ -245,6 +261,9 @@ public class LoginActivity extends AppCompatActivity {
         Transition transition = new ChangeBounds();
         transition.excludeTarget(errorLabel, true);
         transition.excludeTarget(progressBar, true);
+        if (buttonTogglePassword != null) {
+            transition.excludeTarget(buttonTogglePassword, true);
+        }
         transition.setDuration(200);
         TransitionManager.beginDelayedTransition(layout, transition);
 
@@ -253,6 +272,53 @@ public class LoginActivity extends AppCompatActivity {
 
         setLoginState(InputState.NORMAL);
         setPasswordState(InputState.NORMAL);
+    }
+
+    private void togglePasswordVisibility() {
+        isPasswordVisible = !isPasswordVisible;
+        applyPasswordVisibility();
+    }
+
+    private void applyPasswordVisibility() {
+        if (passwordInput == null || buttonTogglePassword == null) {
+            return;
+        }
+
+        int selectionStart = passwordInput.getSelectionStart();
+        int selectionEnd = passwordInput.getSelectionEnd();
+        Typeface typeface = passwordInput.getTypeface();
+
+        if (isPasswordVisible) {
+            passwordInput.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+            buttonTogglePassword.setImageResource(R.drawable.ic_visibility);
+            buttonTogglePassword.setContentDescription(getString(R.string.hide_password));
+        } else {
+            passwordInput.setTransformationMethod(PasswordTransformationMethod.getInstance());
+            buttonTogglePassword.setImageResource(R.drawable.ic_visibility_off);
+            buttonTogglePassword.setContentDescription(getString(R.string.show_password));
+        }
+
+        int textColor = UIHelper.getThemeColor(this, R.attr.app_text);
+        buttonTogglePassword.setColorFilter(textColor);
+
+        if (typeface != null) {
+            passwordInput.setTypeface(typeface);
+        }
+
+        Editable text = passwordInput.getText();
+        if (text != null) {
+            if (selectionStart >= 0 && selectionEnd >= 0) {
+                passwordInput.setSelection(Math.min(selectionStart, text.length()), Math.min(selectionEnd, text.length()));
+            } else {
+                passwordInput.setSelection(text.length());
+            }
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean("is_password_visible", isPasswordVisible);
     }
 
     private void setLoginState(InputState state) {

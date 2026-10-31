@@ -79,7 +79,9 @@
             android:layout_marginTop="12dp"
             style="@style/input"
             android:ems="10"
-            android:paddingHorizontal="8dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="48dp"
+            android:paddingVertical="8dp"
             android:textAlignment="textStart"
             android:hint="@string/configure_password_hint"
             android:inputType="textPassword"
@@ -87,6 +89,24 @@
             app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/password_label" />
+
+        <ImageButton
+            android:id="@+id/button_toggle_password"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="16dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/show_password"
+            android:src="@drawable/ic_visibility_off"
+            app:srcCompat="@drawable/ic_visibility_off"
+            app:tint="?attr/app_text"
+            android:tint="?attr/app_text"
+            android:elevation="4dp"
+            android:translationZ="4dp"
+            android:focusable="false"
+            app:layout_constraintBottom_toBottomOf="@+id/password_input"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/password_input" />
 
         <ProgressBar
             android:id="@+id/progress_bar"
