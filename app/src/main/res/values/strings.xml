@@ -81,6 +81,7 @@
 
     <string name="schedule_badge_now">NOW</string>
     <string name="schedule_badge_next">NEXT</string>
+    <string name="schedule_badge_completed">COMPLETED</string>
     <string name="schedule_break_gap">Break</string>
     <string name="schedule_time_left">Left %1$s</string>
     <string name="schedule_time_until">In %1$s</string>

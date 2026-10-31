@@ -1,6 +1,5 @@
 {
   "name": "WSPlanner",
-  "description": "WS student schedule planner and widget application",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "description": "Independent open-source project, not affiliated with WSPA. Source: https://github.com/VintroKato/WSPlanner",
+  "requestFramePermissions": []
 }

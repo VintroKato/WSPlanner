@@ -22,6 +22,7 @@ import com.vintro.wsplanner.models.DaySchedule;
 import com.vintro.wsplanner.models.Lesson;
 import com.vintro.wsplanner.models.Location;
 import com.vintro.wsplanner.ui.activities.SubjectDetailsActivity;
+import com.vintro.wsplanner.ui.helpers.UIHelper;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -141,6 +142,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         private final TextView badgeNow;
         private final TextView timeLeftText;
         private final TextView lessonTimeRange;
+        private final TextView badgeCompleted;
         private final TextView badgeLocation;
         private final TextView subjectName;
         private final View rowLessonType;
@@ -157,6 +159,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             badgeNow = itemView.findViewById(R.id.badge_now);
             timeLeftText = itemView.findViewById(R.id.time_left_text);
             lessonTimeRange = itemView.findViewById(R.id.lesson_time_range);
+            badgeCompleted = itemView.findViewById(R.id.badge_completed);
             badgeLocation = itemView.findViewById(R.id.badge_location);
             subjectName = itemView.findViewById(R.id.subject_name);
             rowLessonType = itemView.findViewById(R.id.row_lesson_type);
@@ -238,6 +241,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 cardView.setStrokeWidth((int) (1.5f * density));
                 cardView.setStrokeColor(ContextCompat.getColor(context, R.color.active_lesson_border));
                 bannerNowLayout.setVisibility(View.VISIBLE);
+                if (badgeCompleted != null) badgeCompleted.setVisibility(View.GONE);
 
                 badgeNow.setBackgroundTintList(null);
                 badgeNow.setText(context.getString(R.string.schedule_badge_now));
@@ -254,6 +258,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 cardView.setStrokeWidth((int) (1.5f * density));
                 cardView.setStrokeColor(ContextCompat.getColor(context, R.color.next_lesson_border));
                 bannerNowLayout.setVisibility(View.VISIBLE);
+                if (badgeCompleted != null) badgeCompleted.setVisibility(View.GONE);
 
                 badgeNow.setBackgroundTintList(null);
                 badgeNow.setText(context.getString(R.string.schedule_badge_next));
@@ -265,16 +270,19 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 timeLeftText.setText(context.getString(R.string.schedule_time_until, formattedDuration));
                 timeLeftText.setTextColor(ContextCompat.getColor(context, R.color.badge_next_text));
             } else if (isPast) {
-                // past lesson today
-                cardView.setAlpha(0.5f);
-                cardView.setStrokeWidth(0);
+                // past lesson today: gentle dimming, preserve clean border and show completed badge
+                cardView.setAlpha(0.82f);
+                cardView.setStrokeWidth((int) (1.0f * density));
+                cardView.setStrokeColor(UIHelper.getThemeColor(context, R.attr.card_border));
                 bannerNowLayout.setVisibility(View.GONE);
+                if (badgeCompleted != null) badgeCompleted.setVisibility(View.VISIBLE);
             } else {
                 // default card state
                 cardView.setAlpha(1.0f);
                 cardView.setStrokeWidth((int) (1.0f * density));
-                cardView.setStrokeColor(ContextCompat.getColor(context, R.color.input_border_dark));
+                cardView.setStrokeColor(UIHelper.getThemeColor(context, R.attr.card_border));
                 bannerNowLayout.setVisibility(View.GONE);
+                if (badgeCompleted != null) badgeCompleted.setVisibility(View.GONE);
             }
 
             // open subject details on click

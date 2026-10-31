@@ -73,6 +73,7 @@
 
     <string name="schedule_badge_now">TERAZ</string>
     <string name="schedule_badge_next">DALEJ</string>
+    <string name="schedule_badge_completed">ZAKOŃCZONE</string>
     <string name="schedule_break_gap">Okienko</string>
     <string name="schedule_time_left">Jeszcze %1$s</string>
     <string name="schedule_time_until">Za %1$s</string>

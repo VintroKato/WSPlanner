@@ -64,6 +64,11 @@
     <color name="badge_next_text">#C7D2FE</color>
     <color name="next_lesson_border">#818CF8</color>
 
+    <!-- Completed lesson badge -->
+    <color name="badge_completed_bg">#2010B981</color>
+    <color name="badge_completed_border">#8034D399</color>
+    <color name="badge_completed_text">#34D399</color>
+
     <!-- Top status banner for active and next lessons (slightly lighter, neutral grey, less blue) -->
     <color name="banner_status_bg">#252830</color>
 

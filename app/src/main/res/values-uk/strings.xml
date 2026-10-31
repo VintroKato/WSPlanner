@@ -73,6 +73,7 @@
 
     <string name="schedule_badge_now">ЗАРАЗ</string>
     <string name="schedule_badge_next">ДАЛІ</string>
+    <string name="schedule_badge_completed">ЗАВЕРШЕНО</string>
     <string name="schedule_break_gap">Вікно</string>
     <string name="schedule_time_left">Ще %1$s</string>
     <string name="schedule_time_until">Через %1$s</string>
