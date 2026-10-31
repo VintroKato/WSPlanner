@@ -1,5 +1,6 @@
 package com.vintro.wsplanner.ui.activities;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -48,14 +49,15 @@ public class SettingsActivity extends AppCompatActivity {
     GridLayout themeLayout;
 
     Button confirmButton;
-
+    private boolean currentNightMode;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         UIHelper.setSelectedLanguage(this);
         EdgeToEdge.enable(this);
-        UIHelper.setupSystemBars(this);
+        currentNightMode = UIHelper.isNightMode(this);
+        UIHelper.setupSystemBars(this, currentNightMode);
         setContentView(R.layout.activity_settings);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.settings_scroll), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -153,28 +155,28 @@ public class SettingsActivity extends AppCompatActivity {
 
         switch (theme) {
             case AUTO:
-                selectCard(cardAutoTheme);
+                cardAutoTheme.setChecked(true);
                 break;
             case DARK:
-                selectCard(cardDarkTheme);
+                cardDarkTheme.setChecked(true);
                 break;
             case LIGHT:
-                selectCard(cardLightTheme);
+                cardLightTheme.setChecked(true);
                 break;
         }
 
         switch (language) {
             case ENGLISH:
-                selectCard(cardEnglish);
+                cardEnglish.setChecked(true);
                 break;
             case RUSSIAN:
-                selectCard(cardRussian);
+                cardRussian.setChecked(true);
                 break;
             case UKRAINIAN:
-                selectCard(cardUkrainian);
+                cardUkrainian.setChecked(true);
                 break;
             case POLISH:
-                selectCard(cardPolish);
+                cardPolish.setChecked(true);
                 break;
         }
 
@@ -206,47 +208,71 @@ public class SettingsActivity extends AppCompatActivity {
         AnimationHelper.animateCardSelection(this, selectedCard, true);
     }
 
-    private void selectInstantCard(MaterialCardView selectedCard) {
-        GridLayout cardLayout = (GridLayout) selectedCard.getParent();
-
-        for (int i = 0; i < cardLayout.getChildCount(); i++) {
-            MaterialCardView card = (MaterialCardView) cardLayout.getChildAt(i);
-            if (card != selectedCard) {
-                if (card.isChecked()) {
-                    card.setChecked(false);
-                }
-            }
-        }
-        selectedCard.setChecked(true);
-    }
-
-
-
     private void bindThemeOnClick(MaterialCardView card, AppTheme theme) {
         card.setOnClickListener(v -> {
+            AppTheme currentTheme = PreferencesManager.getThemePref(this);
+            if (card.isChecked() && currentTheme == theme) {
+                return;
+            }
+
             Logger.i("SettingsActivity.bindThemeOnClick", "User selected theme: " + theme);
-            boolean isOldNight = UIHelper.isNightMode(this);
+            boolean isOldNight = currentNightMode;
+            boolean isNewNight = UIHelper.isNightTheme(this, theme);
 
             PreferencesManager.setThemePref(this, theme);
 
-            Context oldContext = UIHelper.cloneContext(this);
-            UIHelper.setSelectedTheme(this);
-
-            if (isOldNight != UIHelper.isNightMode(this)) {
-                selectInstantCard(card);
-                AnimationHelper.animateThemeChange(this, oldContext, root);
+            if (isOldNight != isNewNight) {
+                currentNightMode = isNewNight;
+                Context oldContext = UIHelper.getThemedContext(this, isOldNight);
+                Context newContext = UIHelper.getThemedContext(this, isNewNight);
+                AnimationHelper.animateThemeChange(this, oldContext, newContext, root, card, () -> {
+                    UIHelper.setSelectedTheme(this);
+                });
             } else {
                 selectCard(card);
+                UIHelper.setSelectedTheme(this);
             }
         });
     }
 
     private void bindLanguageOnClick(MaterialCardView card, Language language) {
         card.setOnClickListener(v -> {
+            Language currentLanguage = PreferencesManager.getLanguagePref(this);
+            if (card.isChecked() && currentLanguage == language) {
+                return;
+            }
+
             Logger.i("SettingsActivity.bindLanguageOnClick", "User selected language: " + language);
             selectCard(card);
             PreferencesManager.setLanguagePref(this, language);
-            recreate();
+            UIHelper.setSelectedLanguage(this);
+
+            card.postDelayed(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                finish();
+                Intent intent = new Intent(this, SettingsActivity.class);
+                intent.putExtra(EXTRA_HIDE_WIDGET_SETTINGS, getIntent().getBooleanExtra(EXTRA_HIDE_WIDGET_SETTINGS, false));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                startActivity(intent);
+                if (android.os.Build.VERSION.SDK_INT >= 34) {
+                    overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, 0, 0);
+                    overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, 0, 0);
+                } else {
+                    overridePendingTransition(0, 0);
+                }
+            }, 200);
         });
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        UIHelper.setSelectedTheme(this);
+    }
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // Handled smoothly via animation; prevent activity recreation
     }
 }

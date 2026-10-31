@@ -37,6 +37,7 @@ import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.DegreeLevel;
+import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.models.DaySchedule;
 import com.vintro.wsplanner.ui.adapters.ScheduleAdapter;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
@@ -81,10 +82,12 @@ public class MainActivity extends AppCompatActivity {
 
     private final DateTimeFormatter syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm");
     private final DateTimeFormatter syncDateFormatter = DateTimeFormatter.ofPattern("dd.MM, HH:mm");
+    private Language currentLanguage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        currentLanguage = PreferencesManager.getLanguagePref(this);
         Logger.d("MainActivity.onCreate", "MainActivity created");
 
         scheduleRepository = ScheduleRepository.getInstance(this);
@@ -483,6 +486,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (isFinishing()) return;
+
+        Language savedLang = PreferencesManager.getLanguagePref(this);
+        if (currentLanguage != null && currentLanguage != savedLang) {
+            currentLanguage = savedLang;
+            UIHelper.setSelectedLanguage(this);
+            recreate();
+            return;
+        }
 
         LocalDate today = LocalDate.now();
         // If app was minimized yesterday and reopened today without user navigating away

@@ -21,16 +21,36 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 public class UIHelper {
+    public static boolean isNightTheme(Context context, AppTheme theme) {
+        if (theme == AppTheme.DARK) {
+            return true;
+        } else if (theme == AppTheme.LIGHT) {
+            return false;
+        } else {
+            int systemNight = Resources.getSystem().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+            if (systemNight == Configuration.UI_MODE_NIGHT_UNDEFINED && context != null) {
+                systemNight = context.getApplicationContext().getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+            }
+            return systemNight == Configuration.UI_MODE_NIGHT_YES;
+        }
+    }
+
     public static boolean isNightMode(Context context) {
-        int currentNightMode = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        return currentNightMode == Configuration.UI_MODE_NIGHT_YES;
+        if (context == null) return false;
+        AppTheme theme = PreferencesManager.getThemePref(context);
+        return isNightTheme(context, theme);
     }
 
     public static void setupSystemBars(Activity activity) {
+        if (activity == null) return;
+        setupSystemBars(activity, isNightMode(activity));
+    }
+
+    public static void setupSystemBars(Activity activity, boolean isNight) {
         if (activity == null || activity.getWindow() == null) return;
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(activity.getWindow(), activity.getWindow().getDecorView());
         if (controller != null) {
-            boolean isLight = !isNightMode(activity);
+            boolean isLight = !isNight;
             controller.setAppearanceLightStatusBars(isLight);
             controller.setAppearanceLightNavigationBars(isLight);
         }
@@ -48,11 +68,17 @@ public class UIHelper {
         return typedValue.data;
     }
 
-    public static Context cloneContext(Context context) {
+    public static Context getThemedContext(Context context, boolean isNight) {
         Configuration config = new Configuration(context.getResources().getConfiguration());
-        Context newContext = context.createConfigurationContext(config);
-        newContext.setTheme(R.style.Base_Theme_WSPlanner);
-        return newContext;
+        int nightMask = isNight ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO;
+        config.uiMode = nightMask | (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK);
+        Context themedContext = context.createConfigurationContext(config);
+        themedContext.setTheme(R.style.Base_Theme_WSPlanner);
+        return themedContext;
+    }
+
+    public static Context cloneContext(Context context) {
+        return getThemedContext(context, isNightMode(context));
     }
 
     public static void setSelectedTheme(Context context) {
@@ -60,26 +86,39 @@ public class UIHelper {
         Logger.d("UIHelper.setSelectedTheme", "Changing theme to " + theme);
         AppCompatDelegate.setDefaultNightMode(theme.value);
         if (context instanceof Activity) {
-            setupSystemBars((Activity) context);
+            setupSystemBars((Activity) context, isNightTheme(context, theme));
         }
     }
 
     public static void setSelectedLanguage(Context context) {
+        if (context == null) return;
         Language language = PreferencesManager.getLanguagePref(context);
+        Locale locale = new Locale(language.code);
+        Locale.setDefault(locale);
+
         LocaleListCompat locales = LocaleListCompat.forLanguageTags(language.code);
         Logger.d("UIHelper.setSelectedLanguage", "Changing language to " + language + " with locales " + locales.toLanguageTags());
         AppCompatDelegate.setApplicationLocales(locales);
 
-        if (context instanceof Activity) {
-            Activity activity = (Activity) context;
-            Locale locale = new Locale(language.code);
-            Locale.setDefault(locale);
-
-            Configuration config = new Configuration(activity.getResources().getConfiguration());
-            config.setLocale(locale);
-
-            activity.getResources().updateConfiguration(config,
-                    activity.getResources().getDisplayMetrics());
+        applyLocaleToResources(context, locale);
+        Context appContext = context.getApplicationContext();
+        if (appContext != null && appContext != context) {
+            applyLocaleToResources(appContext, locale);
         }
+    }
+
+    private static void applyLocaleToResources(Context context, Locale locale) {
+        if (context == null) return;
+        Resources res = context.getResources();
+        if (res == null) return;
+        Configuration config = new Configuration(res.getConfiguration());
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            android.os.LocaleList localeList = new android.os.LocaleList(locale);
+            android.os.LocaleList.setDefault(localeList);
+            config.setLocales(localeList);
+        } else {
+            config.locale = locale;
+        }
+        res.updateConfiguration(config, res.getDisplayMetrics());
     }
 }
