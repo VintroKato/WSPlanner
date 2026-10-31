@@ -31,6 +31,21 @@
         <item name="popupMenuStyle">@style/CustomPopupMenu</item>
         <item name="android:popupMenuStyle">@style/CustomPopupMenu</item>
         <item name="actionOverflowMenuStyle">@style/CustomPopupMenu</item>
+
+        <item name="colorPrimary">#3050FF</item>
+        <item name="colorControlActivated">#3050FF</item>
+        <item name="colorSecondary">#3050FF</item>
+
+        <item name="switch_thumb_tint">@color/switch_thumb_light</item>
+        <item name="switch_track_tint">@color/switch_track_light</item>
+        <item name="update_badge_new_bg">@color/update_badge_new_bg_light</item>
+        <item name="update_badge_new_text">@color/update_badge_new_text_light</item>
+
+        <item name="materialSwitchStyle">@style/CustomSwitchStyle</item>
+        <item name="switchStyle">@style/CustomSwitchMaterialStyle</item>
+
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
     </style>
 
 </resources>

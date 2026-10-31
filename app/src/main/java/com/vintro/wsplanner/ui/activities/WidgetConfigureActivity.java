@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProviderInfo;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -99,7 +100,9 @@ public class WidgetConfigureActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
+        UIHelper.setupSystemBars(this);
         setContentView(R.layout.activity_widget_configure);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
@@ -400,6 +403,14 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             previewBtnExcel.setVisibility(switchShowExcel.isChecked() ? View.VISIBLE : View.GONE);
             previewBtnRefresh.setVisibility(switchShowRefresh.isChecked() ? View.VISIBLE : View.GONE);
             previewBtnApp.setVisibility(switchShowApp.isChecked() ? View.VISIBLE : View.GONE);
+
+            int actionIconColor = ContextCompat.getColor(this, isLight ? R.color.widget_text_light_primary : R.color.widget_text_dark_primary);
+            if (previewBtnRefresh != null) {
+                previewBtnRefresh.setImageTintList(ColorStateList.valueOf(actionIconColor));
+            }
+            if (previewBtnApp != null) {
+                previewBtnApp.setImageTintList(ColorStateList.valueOf(actionIconColor));
+            }
         }
     }
 

@@ -344,7 +344,10 @@ public class DailyScheduleWidget extends AppWidgetProvider {
 
     private static void applyTheme(Context context, RemoteViews views) {
         String theme = PreferencesManager.getWidgetTheme(context);
-        if (PreferencesManager.WIDGET_THEME_LIGHT.equals(theme)) {
+        boolean isLight = PreferencesManager.WIDGET_THEME_LIGHT.equals(theme);
+        int actionIconColor = ContextCompat.getColor(context, isLight ? R.color.widget_text_light_primary : R.color.widget_text_dark_primary);
+
+        if (isLight) {
             views.setInt(R.id.widget_daily_root, "setBackgroundResource", R.drawable.bg_widget_light);
             views.setTextColor(R.id.widget_daily_title, ContextCompat.getColor(context, R.color.widget_text_light_primary));
             views.setTextColor(R.id.widget_daily_subtitle, ContextCompat.getColor(context, R.color.widget_text_light_secondary));
@@ -355,6 +358,8 @@ public class DailyScheduleWidget extends AppWidgetProvider {
             views.setTextColor(R.id.widget_daily_subtitle, ContextCompat.getColor(context, R.color.widget_text_dark_secondary));
             views.setTextColor(R.id.widget_daily_empty_text, ContextCompat.getColor(context, R.color.widget_text_dark_primary));
         }
+        views.setInt(R.id.widget_daily_refresh_icon, "setColorFilter", actionIconColor);
+        views.setInt(R.id.widget_daily_btn_app, "setColorFilter", actionIconColor);
     }
 
     private static PendingIntent createActionPendingIntent(Context context, int widgetId, String action) {

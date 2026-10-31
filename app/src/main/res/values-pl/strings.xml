@@ -186,4 +186,19 @@
     <string name="widget_pin_unsupported_hint">Dodaj widżet ręcznie z ekranu głównego</string>
     <string name="widget_pin_unsupported_toast">Dodaj widżet ręcznie z ekranu głównego</string>
     <string name="schedule_updated">Harmonogram zaktualizowany</string>
+
+    <!-- App Updates -->
+    <string name="settings_update_header">Aktualizacja aplikacji</string>
+    <string name="settings_update_check_button">Sprawdź</string>
+    <string name="settings_update_github_button">GitHub</string>
+    <string name="update_dialog_title">Dostępna aktualizacja</string>
+    <string name="update_dialog_desc">Nowa wersja WSPlanner jest dostępna na GitHubie. Możesz przejść do strony wydań, aby pobrać i zainstalować aktualizację.</string>
+    <string name="update_dialog_current_badge">Obecna: %1$s</string>
+    <string name="update_dialog_new_badge">Nowa: %1$s</string>
+    <string name="update_dialog_button_github">Przejdź do GitHuba</string>
+    <string name="update_dialog_button_later">Później</string>
+    <string name="update_checking_toast">Sprawdzanie aktualizacji…</string>
+    <string name="update_latest_installed_toast">Masz najnowszą wersję (%1$s)</string>
+    <string name="update_cooldown_toast">Spróbuj ponownie za %1$d s</string>
+    <string name="update_check_error_toast">Nie udało się sprawdzić aktualizacji</string>
 </resources>

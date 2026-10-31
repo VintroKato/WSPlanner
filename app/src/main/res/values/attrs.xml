@@ -26,4 +26,9 @@
 
         <attr name="popup_bg" format="color" />
         <attr name="popup_border" format="color" />
+
+        <attr name="update_badge_new_bg" format="color" />
+        <attr name="update_badge_new_text" format="color" />
+        <attr name="switch_thumb_tint" format="color" />
+        <attr name="switch_track_tint" format="color" />
 </resources>

@@ -4,14 +4,20 @@ plugins {
 
 android {
     namespace 'com.vintro.wsplanner'
-    compileSdk 36
+    compileSdk 37
 
     defaultConfig {
         applicationId "com.vintro.wsplanner"
         minSdk 29
         targetSdk 36
-        versionCode 1
-        versionName "1.0"
+        def appVersion = "0.6.0"
+        versionName appVersion
+
+        def versionParts = appVersion.tokenize('.').collect { it.toInteger() }
+        def major = versionParts.size() > 0 ? versionParts[0] : 0
+        def minor = versionParts.size() > 1 ? versionParts[1] : 0
+        def patch = versionParts.size() > 2 ? versionParts[2] : 0
+        versionCode major * 1000000 + minor * 1000 + patch
 
         resourceConfigurations += ['en', 'pl', 'ru', 'uk']
 
@@ -44,6 +50,7 @@ android {
     }
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
     packaging {
         resources {

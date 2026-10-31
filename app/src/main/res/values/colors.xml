@@ -57,6 +57,7 @@
     <color name="badge_now_border">#9993C5FD</color>
     <color name="badge_now_text">#93C5FD</color>
     <color name="active_lesson_border">#3B82F6</color>
+    <color name="update_alert_tint">#F59E0B</color>
 
     <!-- Upcoming (NEXT) lesson -->
     <color name="badge_next_bg">#26818CF8</color>
@@ -93,4 +94,21 @@
     <color name="widget_text_dark_secondary">#94A3B8</color>
     <color name="widget_divider_dark">#2E3649</color>
     <color name="widget_divider_light">#E2E8F0</color>
+
+    <!-- Update Badge Contrast Colors -->
+    <color name="update_badge_new_bg_light">#DBEAFE</color>
+    <color name="update_badge_new_text_light">#1D4ED8</color>
+    <color name="update_badge_new_bg_dark">#263B82F6</color>
+    <color name="update_badge_new_text_dark">#93C5FD</color>
+
+    <!-- Switch / Toggle Modern Colors -->
+    <color name="switch_thumb_checked_light">#3050FF</color>
+    <color name="switch_thumb_unchecked_light">#94A3B8</color>
+    <color name="switch_track_checked_light">#BFDBFE</color>
+    <color name="switch_track_unchecked_light">#CBD5E1</color>
+
+    <color name="switch_thumb_checked_dark">#3B82F6</color>
+    <color name="switch_thumb_unchecked_dark">#64748B</color>
+    <color name="switch_track_checked_dark">#1E3A8A</color>
+    <color name="switch_track_unchecked_dark">#334155</color>
 </resources>

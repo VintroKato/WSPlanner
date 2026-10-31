@@ -51,12 +51,15 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
+import com.vintro.wsplanner.services.UpdateManager;
+
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
     private View buttonOpenFile;
     private ProgressBar progressOpenFile;
     private ImageButton buttonMenu;
+    private ImageButton buttonUpdateAlert;
     private ImageButton buttonPrevDay;
     private ImageButton buttonToday;
     private ImageButton buttonNextDay;
@@ -163,12 +166,14 @@ public class MainActivity extends AppCompatActivity {
         setupListeners();
         boolean isOutdated = scheduleRepository != null && scheduleRepository.isScheduleOutdated();
         loadSchedule(isOutdated);
+        checkAppUpdates();
     }
 
     private void initViews() {
         buttonOpenFile = findViewById(R.id.button_open_file);
         progressOpenFile = findViewById(R.id.progress_open_file);
         buttonMenu = findViewById(R.id.button_menu);
+        buttonUpdateAlert = findViewById(R.id.button_update_alert);
         buttonPrevDay = findViewById(R.id.button_prev_day);
         buttonToday = findViewById(R.id.button_today);
         buttonNextDay = findViewById(R.id.button_next_day);
@@ -215,6 +220,15 @@ public class MainActivity extends AppCompatActivity {
 
         // popup menu
         buttonMenu.setOnClickListener(this::showPopupMenu);
+
+        // update alert button
+        if (buttonUpdateAlert != null) {
+            buttonUpdateAlert.setOnClickListener(v -> {
+                String newVersion = UpdateManager.getSavedLatestVersion(this);
+                String releaseUrl = UpdateManager.getSavedReleaseUrl(this);
+                UpdateManager.showUpdateDialog(this, newVersion, releaseUrl);
+            });
+        }
 
         // day navigation buttons
         buttonPrevDay.setOnClickListener(v -> {
@@ -500,6 +514,38 @@ public class MainActivity extends AppCompatActivity {
             WidgetUpdateManager.updateAllWidgets(this);
             WidgetUpdateManager.scheduleNextAlarm(this);
         }
+
+        updateUpdateAlertVisibility();
+    }
+
+    private void updateUpdateAlertVisibility() {
+        if (buttonUpdateAlert != null) {
+            boolean hasUpdate = UpdateManager.hasPendingUpdate(this);
+            buttonUpdateAlert.setVisibility(hasUpdate ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void checkAppUpdates() {
+        UpdateManager.checkAutoUpdate(this, new UpdateManager.UpdateCheckCallback() {
+            @Override
+            public void onUpdateAvailable(String newVersion, String releaseUrl) {
+                if (buttonUpdateAlert != null) {
+                    buttonUpdateAlert.setVisibility(View.VISIBLE);
+                }
+            }
+
+            @Override
+            public void onUpToDate(String currentVersion) {
+                if (buttonUpdateAlert != null) {
+                    buttonUpdateAlert.setVisibility(View.GONE);
+                }
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                updateUpdateAlertVisibility();
+            }
+        });
     }
 
     private void checkScheduleFreshnessAndAutoUpdate() {

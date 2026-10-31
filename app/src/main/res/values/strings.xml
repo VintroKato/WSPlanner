@@ -194,4 +194,19 @@
     <string name="widget_pin_unsupported_hint">Add widget from your home screen</string>
     <string name="widget_pin_unsupported_toast">Add widget from your home screen</string>
     <string name="schedule_updated">Schedule updated</string>
+
+    <!-- App Updates -->
+    <string name="settings_update_header">App Updates</string>
+    <string name="settings_update_check_button">Check</string>
+    <string name="settings_update_github_button">GitHub</string>
+    <string name="update_dialog_title">Update Available</string>
+    <string name="update_dialog_desc">A new version of WSPlanner is available on GitHub. You can visit the release page to download and install the update.</string>
+    <string name="update_dialog_current_badge">Current: %1$s</string>
+    <string name="update_dialog_new_badge">New: %1$s</string>
+    <string name="update_dialog_button_github">Go to GitHub</string>
+    <string name="update_dialog_button_later">Later</string>
+    <string name="update_checking_toast">Checking for updates…</string>
+    <string name="update_latest_installed_toast">You have the latest version (%1$s)</string>
+    <string name="update_cooldown_toast">Please wait %1$d sec before checking again</string>
+    <string name="update_check_error_toast">Failed to check for updates</string>
 </resources>

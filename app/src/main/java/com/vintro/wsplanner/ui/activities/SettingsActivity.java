@@ -7,6 +7,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.GridLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,11 +16,13 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.enums.AppTheme;
+import com.vintro.wsplanner.services.UpdateManager;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.utils.Logger;
@@ -52,8 +55,9 @@ public class SettingsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         UIHelper.setSelectedLanguage(this);
         EdgeToEdge.enable(this);
+        UIHelper.setupSystemBars(this);
         setContentView(R.layout.activity_settings);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.settings_scroll), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
@@ -100,6 +104,46 @@ public class SettingsActivity extends AppCompatActivity {
                 Logger.d("SettingsActivity.cardWidgetSettings", "Navigating to WidgetConfigureActivity");
                 Intent widgetConfigIntent = new Intent(this, WidgetConfigureActivity.class);
                 startActivity(widgetConfigIntent);
+            });
+        }
+
+        MaterialButton btnCheckUpdate = findViewById(R.id.btn_check_update);
+        MaterialButton btnOpenGithub = findViewById(R.id.btn_open_github);
+
+        if (btnOpenGithub != null) {
+            btnOpenGithub.setOnClickListener(v -> UpdateManager.openGitHubRepo(this));
+        }
+
+        if (btnCheckUpdate != null) {
+            btnCheckUpdate.setOnClickListener(v -> {
+                if (UpdateManager.isCooldownActive()) {
+                    int remaining = UpdateManager.getRemainingCooldownSeconds();
+                    Toast.makeText(this, getString(R.string.update_cooldown_toast, remaining), Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                btnCheckUpdate.setEnabled(false);
+                Toast.makeText(this, getString(R.string.update_checking_toast), Toast.LENGTH_SHORT).show();
+
+                UpdateManager.checkManualUpdate(this, new UpdateManager.UpdateCheckCallback() {
+                    @Override
+                    public void onUpdateAvailable(String newVersion, String releaseUrl) {
+                        btnCheckUpdate.setEnabled(true);
+                        UpdateManager.showUpdateDialog(SettingsActivity.this, newVersion, releaseUrl);
+                    }
+
+                    @Override
+                    public void onUpToDate(String currentVersion) {
+                        btnCheckUpdate.setEnabled(true);
+                        Toast.makeText(SettingsActivity.this, getString(R.string.update_latest_installed_toast, currentVersion), Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        btnCheckUpdate.setEnabled(true);
+                        Toast.makeText(SettingsActivity.this, getString(R.string.update_check_error_toast), Toast.LENGTH_SHORT).show();
+                    }
+                });
             });
         }
 

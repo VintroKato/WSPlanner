@@ -17,12 +17,24 @@ import com.vintro.wsplanner.utils.Logger;
 
 import java.util.Locale;
 
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
+
 public class UIHelper {
     public static boolean isNightMode(Context context) {
         int currentNightMode = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
         return currentNightMode == Configuration.UI_MODE_NIGHT_YES;
     }
 
+    public static void setupSystemBars(Activity activity) {
+        if (activity == null || activity.getWindow() == null) return;
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(activity.getWindow(), activity.getWindow().getDecorView());
+        if (controller != null) {
+            boolean isLight = !isNightMode(activity);
+            controller.setAppearanceLightStatusBars(isLight);
+            controller.setAppearanceLightNavigationBars(isLight);
+        }
+    }
 
     public static int getThemeColor(Context context, int colorAttr) {
         TypedValue typedValue = new TypedValue();
@@ -47,6 +59,9 @@ public class UIHelper {
         AppTheme theme = PreferencesManager.getThemePref(context);
         Logger.d("UIHelper.setSelectedTheme", "Changing theme to " + theme);
         AppCompatDelegate.setDefaultNightMode(theme.value);
+        if (context instanceof Activity) {
+            setupSystemBars((Activity) context);
+        }
     }
 
     public static void setSelectedLanguage(Context context) {

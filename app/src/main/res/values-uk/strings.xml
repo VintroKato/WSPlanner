@@ -186,4 +186,19 @@
     <string name="widget_pin_unsupported_hint">Додайте віджет через головний екран</string>
     <string name="widget_pin_unsupported_toast">Додайте віджет через головний екран</string>
     <string name="schedule_updated">Розклад оновлено</string>
+
+    <!-- App Updates -->
+    <string name="settings_update_header">Оновлення додатка</string>
+    <string name="settings_update_check_button">Перевірити</string>
+    <string name="settings_update_github_button">GitHub</string>
+    <string name="update_dialog_title">Доступне оновлення</string>
+    <string name="update_dialog_desc">На GitHub доступна нова версія WSPlanner. Ви можете перейти на сторінку релізів, щоб завантажити та встановити оновлення.</string>
+    <string name="update_dialog_current_badge">Поточна: %1$s</string>
+    <string name="update_dialog_new_badge">Нова: %1$s</string>
+    <string name="update_dialog_button_github">Перейти на GitHub</string>
+    <string name="update_dialog_button_later">Пізніше</string>
+    <string name="update_checking_toast">Перевірка оновлень…</string>
+    <string name="update_latest_installed_toast">У вас встановлена найновіша версія (%1$s)</string>
+    <string name="update_cooldown_toast">Спробуйте ще раз через %1$d с</string>
+    <string name="update_check_error_toast">Не вдалося перевірити оновлення</string>
 </resources>

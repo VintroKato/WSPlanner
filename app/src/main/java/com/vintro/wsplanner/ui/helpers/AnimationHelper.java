@@ -17,10 +17,12 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.enums.InputState;
 import com.vintro.wsplanner.utils.Logger;
+import android.content.res.ColorStateList;
 
 public class AnimationHelper {
 
@@ -74,31 +76,71 @@ public class AnimationHelper {
 
     public static void animateThemeChange(Activity context, Context oldContext, ConstraintLayout root) {
         AnimationHelper.animateBgThemeChange(context, oldContext, root);
+        if (root.getParent() instanceof View) {
+            AnimationHelper.animateBgThemeChange(context, oldContext, (View) root.getParent());
+        }
         for (int i = 0; i < root.getChildCount(); i++) {
-            View child = root.getChildAt(i);
-
-            if (child instanceof Button) {
-                AnimationHelper.animateButtonThemeChange(context, oldContext, (Button) child);
-            } else if (child instanceof TextView) {
-                AnimationHelper.animateTextThemeChange(context, oldContext, (TextView) child);
-            } else if (child instanceof GridLayout) {
-                GridLayout subChild = (GridLayout) root.getChildAt(i);
-                for (int j = 0; j < subChild.getChildCount(); j++) {
-                    MaterialCardView cardChild = (MaterialCardView) subChild.getChildAt(j);
-                    AnimationHelper.animateCardThemeChange(context, oldContext, cardChild);
-                }
-            }
+            animateViewHierarchy(context, oldContext, root.getChildAt(i));
         }
         animateStatusBarIconsThemeChange(context);
     }
 
+    private static void animateViewHierarchy(Context context, Context oldContext, View view) {
+        if (view == null) return;
+
+        if (view instanceof MaterialCardView) {
+            MaterialCardView card = (MaterialCardView) view;
+            animateCardThemeChange(context, oldContext, card);
+            for (int i = 0; i < card.getChildCount(); i++) {
+                animateViewHierarchy(context, oldContext, card.getChildAt(i));
+            }
+            return;
+        }
+
+        if (view instanceof MaterialButton) {
+            MaterialButton mb = (MaterialButton) view;
+            if (mb.getStrokeWidth() > 0) {
+                animateSecondaryButtonThemeChange(context, oldContext, mb);
+            } else {
+                animateButtonThemeChange(context, oldContext, mb);
+            }
+            return;
+        }
+
+        if (view instanceof Button) {
+            animateButtonThemeChange(context, oldContext, (Button) view);
+            return;
+        }
+
+        if (view instanceof TextView) {
+            animateTextThemeChange(context, oldContext, (TextView) view);
+            return;
+        }
+
+        if (view instanceof android.widget.ImageView) {
+            animateImageViewTintThemeChange(context, oldContext, (android.widget.ImageView) view);
+            return;
+        }
+
+        if (view instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                animateViewHierarchy(context, oldContext, group.getChildAt(i));
+            }
+        }
+    }
+
+    private static void animateImageViewTintThemeChange(Context context, Context oldContext, android.widget.ImageView iv) {
+        if (iv.getId() == R.id.widget_card_arrow || iv.getImageTintList() != null) {
+            int startColor = UIHelper.getThemeColor(oldContext, R.attr.app_text);
+            int endColor = UIHelper.getThemeColor(context, R.attr.app_text);
+            ValueAnimator animator = createColorAnimator(startColor, endColor, color -> iv.setImageTintList(ColorStateList.valueOf(color)));
+            animator.start();
+        }
+    }
+
     private static void animateStatusBarIconsThemeChange(Activity activity) {
-        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(activity.getWindow(), activity.getWindow().getDecorView());
-
-        // dark icons for light status bar
-        boolean isStatusBarLight = !UIHelper.isNightMode(activity);
-
-        controller.setAppearanceLightStatusBars(isStatusBarLight);
+        UIHelper.setupSystemBars(activity);
     }
 
     private static void animateBgThemeChange(Context context, Context oldContext, View root) {
@@ -124,9 +166,10 @@ public class AnimationHelper {
                 UIHelper.getThemeColor(context, R.attr.card_checked_bg) :
                 UIHelper.getThemeColor(context, R.attr.card_bg);
 
-
         animateCardColors(card, startBorderColor, endBorderColor, startBgColor, endBgColor, card.isChecked());
-        animateTextThemeChange(context, oldContext, (TextView) card.getChildAt(0));
+        if (card.getChildCount() > 0 && card.getChildAt(0) instanceof TextView) {
+            animateTextThemeChange(context, oldContext, (TextView) card.getChildAt(0));
+        }
     }
 
     private static void animateTextThemeChange(Context context, Context oldContext, TextView text) {
@@ -146,6 +189,26 @@ public class AnimationHelper {
 
         animateButtonColors(button, startBgColor, endBgColor, startTextColor, endTextColor);
 
+    }
+
+    private static void animateSecondaryButtonThemeChange(Context context, Context oldContext, MaterialButton button) {
+        int startBg = UIHelper.getThemeColor(oldContext, R.attr.card_bg);
+        int endBg = UIHelper.getThemeColor(context, R.attr.card_bg);
+        int startStroke = UIHelper.getThemeColor(oldContext, R.attr.card_border);
+        int endStroke = UIHelper.getThemeColor(context, R.attr.card_border);
+        int startText = UIHelper.getThemeColor(oldContext, R.attr.app_text);
+        int endText = UIHelper.getThemeColor(context, R.attr.app_text);
+
+        ValueAnimator bgAnim = createColorAnimator(startBg, endBg, color -> button.setBackgroundTintList(ColorStateList.valueOf(color)));
+        ValueAnimator strokeAnim = createColorAnimator(startStroke, endStroke, color -> button.setStrokeColor(ColorStateList.valueOf(color)));
+        ValueAnimator textAnim = createColorAnimator(startText, endText, color -> {
+            button.setTextColor(color);
+            button.setIconTint(ColorStateList.valueOf(color));
+        });
+
+        bgAnim.start();
+        strokeAnim.start();
+        textAnim.start();
     }
 
     private static int getInputBorderColor(Context context, InputState state, int bgColor) {
