@@ -227,6 +227,7 @@ public class MainActivity extends AppCompatActivity {
         // update alert button
         if (buttonUpdateAlert != null) {
             buttonUpdateAlert.setOnClickListener(v -> {
+                Logger.i("MainActivity", "User tapped update alert bell icon in top toolbar");
                 String newVersion = UpdateManager.getSavedLatestVersion(this);
                 String releaseUrl = UpdateManager.getSavedReleaseUrl(this);
                 UpdateManager.showUpdateDialog(this, newVersion, releaseUrl);
@@ -537,9 +538,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkAppUpdates() {
+        Logger.d("MainActivity", "checkAppUpdates() initiated");
         UpdateManager.checkAutoUpdate(this, new UpdateManager.UpdateCheckCallback() {
             @Override
             public void onUpdateAvailable(String newVersion, String releaseUrl) {
+                Logger.i("MainActivity", "Auto update check: update available (" + newVersion + "), showing update bell icon");
                 if (buttonUpdateAlert != null) {
                     buttonUpdateAlert.setVisibility(View.VISIBLE);
                 }
@@ -547,6 +550,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onUpToDate(String currentVersion) {
+                Logger.d("MainActivity", "Auto update check: app is up to date (" + currentVersion + ")");
                 if (buttonUpdateAlert != null) {
                     buttonUpdateAlert.setVisibility(View.GONE);
                 }
@@ -554,6 +558,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onError(String errorMessage) {
+                Logger.w("MainActivity", "Auto update check error: " + errorMessage);
                 updateUpdateAlertVisibility();
             }
         });

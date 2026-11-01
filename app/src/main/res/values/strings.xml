@@ -212,6 +212,15 @@
     <string name="update_cooldown_toast">Please wait %1$d sec before checking again</string>
     <string name="update_check_error_toast">Failed to check for updates</string>
 
+    <!-- Support & Logs -->
+    <string name="settings_logs_header">Support</string>
+    <string name="settings_contact_button">Contact</string>
+    <string name="settings_share_logs_button">Logs</string>
+    <string name="share_logs_chooser_title">Share app logs</string>
+    <string name="share_logs_subject" translatable="false">WSPlanner Logs</string>
+    <string name="logs_empty_toast">Log file is empty</string>
+    <string name="share_logs_error_toast">Failed to share logs</string>
+
     <!-- Widget Preview Sample Strings -->
     <string name="widget_preview_sample_subject_1">Object-Oriented Programming</string>
     <string name="widget_preview_sample_subject_2">Database Systems</string>

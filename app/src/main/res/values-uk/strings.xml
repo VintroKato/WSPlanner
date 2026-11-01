@@ -204,6 +204,14 @@
     <string name="update_cooldown_toast">Спробуйте ще раз через %1$d с</string>
     <string name="update_check_error_toast">Не вдалося перевірити оновлення</string>
 
+    <!-- Support & Logs -->
+    <string name="settings_logs_header">Підтримка</string>
+    <string name="settings_contact_button">Контакт</string>
+    <string name="settings_share_logs_button">Логи</string>
+    <string name="share_logs_chooser_title">Надіслати логи програми</string>
+    <string name="logs_empty_toast">Файл логів порожній</string>
+    <string name="share_logs_error_toast">Не вдалося надіслати логи</string>
+
     <!-- Widget Preview Sample Strings -->
     <string name="widget_preview_sample_subject_1">Об\'єктно-орієнтоване прогр.</string>
     <string name="widget_preview_sample_subject_2">Бази даних та системи</string>

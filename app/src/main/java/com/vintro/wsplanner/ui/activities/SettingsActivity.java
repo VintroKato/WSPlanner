@@ -3,6 +3,7 @@ package com.vintro.wsplanner.ui.activities;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -113,39 +114,77 @@ public class SettingsActivity extends AppCompatActivity {
         MaterialButton btnOpenGithub = findViewById(R.id.btn_open_github);
 
         if (btnOpenGithub != null) {
-            btnOpenGithub.setOnClickListener(v -> UpdateManager.openGitHubRepo(this));
+            btnOpenGithub.setOnClickListener(v -> {
+                Logger.i("SettingsActivity", "User tapped 'GitHub' button in Settings");
+                UpdateManager.openGitHubRepo(this);
+            });
         }
 
         if (btnCheckUpdate != null) {
             btnCheckUpdate.setOnClickListener(v -> {
+                Logger.i("SettingsActivity", "User tapped 'Check Update' button in Settings");
                 if (UpdateManager.isCooldownActive()) {
                     int remaining = UpdateManager.getRemainingCooldownSeconds();
+                    Logger.w("SettingsActivity", "Manual update check blocked by cooldown (" + remaining + "s remaining)");
                     Toast.makeText(this, getString(R.string.update_cooldown_toast, remaining), Toast.LENGTH_SHORT).show();
                     return;
                 }
 
                 btnCheckUpdate.setEnabled(false);
+                Logger.i("SettingsActivity", "Initiating manual update check from Settings UI");
                 Toast.makeText(this, getString(R.string.update_checking_toast), Toast.LENGTH_SHORT).show();
 
                 UpdateManager.checkManualUpdate(this, new UpdateManager.UpdateCheckCallback() {
                     @Override
                     public void onUpdateAvailable(String newVersion, String releaseUrl) {
+                        Logger.i("SettingsActivity", "Manual update check callback -> onUpdateAvailable: " + newVersion + " (" + releaseUrl + ")");
                         btnCheckUpdate.setEnabled(true);
                         UpdateManager.showUpdateDialog(SettingsActivity.this, newVersion, releaseUrl);
                     }
 
                     @Override
                     public void onUpToDate(String currentVersion) {
+                        Logger.i("SettingsActivity", "Manual update check callback -> onUpToDate: " + currentVersion);
                         btnCheckUpdate.setEnabled(true);
                         Toast.makeText(SettingsActivity.this, getString(R.string.update_latest_installed_toast, currentVersion), Toast.LENGTH_SHORT).show();
                     }
 
                     @Override
                     public void onError(String errorMessage) {
+                        Logger.e("SettingsActivity", "Manual update check callback -> onError: " + errorMessage);
                         btnCheckUpdate.setEnabled(true);
                         Toast.makeText(SettingsActivity.this, getString(R.string.update_check_error_toast), Toast.LENGTH_SHORT).show();
                     }
                 });
+            });
+        }
+
+        MaterialButton btnContactDev = findViewById(R.id.btn_contact_dev);
+        if (btnContactDev != null) {
+            btnContactDev.setOnClickListener(v -> {
+                Logger.i("SettingsActivity", "User tapped Contact Developer button (target: @VintroKato)");
+                try {
+                    Intent tgIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("tg://resolve?domain=VintroKato"));
+                    startActivity(tgIntent);
+                    Logger.i("SettingsActivity", "Successfully dispatched intent to Telegram app for @VintroKato (tg://resolve?domain=VintroKato)");
+                } catch (Exception e) {
+                    Logger.w("SettingsActivity", "Telegram app not available or intent failed: " + Logger.formatException(e) + ". Falling back to web link https://t.me/VintroKato");
+                    try {
+                        Intent webIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/VintroKato"));
+                        startActivity(webIntent);
+                        Logger.i("SettingsActivity", "Successfully opened Telegram web contact in browser (https://t.me/VintroKato)");
+                    } catch (Exception ex) {
+                        Logger.e("SettingsActivity", "Failed to open Telegram web contact link: " + Logger.formatException(ex), ex);
+                    }
+                }
+            });
+        }
+
+        MaterialButton btnShareLogs = findViewById(R.id.btn_share_logs);
+        if (btnShareLogs != null) {
+            btnShareLogs.setOnClickListener(v -> {
+                Logger.i("SettingsActivity", "User tapped Share Logs button");
+                Logger.shareLogFile(this);
             });
         }
 

@@ -1,7 +1,15 @@
 package com.vintro.wsplanner.utils;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.util.Log;
+import android.widget.Toast;
+
+import androidx.core.content.FileProvider;
+
+import com.vintro.wsplanner.R;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -14,11 +22,16 @@ import java.util.regex.Pattern;
 
 public class Logger {
     private static File logFile;
+
     public static void init(Context context) {
-        if (logFile != null) return;
+        if (logFile != null || context == null) return;
 
         try {
-            File dir = new File(context.getExternalFilesDir(null), "logs");
+            File baseDir = context.getExternalFilesDir(null);
+            if (baseDir == null) {
+                baseDir = context.getFilesDir();
+            }
+            File dir = new File(baseDir, "logs");
             if (!dir.exists()) {
                 dir.mkdirs();
             }
@@ -33,6 +46,71 @@ public class Logger {
             } catch (Throwable ignored) {
                 System.err.println("Logger.init: Error getting file: " + e.toString());
             }
+        }
+    }
+
+    public static File getLogFile(Context context) {
+        if (logFile == null && context != null) {
+            init(context);
+        }
+        return logFile;
+    }
+
+    public static void shareLogFile(Context context) {
+        if (context == null) {
+            w("Logger.shareLogFile", "Context is null, cannot proceed with sharing log file");
+            return;
+        }
+        init(context);
+
+        if (logFile == null) {
+            w("Logger.shareLogFile", "Log file handle is null");
+            Toast.makeText(context, R.string.logs_empty_toast, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!logFile.exists()) {
+            w("Logger.shareLogFile", "Log file does not exist at: " + logFile.getAbsolutePath());
+            Toast.makeText(context, R.string.logs_empty_toast, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        long fileLen = logFile.length();
+        if (fileLen == 0) {
+            w("Logger.shareLogFile", "Log file is empty (0 bytes) at: " + logFile.getAbsolutePath());
+            Toast.makeText(context, R.string.logs_empty_toast, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        i("Logger.shareLogFile", "Initiating log sharing: path=" + logFile.getAbsolutePath() + ", size=" + fileLen + " bytes, lastModified=" + logFile.lastModified());
+
+        try {
+            String authority = context.getPackageName() + ".provider";
+            Uri uri = FileProvider.getUriForFile(
+                    context,
+                    authority,
+                    logFile
+            );
+            i("Logger.shareLogFile", "Generated FileProvider content URI: " + uri + " (authority=" + authority + ")");
+
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("text/plain");
+            shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
+            shareIntent.putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_logs_subject));
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            Intent chooser = Intent.createChooser(
+                    shareIntent,
+                    context.getString(R.string.share_logs_chooser_title)
+            );
+            if (!(context instanceof Activity)) {
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            }
+            context.startActivity(chooser);
+            i("Logger.shareLogFile", "Opened Android system share chooser for log file successfully (" + fileLen + " bytes)");
+        } catch (Exception e) {
+            e("Logger.shareLogFile", "Failed to launch log share chooser: " + formatException(e), e);
+            Toast.makeText(context, R.string.share_logs_error_toast, Toast.LENGTH_SHORT).show();
         }
     }
 

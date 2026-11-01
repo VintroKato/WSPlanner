@@ -115,12 +115,17 @@ public class UpdateManager {
 
     // Automatic update check (e.g. called in MainActivity on launch)
     public static void checkAutoUpdate(Context context, UpdateCheckCallback callback) {
+        Logger.d(TAG, "checkAutoUpdate triggered");
         if (!NetworkUtils.isNetworkAvailable(context)) {
             Logger.d(TAG, "Device is offline, skipping auto update check");
             if (callback != null) {
                 if (hasPendingUpdate(context)) {
-                    callback.onUpdateAvailable(getSavedLatestVersion(context), getSavedReleaseUrl(context));
+                    String pendingVer = getSavedLatestVersion(context);
+                    String pendingUrl = getSavedReleaseUrl(context);
+                    Logger.i(TAG, "Offline auto-check: found previously cached pending update: " + pendingVer + " (" + pendingUrl + ")");
+                    callback.onUpdateAvailable(pendingVer, pendingUrl);
                 } else {
+                    Logger.d(TAG, "Offline auto-check: no pending update cached, using current version: " + BuildConfig.VERSION_NAME);
                     callback.onUpToDate(BuildConfig.VERSION_NAME);
                 }
             }
@@ -131,20 +136,27 @@ public class UpdateManager {
         long now = System.currentTimeMillis();
 
         if (now - lastCheck < AUTO_CHECK_INTERVAL_MS) {
-            Logger.d(TAG, "Auto update check interval not elapsed yet. Last check: " + lastCheck);
+            long remainingHours = (AUTO_CHECK_INTERVAL_MS - (now - lastCheck)) / (1000 * 60 * 60);
+            Logger.d(TAG, "Auto update check interval not elapsed yet. Last check: " + lastCheck + " (~" + remainingHours + "h remaining)");
             if (callback != null) {
                 if (hasPendingUpdate(context)) {
-                    callback.onUpdateAvailable(getSavedLatestVersion(context), getSavedReleaseUrl(context));
+                    String pendingVer = getSavedLatestVersion(context);
+                    String pendingUrl = getSavedReleaseUrl(context);
+                    Logger.i(TAG, "Auto-check skipped by interval: found cached pending update: " + pendingVer);
+                    callback.onUpdateAvailable(pendingVer, pendingUrl);
                 } else {
+                    Logger.d(TAG, "Auto-check skipped by interval: app is up to date (" + BuildConfig.VERSION_NAME + ")");
                     callback.onUpToDate(BuildConfig.VERSION_NAME);
                 }
             }
             return;
         }
 
+        Logger.i(TAG, "Starting automatic GitHub update check (last checked " + ((now - lastCheck) / (1000 * 60)) + " min ago)");
         executeGitHubCheck(context, new UpdateCheckCallback() {
             @Override
             public void onUpdateAvailable(String newVersion, String releaseUrl) {
+                Logger.i(TAG, "Auto update check: update available! newVersion=" + newVersion + ", releaseUrl=" + releaseUrl);
                 getPrefs(context).edit()
                         .putLong(KEY_LAST_AUTO_CHECK_TIME, System.currentTimeMillis())
                         .putString(KEY_LATEST_VERSION, newVersion)
@@ -157,6 +169,7 @@ public class UpdateManager {
 
             @Override
             public void onUpToDate(String currentVersion) {
+                Logger.d(TAG, "Auto update check: app is up to date (" + currentVersion + ")");
                 getPrefs(context).edit()
                         .putLong(KEY_LAST_AUTO_CHECK_TIME, System.currentTimeMillis())
                         .remove(KEY_LATEST_VERSION)
@@ -169,6 +182,7 @@ public class UpdateManager {
 
             @Override
             public void onError(String errorMessage) {
+                Logger.w(TAG, "Auto update check failed: " + errorMessage);
                 if (callback != null) {
                     callback.onError(errorMessage);
                 }
@@ -178,9 +192,11 @@ public class UpdateManager {
 
     // Manual update check (e.g. called from SettingsActivity)
     public static void checkManualUpdate(Context context, UpdateCheckCallback callback) {
+        Logger.i(TAG, "Manual update check initiated by user (current version: " + BuildConfig.VERSION_NAME + ")");
         recordManualCheck();
 
         if (!NetworkUtils.isNetworkAvailable(context)) {
+            Logger.w(TAG, "Manual update check aborted: device has no internet connection");
             if (callback != null) {
                 callback.onError("No network");
             }
@@ -190,6 +206,7 @@ public class UpdateManager {
         executeGitHubCheck(context, new UpdateCheckCallback() {
             @Override
             public void onUpdateAvailable(String newVersion, String releaseUrl) {
+                Logger.i(TAG, "Manual update check: update available! tag=" + newVersion + ", url=" + releaseUrl);
                 getPrefs(context).edit()
                         .putLong(KEY_LAST_AUTO_CHECK_TIME, System.currentTimeMillis())
                         .putString(KEY_LATEST_VERSION, newVersion)
@@ -202,6 +219,7 @@ public class UpdateManager {
 
             @Override
             public void onUpToDate(String currentVersion) {
+                Logger.i(TAG, "Manual update check: app is up to date (" + currentVersion + ")");
                 getPrefs(context).edit()
                         .putLong(KEY_LAST_AUTO_CHECK_TIME, System.currentTimeMillis())
                         .remove(KEY_LATEST_VERSION)
@@ -214,6 +232,7 @@ public class UpdateManager {
 
             @Override
             public void onError(String errorMessage) {
+                Logger.e(TAG, "Manual update check error: " + errorMessage);
                 if (callback != null) {
                     callback.onError(errorMessage);
                 }
@@ -222,6 +241,7 @@ public class UpdateManager {
     }
 
     private static void executeGitHubCheck(Context context, UpdateCheckCallback callback) {
+        Logger.d(TAG, "Executing GitHub API request -> " + GITHUB_API_LATEST_RELEASE);
         Request request = new Request.Builder()
                 .url(GITHUB_API_LATEST_RELEASE)
                 .header("User-Agent", "WSPlanner-Android-App")
@@ -231,7 +251,7 @@ public class UpdateManager {
         httpClient.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Logger.e(TAG, "GitHub release check network failure: " + Logger.formatException(e));
+                Logger.e(TAG, "GitHub release check HTTP failure: " + Logger.formatException(e), e);
                 postToMain(() -> {
                     if (callback != null) {
                         callback.onError(e.getMessage());
@@ -242,9 +262,10 @@ public class UpdateManager {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 try (ResponseBody body = response.body()) {
+                    int responseCode = response.code();
                     if (!response.isSuccessful() || body == null) {
-                        String err = "HTTP " + response.code();
-                        Logger.w(TAG, "GitHub release check returned error: " + err);
+                        String err = "HTTP " + responseCode + " (" + response.message() + ")";
+                        Logger.w(TAG, "GitHub release API returned unsuccessful code: " + err);
                         postToMain(() -> {
                             if (callback != null) callback.onError(err);
                         });
@@ -255,11 +276,14 @@ public class UpdateManager {
                     JSONObject json = new JSONObject(jsonStr);
                     String tagName = json.optString("tag_name", "");
                     String htmlUrl = json.optString("html_url", GITHUB_RELEASES_URL);
-
-                    Logger.i(TAG, "Latest GitHub release tag: " + tagName + ", url: " + htmlUrl);
                     String currentVersion = BuildConfig.VERSION_NAME;
 
                     boolean hasUpdate = isNewerVersion(currentVersion, tagName);
+                    Logger.i(TAG, "GitHub release check complete: responseCode=" + responseCode
+                            + ", current=" + currentVersion
+                            + ", remoteTag=" + tagName
+                            + ", hasUpdate=" + hasUpdate
+                            + ", releaseUrl=" + htmlUrl);
 
                     postToMain(() -> {
                         if (callback != null) {
@@ -271,7 +295,7 @@ public class UpdateManager {
                         }
                     });
                 } catch (Exception e) {
-                    Logger.e(TAG, "Failed to parse GitHub release JSON: " + Logger.formatException(e));
+                    Logger.e(TAG, "Failed to parse GitHub release JSON: " + Logger.formatException(e), e);
                     postToMain(() -> {
                         if (callback != null) callback.onError(e.getMessage());
                     });
@@ -317,7 +341,13 @@ public class UpdateManager {
 
     // Show custom popup-styled dialog
     public static void showUpdateDialog(Context context, String newVersion, String releaseUrl) {
-        if (context == null) return;
+        if (context == null) {
+            Logger.w(TAG, "showUpdateDialog called with null context");
+            return;
+        }
+
+        String targetUrl = releaseUrl != null && !releaseUrl.isEmpty() ? releaseUrl : GITHUB_RELEASES_URL;
+        Logger.i(TAG, "Displaying update available dialog: newVersion=" + newVersion + ", targetUrl=" + targetUrl);
 
         Dialog dialog = new Dialog(context);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -356,33 +386,53 @@ public class UpdateManager {
         }
         newBadge.setText(context.getString(R.string.update_dialog_new_badge, newVerStr));
 
-        String targetUrl = releaseUrl != null && !releaseUrl.isEmpty() ? releaseUrl : GITHUB_RELEASES_URL;
-
         btnOpenGithub.setOnClickListener(v -> {
+            Logger.i(TAG, "Update dialog: user clicked 'Go to GitHub' button -> targetUrl: " + targetUrl);
             try {
                 Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl));
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (!(context instanceof android.app.Activity)) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                }
                 context.startActivity(intent);
+                Logger.i(TAG, "Update dialog: successfully launched browser intent for release URL: " + targetUrl);
             } catch (Exception e) {
-                Logger.e(TAG, "Failed to open release URL: " + Logger.formatException(e));
+                Logger.e(TAG, "Update dialog: failed to open release URL: " + targetUrl + " | " + Logger.formatException(e), e);
             }
             dialog.dismiss();
         });
 
-        btnLater.setOnClickListener(v -> dialog.dismiss());
-        btnClose.setOnClickListener(v -> dialog.dismiss());
+        btnLater.setOnClickListener(v -> {
+            Logger.i(TAG, "Update dialog: user clicked 'Later' button (dialog dismissed)");
+            dialog.dismiss();
+        });
+
+        btnClose.setOnClickListener(v -> {
+            Logger.i(TAG, "Update dialog: user clicked close ('X') button (dialog dismissed)");
+            dialog.dismiss();
+        });
+
+        dialog.setOnCancelListener(d -> {
+            Logger.i(TAG, "Update dialog: dialog was cancelled/dismissed via back button or touch outside");
+        });
 
         dialog.show();
     }
 
     public static void openGitHubRepo(Context context) {
-        if (context == null) return;
+        if (context == null) {
+            Logger.w(TAG, "openGitHubRepo called with null context");
+            return;
+        }
+        Logger.i(TAG, "Opening GitHub repository in browser: " + GITHUB_REPO_URL);
         try {
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_REPO_URL));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (!(context instanceof android.app.Activity)) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            }
             context.startActivity(intent);
+            Logger.i(TAG, "Successfully launched browser intent for GitHub repository: " + GITHUB_REPO_URL);
         } catch (Exception e) {
-            Logger.e(TAG, "Failed to open GitHub repo: " + Logger.formatException(e));
+            Logger.e(TAG, "Failed to open GitHub repo URL: " + GITHUB_REPO_URL + " | Error: " + Logger.formatException(e), e);
         }
     }
 }

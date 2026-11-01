@@ -204,6 +204,14 @@
     <string name="update_cooldown_toast">Spróbuj ponownie za %1$d s</string>
     <string name="update_check_error_toast">Nie udało się sprawdzić aktualizacji</string>
 
+    <!-- Support & Logs -->
+    <string name="settings_logs_header">Pomoc</string>
+    <string name="settings_contact_button">Kontakt</string>
+    <string name="settings_share_logs_button">Logi</string>
+    <string name="share_logs_chooser_title">Udostępnij logi aplikacji</string>
+    <string name="logs_empty_toast">Plik dziennika jest pusty</string>
+    <string name="share_logs_error_toast">Nie udało się udostępnić logów</string>
+
     <!-- Widget Preview Sample Strings -->
     <string name="widget_preview_sample_subject_1">Programowanie obiektowe</string>
     <string name="widget_preview_sample_subject_2">Bazy danych i systemy informacyjne</string>

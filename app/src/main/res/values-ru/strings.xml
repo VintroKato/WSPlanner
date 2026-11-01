@@ -204,6 +204,14 @@
     <string name="update_cooldown_toast">Повторите попытку через %1$d сек.</string>
     <string name="update_check_error_toast">Не удалось проверить обновления</string>
 
+    <!-- Support & Logs -->
+    <string name="settings_logs_header">Поддержка</string>
+    <string name="settings_contact_button">Контакт</string>
+    <string name="settings_share_logs_button">Логи</string>
+    <string name="share_logs_chooser_title">Отправить логи приложения</string>
+    <string name="logs_empty_toast">Файл логов пуст</string>
+    <string name="share_logs_error_toast">Не удалось отправить логи</string>
+
     <!-- Widget Preview Sample Strings -->
     <string name="widget_preview_sample_subject_1">Объектно-ориентированное прогр.</string>
     <string name="widget_preview_sample_subject_2">Базы данных и системы</string>
