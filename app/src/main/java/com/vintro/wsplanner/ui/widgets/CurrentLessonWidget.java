@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -219,6 +220,20 @@ public class CurrentLessonWidget extends AppWidgetProvider {
         // Apply Background Theme
         applyTheme(context, views);
 
+        // Adapt padding for compact launcher grid cells (e.g. Xiaomi MIUI / HyperOS)
+        Bundle options = appWidgetManager.getAppWidgetOptions(widgetId);
+        int minHeight = 110;
+        if (options != null) {
+            minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110);
+            if (minHeight <= 0) {
+                minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 110);
+            }
+        }
+        boolean isCompact = minHeight > 0 && minHeight < 95;
+        int padHorizontal = dpToPx(context, isCompact ? 10 : 12);
+        int padVertical = dpToPx(context, isCompact ? 8 : 11);
+        views.setViewPadding(R.id.widget_root, padHorizontal, padVertical, padHorizontal, padVertical);
+
         // Click listeners on whole card, content, and chip
         views.setOnClickPendingIntent(R.id.widget_root, createActionPendingIntent(context, widgetId, ACTION_CARD_CLICK));
         views.setOnClickPendingIntent(R.id.widget_lesson_content, createActionPendingIntent(context, widgetId, ACTION_CARD_CLICK));
@@ -387,5 +402,13 @@ public class CurrentLessonWidget extends AppWidgetProvider {
         Intent intent = new Intent(context, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         context.startActivity(intent);
+    }
+
+    private static int dpToPx(Context context, float dp) {
+        return (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                dp,
+                context.getResources().getDisplayMetrics()
+        );
     }
 }
