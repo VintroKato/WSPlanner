@@ -15,6 +15,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.RemoteViews;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -44,6 +45,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
     // Small widget preview views
     private LinearLayout containerSmallPreview;
     private FrameLayout previewContainer;
+    private TextView previewStatusChip;
     private TextView previewTime;
     private View previewDivider;
     private TextView previewSubject;
@@ -59,8 +61,14 @@ public class WidgetConfigureActivity extends AppCompatActivity {
     private ImageView previewBtnApp;
     private LinearLayout previewDailyCard1;
     private TextView previewCard1Time;
+    private TextView previewCard1Type;
     private TextView previewCard1Subject;
     private TextView previewCard1Room;
+    private LinearLayout previewDailyCard2;
+    private TextView previewCard2Time;
+    private TextView previewCard2Type;
+    private TextView previewCard2Subject;
+    private TextView previewCard2Room;
 
     // Preview Pin Hint
     private TextView previewPinHint;
@@ -166,6 +174,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         // Small Widget Preview
         containerSmallPreview = findViewById(R.id.container_small_preview);
         previewContainer = findViewById(R.id.preview_container);
+        previewStatusChip = findViewById(R.id.preview_status_chip);
         previewTime = findViewById(R.id.preview_time);
         previewDivider = findViewById(R.id.preview_divider);
         previewSubject = findViewById(R.id.preview_subject);
@@ -181,8 +190,14 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         previewBtnApp = findViewById(R.id.preview_btn_app);
         previewDailyCard1 = findViewById(R.id.preview_daily_card_1);
         previewCard1Time = findViewById(R.id.preview_card_1_time);
+        previewCard1Type = findViewById(R.id.preview_card_1_type);
         previewCard1Subject = findViewById(R.id.preview_card_1_subject);
         previewCard1Room = findViewById(R.id.preview_card_1_room);
+        previewDailyCard2 = findViewById(R.id.preview_daily_card_2);
+        previewCard2Time = findViewById(R.id.preview_card_2_time);
+        previewCard2Type = findViewById(R.id.preview_card_2_type);
+        previewCard2Subject = findViewById(R.id.preview_card_2_subject);
+        previewCard2Room = findViewById(R.id.preview_card_2_room);
 
         // Sections
         sectionSmallWidgetOptions = findViewById(R.id.section_small_widget_options);
@@ -363,6 +378,10 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         // Small Widget Preview update
         if (isLight) {
             previewContainer.setBackgroundResource(R.drawable.bg_widget_light);
+            if (previewStatusChip != null) {
+                previewStatusChip.setBackgroundResource(R.drawable.bg_badge_pill_light);
+                previewStatusChip.setTextColor(ContextCompat.getColor(this, R.color.widget_badge_type_text_light));
+            }
             if (previewTime != null) {
                 previewTime.setTextColor(ContextCompat.getColor(this, R.color.widget_text_light_primary));
             }
@@ -373,6 +392,10 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             previewDetails.setTextColor(ContextCompat.getColor(this, R.color.widget_text_light_secondary));
         } else {
             previewContainer.setBackgroundResource(R.drawable.bg_widget_dark);
+            if (previewStatusChip != null) {
+                previewStatusChip.setBackgroundResource(R.drawable.bg_badge_pill);
+                previewStatusChip.setTextColor(ContextCompat.getColor(this, R.color.badge_now_text));
+            }
             if (previewTime != null) {
                 previewTime.setTextColor(ContextCompat.getColor(this, R.color.widget_text_dark_primary));
             }
@@ -389,16 +412,76 @@ public class WidgetConfigureActivity extends AppCompatActivity {
                 previewDailyRoot.setBackgroundResource(R.drawable.bg_widget_light);
                 previewDailyTitle.setTextColor(ContextCompat.getColor(this, R.color.widget_text_light_primary));
                 previewDailySubtitle.setTextColor(ContextCompat.getColor(this, R.color.widget_text_light_secondary));
-                previewDailyCard1.setBackgroundResource(R.drawable.bg_widget_item_light);
-                previewCard1Time.setTextColor(ContextCompat.getColor(this, R.color.widget_text_light_primary));
-                previewCard1Subject.setTextColor(ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                if (previewDailyCard1 != null) {
+                    previewDailyCard1.setBackgroundResource(R.drawable.bg_widget_item_light);
+                }
+                if (previewCard1Time != null) {
+                    previewCard1Time.setTextColor(ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                }
+                if (previewCard1Subject != null) {
+                    previewCard1Subject.setTextColor(ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                }
+                if (previewCard1Type != null) {
+                    previewCard1Type.setBackgroundResource(R.drawable.bg_badge_rect_light);
+                    previewCard1Type.setTextColor(ContextCompat.getColor(this, R.color.widget_badge_type_text_light));
+                }
+                if (previewCard1Room != null) {
+                    previewCard1Room.setTextColor(ContextCompat.getColor(this, R.color.widget_room_text_light));
+                }
+
+                if (previewDailyCard2 != null) {
+                    previewDailyCard2.setBackgroundResource(R.drawable.bg_widget_item_light);
+                }
+                if (previewCard2Time != null) {
+                    previewCard2Time.setTextColor(ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                }
+                if (previewCard2Subject != null) {
+                    previewCard2Subject.setTextColor(ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                }
+                if (previewCard2Type != null) {
+                    previewCard2Type.setBackgroundResource(R.drawable.bg_badge_rect_light);
+                    previewCard2Type.setTextColor(ContextCompat.getColor(this, R.color.widget_badge_type_text_light));
+                }
+                if (previewCard2Room != null) {
+                    previewCard2Room.setTextColor(ContextCompat.getColor(this, R.color.widget_room_text_light));
+                }
             } else {
                 previewDailyRoot.setBackgroundResource(R.drawable.bg_widget_dark);
                 previewDailyTitle.setTextColor(ContextCompat.getColor(this, R.color.widget_text_dark_primary));
                 previewDailySubtitle.setTextColor(ContextCompat.getColor(this, R.color.widget_text_dark_secondary));
-                previewDailyCard1.setBackgroundResource(R.drawable.bg_widget_item_dark);
-                previewCard1Time.setTextColor(ContextCompat.getColor(this, R.color.widget_text_dark_primary));
-                previewCard1Subject.setTextColor(ContextCompat.getColor(this, R.color.widget_text_dark_primary));
+                if (previewDailyCard1 != null) {
+                    previewDailyCard1.setBackgroundResource(R.drawable.bg_widget_item_dark);
+                }
+                if (previewCard1Time != null) {
+                    previewCard1Time.setTextColor(ContextCompat.getColor(this, R.color.widget_text_dark_primary));
+                }
+                if (previewCard1Subject != null) {
+                    previewCard1Subject.setTextColor(ContextCompat.getColor(this, R.color.widget_text_dark_primary));
+                }
+                if (previewCard1Type != null) {
+                    previewCard1Type.setBackgroundResource(R.drawable.bg_badge_rect);
+                    previewCard1Type.setTextColor(ContextCompat.getColor(this, R.color.badge_now_text));
+                }
+                if (previewCard1Room != null) {
+                    previewCard1Room.setTextColor(ContextCompat.getColor(this, R.color.badge_field_text));
+                }
+
+                if (previewDailyCard2 != null) {
+                    previewDailyCard2.setBackgroundResource(R.drawable.bg_widget_item_dark);
+                }
+                if (previewCard2Time != null) {
+                    previewCard2Time.setTextColor(ContextCompat.getColor(this, R.color.widget_text_dark_primary));
+                }
+                if (previewCard2Subject != null) {
+                    previewCard2Subject.setTextColor(ContextCompat.getColor(this, R.color.widget_text_dark_primary));
+                }
+                if (previewCard2Type != null) {
+                    previewCard2Type.setBackgroundResource(R.drawable.bg_badge_rect);
+                    previewCard2Type.setTextColor(ContextCompat.getColor(this, R.color.badge_now_text));
+                }
+                if (previewCard2Room != null) {
+                    previewCard2Room.setTextColor(ContextCompat.getColor(this, R.color.badge_field_text));
+                }
             }
             previewBtnExcel.setVisibility(switchShowExcel.isChecked() ? View.VISIBLE : View.GONE);
             previewBtnRefresh.setVisibility(switchShowRefresh.isChecked() ? View.VISIBLE : View.GONE);
@@ -485,6 +568,47 @@ public class WidgetConfigureActivity extends AppCompatActivity {
 
         Bundle pinOptions = new Bundle();
         pinOptions.putBoolean(EXTRA_PIN_SKIP_CONFIGURE, true);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            boolean isLight = radioThemeLight.isChecked();
+            RemoteViews preview = new RemoteViews(getPackageName(),
+                    isDaily ? R.layout.widget_preview_daily_schedule : R.layout.widget_preview_current_lesson);
+
+            if (isDaily) {
+                preview.setViewVisibility(R.id.preview_btn_excel, switchShowExcel.isChecked() ? View.VISIBLE : View.GONE);
+                preview.setViewVisibility(R.id.preview_btn_refresh, switchShowRefresh.isChecked() ? View.VISIBLE : View.GONE);
+                preview.setViewVisibility(R.id.preview_btn_app, switchShowApp.isChecked() ? View.VISIBLE : View.GONE);
+
+                if (isLight) {
+                    preview.setInt(R.id.widget_preview_daily_root, "setBackgroundResource", R.drawable.bg_widget_light);
+                    preview.setTextColor(R.id.preview_daily_title, ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                    preview.setInt(R.id.preview_daily_card1, "setBackgroundResource", R.drawable.bg_widget_item_light);
+                    preview.setInt(R.id.preview_daily_card2, "setBackgroundResource", R.drawable.bg_widget_item_light);
+                    preview.setTextColor(R.id.preview_card1_time, ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                    preview.setTextColor(R.id.preview_card2_time, ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                    preview.setTextColor(R.id.preview_card1_subject, ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                    preview.setTextColor(R.id.preview_card2_subject, ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                    preview.setInt(R.id.preview_card1_type, "setBackgroundResource", R.drawable.bg_badge_rect_light);
+                    preview.setInt(R.id.preview_card2_type, "setBackgroundResource", R.drawable.bg_badge_rect_light);
+                    preview.setTextColor(R.id.preview_card1_type, ContextCompat.getColor(this, R.color.widget_badge_type_text_light));
+                    preview.setTextColor(R.id.preview_card2_type, ContextCompat.getColor(this, R.color.widget_badge_type_text_light));
+                    preview.setTextColor(R.id.preview_card1_room, ContextCompat.getColor(this, R.color.widget_room_text_light));
+                    preview.setTextColor(R.id.preview_card2_room, ContextCompat.getColor(this, R.color.widget_room_text_light));
+                }
+            } else {
+                if (isLight) {
+                    preview.setInt(R.id.widget_preview_card, "setBackgroundResource", R.drawable.bg_widget_light);
+                    preview.setInt(R.id.widget_preview_chip, "setBackgroundResource", R.drawable.bg_badge_pill_light);
+                    preview.setTextColor(R.id.widget_preview_status, ContextCompat.getColor(this, R.color.widget_badge_type_text_light));
+                    preview.setTextColor(R.id.widget_preview_time, ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                    preview.setInt(R.id.widget_preview_divider, "setBackgroundColor", ContextCompat.getColor(this, R.color.widget_divider_light));
+                    preview.setTextColor(R.id.widget_preview_subject, ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                    preview.setTextColor(R.id.widget_preview_room, ContextCompat.getColor(this, R.color.widget_text_light_secondary));
+                }
+            }
+
+            pinOptions.putParcelable(AppWidgetManager.EXTRA_APPWIDGET_PREVIEW, preview);
+        }
 
         Intent callbackIntent = new Intent(this, WidgetUpdateManager.class);
         callbackIntent.setAction(WidgetUpdateManager.ACTION_REFRESH_WIDGETS);

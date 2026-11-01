@@ -5,7 +5,7 @@
         <shape android:shape="rectangle">
             <corners android:radius="14dp" />
             <solid android:color="@color/widget_bg_light_card" />
-            <stroke android:width="1dp" android:color="#D8D8FB" />
+            <stroke android:width="1dp" android:color="#4084A0D3" />
         </shape>
     </item>
 </ripple>

@@ -8,6 +8,10 @@
     android:resizeMode="none"
     android:targetCellWidth="2"
     android:targetCellHeight="1"
+    android:maxResizeWidth="220dp"
+    android:maxResizeHeight="80dp"
     android:updatePeriodMillis="1800000"
     android:configure="com.vintro.wsplanner.ui.activities.WidgetConfigureActivity"
+    android:previewLayout="@layout/widget_preview_current_lesson"
+    android:previewImage="@drawable/widget_preview_current_lesson_img"
     android:widgetCategory="home_screen|keyguard" />

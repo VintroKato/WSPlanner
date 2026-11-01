@@ -456,7 +456,7 @@ public class PreferencesManager {
 
     // get click action behavior for widget lesson card
     public static String getWidgetClickAction(Context context) {
-        return getPreferences(context).getString(KEY_WIDGET_CLICK_ACTION, WIDGET_CLICK_TOGGLE);
+        return getPreferences(context).getString(KEY_WIDGET_CLICK_ACTION, WIDGET_CLICK_OPEN_APP);
     }
 
     // save click action behavior for widget lesson card
@@ -525,7 +525,7 @@ public class PreferencesManager {
     }
 
     private static final String KEY_PIN_WIDGET_REQUEST_TIMESTAMP = "pin_widget_request_timestamp";
-    private static final long PIN_WIDGET_TIMEOUT_MS = 60_000L;
+    private static final long PIN_WIDGET_TIMEOUT_MS = 20_000L;
 
     // record timestamp when user requests widget pinning from inside settings
     public static void setPinWidgetRequested(Context context) {

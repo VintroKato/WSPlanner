@@ -84,22 +84,28 @@
     <color name="hero_card_bg">#12151E</color>
 
     <!-- Widget Specific Theme Colors -->
-    <color name="widget_bg_dark_glass">#EE161821</color>
-    <color name="widget_bg_dark_card">#202432</color>
-    <color name="widget_bg_light_theme">#F0F1F8</color>
-    <color name="widget_bg_light_card">#FFFFFF</color>
+    <color name="widget_bg_dark_glass">#E6161821</color>
+    <color name="widget_bg_dark_card">#EE202432</color>
+    <color name="widget_bg_light_theme">#D9FFFFFF</color>
+    <color name="widget_bg_light_card">#EEFFFFFF</color>
     <color name="widget_text_light_primary">#1C1B1F</color>
     <color name="widget_text_light_secondary">#49454F</color>
     <color name="widget_text_dark_primary">#F1F5F9</color>
     <color name="widget_text_dark_secondary">#94A3B8</color>
     <color name="widget_divider_dark">#2E3649</color>
-    <color name="widget_divider_light">#E2E8F0</color>
+    <color name="widget_divider_light">#25000000</color>
 
     <!-- Update Badge Contrast Colors -->
     <color name="update_badge_new_bg_light">#DBEAFE</color>
     <color name="update_badge_new_text_light">#1D4ED8</color>
     <color name="update_badge_new_bg_dark">#263B82F6</color>
     <color name="update_badge_new_text_dark">#93C5FD</color>
+
+    <!-- Widget Light Badge & Room Colors -->
+    <color name="widget_badge_type_bg_light">#E0E7FF</color>
+    <color name="widget_badge_type_border_light">#93C5FD</color>
+    <color name="widget_badge_type_text_light">#1D4ED8</color>
+    <color name="widget_room_text_light">#B45309</color>
 
     <!-- Switch / Toggle Modern Colors -->
     <color name="switch_thumb_checked_light">#3050FF</color>

@@ -12,4 +12,6 @@
     android:targetCellHeight="2"
     android:updatePeriodMillis="1800000"
     android:configure="com.vintro.wsplanner.ui.activities.WidgetConfigureActivity"
+    android:previewLayout="@layout/widget_preview_daily_schedule"
+    android:previewImage="@drawable/widget_preview_daily_schedule_img"
     android:widgetCategory="home_screen|keyguard" />

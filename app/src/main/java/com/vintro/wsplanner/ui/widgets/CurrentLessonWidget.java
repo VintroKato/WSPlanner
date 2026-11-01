@@ -339,6 +339,8 @@ public class CurrentLessonWidget extends AppWidgetProvider {
         if (PreferencesManager.WIDGET_THEME_LIGHT.equals(theme)) {
             views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.bg_widget_light);
             views.setInt(R.id.widget_divider, "setBackgroundColor", ContextCompat.getColor(context, R.color.widget_divider_light));
+            views.setInt(R.id.widget_status_chip, "setBackgroundResource", R.drawable.bg_badge_pill_light);
+            views.setTextColor(R.id.widget_status_text, ContextCompat.getColor(context, R.color.widget_badge_type_text_light));
             views.setTextColor(R.id.widget_lesson_title, ContextCompat.getColor(context, R.color.widget_text_light_primary));
             views.setTextColor(R.id.widget_lesson_time, ContextCompat.getColor(context, R.color.widget_text_light_primary));
             views.setTextColor(R.id.widget_lesson_location, ContextCompat.getColor(context, R.color.widget_text_light_secondary));
@@ -348,6 +350,8 @@ public class CurrentLessonWidget extends AppWidgetProvider {
             // Default: Dark
             views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.bg_widget_dark);
             views.setInt(R.id.widget_divider, "setBackgroundColor", ContextCompat.getColor(context, R.color.widget_divider_dark));
+            views.setInt(R.id.widget_status_chip, "setBackgroundResource", R.drawable.bg_badge_pill);
+            views.setTextColor(R.id.widget_status_text, ContextCompat.getColor(context, R.color.badge_now_text));
             views.setTextColor(R.id.widget_lesson_title, ContextCompat.getColor(context, R.color.widget_text_dark_primary));
             views.setTextColor(R.id.widget_lesson_time, ContextCompat.getColor(context, R.color.widget_text_dark_primary));
             views.setTextColor(R.id.widget_lesson_location, ContextCompat.getColor(context, R.color.widget_text_dark_secondary));

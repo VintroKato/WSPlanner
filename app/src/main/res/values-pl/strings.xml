@@ -203,4 +203,15 @@
     <string name="update_latest_installed_toast">Masz najnowszą wersję (%1$s)</string>
     <string name="update_cooldown_toast">Spróbuj ponownie za %1$d s</string>
     <string name="update_check_error_toast">Nie udało się sprawdzić aktualizacji</string>
+
+    <!-- Widget Preview Sample Strings -->
+    <string name="widget_preview_sample_subject_1">Programowanie obiektowe</string>
+    <string name="widget_preview_sample_subject_2">Bazy danych i systemy informacyjne</string>
+    <string name="widget_preview_sample_room_1">s. 204 (WSPA)</string>
+    <string name="widget_preview_sample_room_2">s. 112 (WSPA)</string>
+    <string name="widget_preview_sample_time_1">08:00 – 09:30</string>
+    <string name="widget_preview_sample_time_2">09:45 – 11:15</string>
+    <string name="widget_preview_sample_type_lecture">Wykład</string>
+    <string name="widget_preview_sample_type_lab">Laboratorium</string>
+    <string name="widget_preview_sample_date">Poniedziałek, 15 maja</string>
 </resources>

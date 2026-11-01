@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_preview_daily_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_widget_dark"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <!-- Header: Date & Quick Actions -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:layout_toStartOf="@+id/preview_daily_actions"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/preview_daily_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/widget_preview_sample_date"
+                android:textColor="@color/widget_text_dark_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Right Quick Actions -->
+        <LinearLayout
+            android:id="@+id/preview_daily_actions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/preview_btn_excel"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_widget_icon_btn"
+                android:contentDescription="@string/widget_action_open_excel"
+                android:padding="5dp"
+                android:src="@drawable/ic_file_excel" />
+
+            <ImageView
+                android:id="@+id/preview_btn_refresh"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_widget_icon_btn"
+                android:contentDescription="@string/widget_action_refresh"
+                android:padding="5dp"
+                android:src="@drawable/ic_refresh" />
+
+            <ImageView
+                android:id="@+id/preview_btn_app"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="@drawable/bg_widget_icon_btn"
+                android:contentDescription="@string/widget_action_open_app"
+                android:padding="5dp"
+                android:src="@drawable/ic_arrow_outward" />
+        </LinearLayout>
+    </RelativeLayout>
+
+    <!-- Sample Lesson Item 1 -->
+    <LinearLayout
+        android:id="@+id/preview_daily_card1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="6dp"
+        android:background="@drawable/bg_widget_item_dark"
+        android:orientation="vertical"
+        android:paddingHorizontal="9dp"
+        android:paddingVertical="7dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/preview_card1_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="none"
+                android:maxLines="1"
+                android:text="@string/widget_preview_sample_time_1"
+                android:textColor="@color/widget_text_dark_primary"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/preview_card1_type"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/bg_badge_rect"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:paddingHorizontal="5dp"
+                android:paddingVertical="1dp"
+                android:text="@string/widget_preview_sample_type_lecture"
+                android:textColor="@color/badge_now_text"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/preview_card1_subject"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_preview_sample_subject_1"
+            android:textColor="@color/widget_text_dark_primary"
+            android:textSize="12.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/preview_card1_room"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_preview_sample_room_1"
+            android:textColor="@color/badge_field_text"
+            android:textSize="10.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Sample Lesson Item 2 -->
+    <LinearLayout
+        android:id="@+id/preview_daily_card2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_widget_item_dark"
+        android:orientation="vertical"
+        android:paddingHorizontal="9dp"
+        android:paddingVertical="7dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/preview_card2_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="none"
+                android:maxLines="1"
+                android:text="@string/widget_preview_sample_time_2"
+                android:textColor="@color/widget_text_dark_primary"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/preview_card2_type"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/bg_badge_rect"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:paddingHorizontal="5dp"
+                android:paddingVertical="1dp"
+                android:text="@string/widget_preview_sample_type_lab"
+                android:textColor="@color/badge_now_text"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/preview_card2_subject"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_preview_sample_subject_2"
+            android:textColor="@color/widget_text_dark_primary"
+            android:textSize="12.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/preview_card2_room"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_preview_sample_room_2"
+            android:textColor="@color/badge_field_text"
+            android:textSize="10.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+</LinearLayout>

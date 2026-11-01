@@ -203,4 +203,15 @@
     <string name="update_latest_installed_toast">У вас встановлена найновіша версія (%1$s)</string>
     <string name="update_cooldown_toast">Спробуйте ще раз через %1$d с</string>
     <string name="update_check_error_toast">Не вдалося перевірити оновлення</string>
+
+    <!-- Widget Preview Sample Strings -->
+    <string name="widget_preview_sample_subject_1">Об\'єктно-орієнтоване прогр.</string>
+    <string name="widget_preview_sample_subject_2">Бази даних та системи</string>
+    <string name="widget_preview_sample_room_1">ауд. 204 (WSPA)</string>
+    <string name="widget_preview_sample_room_2">ауд. 112 (WSPA)</string>
+    <string name="widget_preview_sample_time_1">08:00 – 09:30</string>
+    <string name="widget_preview_sample_time_2">09:45 – 11:15</string>
+    <string name="widget_preview_sample_type_lecture">Лекція</string>
+    <string name="widget_preview_sample_type_lab">Лабораторна</string>
+    <string name="widget_preview_sample_date">Понеділок, 15 травня</string>
 </resources>

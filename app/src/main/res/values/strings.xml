@@ -211,4 +211,15 @@
     <string name="update_latest_installed_toast">You have the latest version (%1$s)</string>
     <string name="update_cooldown_toast">Please wait %1$d sec before checking again</string>
     <string name="update_check_error_toast">Failed to check for updates</string>
+
+    <!-- Widget Preview Sample Strings -->
+    <string name="widget_preview_sample_subject_1">Object-Oriented Programming</string>
+    <string name="widget_preview_sample_subject_2">Database Systems</string>
+    <string name="widget_preview_sample_room_1">Room 204 (WSPA)</string>
+    <string name="widget_preview_sample_room_2">Room 112 (WSPA)</string>
+    <string name="widget_preview_sample_time_1">08:00 – 09:30</string>
+    <string name="widget_preview_sample_time_2">09:45 – 11:15</string>
+    <string name="widget_preview_sample_type_lecture">Lecture</string>
+    <string name="widget_preview_sample_type_lab">Lab</string>
+    <string name="widget_preview_sample_date">Monday, May 15</string>
 </resources>

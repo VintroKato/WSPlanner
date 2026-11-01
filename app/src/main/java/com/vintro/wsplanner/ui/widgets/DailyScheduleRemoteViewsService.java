@@ -92,11 +92,17 @@ public class DailyScheduleRemoteViewsService extends RemoteViewsService {
                 views.setTextColor(R.id.item_daily_time, ContextCompat.getColor(context, R.color.widget_text_light_primary));
                 views.setTextColor(R.id.item_daily_subject, ContextCompat.getColor(context, R.color.widget_text_light_primary));
                 views.setTextColor(R.id.item_daily_teacher, ContextCompat.getColor(context, R.color.widget_text_light_secondary));
+                views.setInt(R.id.item_daily_type, "setBackgroundResource", R.drawable.bg_badge_rect_light);
+                views.setTextColor(R.id.item_daily_type, ContextCompat.getColor(context, R.color.widget_badge_type_text_light));
+                views.setTextColor(R.id.item_daily_room, ContextCompat.getColor(context, R.color.widget_room_text_light));
             } else {
                 views.setInt(R.id.item_daily_root, "setBackgroundResource", R.drawable.bg_widget_item_dark);
                 views.setTextColor(R.id.item_daily_time, ContextCompat.getColor(context, R.color.widget_text_dark_primary));
                 views.setTextColor(R.id.item_daily_subject, ContextCompat.getColor(context, R.color.widget_text_dark_primary));
                 views.setTextColor(R.id.item_daily_teacher, ContextCompat.getColor(context, R.color.widget_text_dark_secondary));
+                views.setInt(R.id.item_daily_type, "setBackgroundResource", R.drawable.bg_badge_rect);
+                views.setTextColor(R.id.item_daily_type, ContextCompat.getColor(context, R.color.badge_now_text));
+                views.setTextColor(R.id.item_daily_room, ContextCompat.getColor(context, R.color.badge_field_text));
             }
 
             // Time
