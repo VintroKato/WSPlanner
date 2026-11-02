@@ -192,11 +192,16 @@
     <!-- App Updates -->
     <string name="settings_update_header">Оновлення додатка</string>
     <string name="settings_update_check_button">Перевірити</string>
+    <string name="settings_update_action_button">Оновити</string>
     <string name="settings_update_github_button">GitHub</string>
     <string name="update_dialog_title">Доступне оновлення</string>
-    <string name="update_dialog_desc">На GitHub доступна нова версія WSPlanner. Ви можете перейти на сторінку релізів, щоб завантажити та встановити оновлення.</string>
+    <string name="update_dialog_desc">На GitHub доступна нова версія WSPlanner. Ви можете оновити додаток автоматично або перейти на сторінку релізів для встановлення вручну.</string>
     <string name="update_dialog_current_badge">Поточна: %1$s</string>
     <string name="update_dialog_new_badge">Нова: %1$s</string>
+    <string name="update_dialog_button_auto">Оновити автоматично</string>
+    <string name="update_dialog_downloading">Завантаження…</string>
+    <string name="update_dialog_error_title">Помилка автооновлення</string>
+    <string name="update_dialog_error_desc">Не вдалося завантажити або запустити оновлення. Спробуйте оновити вручну через GitHub.</string>
     <string name="update_dialog_button_github">Перейти на GitHub</string>
     <string name="update_dialog_button_later">Пізніше</string>
     <string name="update_checking_toast">Перевірка оновлень…</string>

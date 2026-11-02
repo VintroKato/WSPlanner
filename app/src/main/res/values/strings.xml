@@ -200,11 +200,16 @@
     <!-- App Updates -->
     <string name="settings_update_header">App Updates</string>
     <string name="settings_update_check_button">Check</string>
+    <string name="settings_update_action_button">Update</string>
     <string name="settings_update_github_button">GitHub</string>
     <string name="update_dialog_title">Update Available</string>
-    <string name="update_dialog_desc">A new version of WSPlanner is available on GitHub. You can visit the release page to download and install the update.</string>
+    <string name="update_dialog_desc">A new version of WSPlanner is available on GitHub. You can install it automatically or visit the release page to download manually.</string>
     <string name="update_dialog_current_badge">Current: %1$s</string>
     <string name="update_dialog_new_badge">New: %1$s</string>
+    <string name="update_dialog_button_auto">Update automatically</string>
+    <string name="update_dialog_downloading">Downloading…</string>
+    <string name="update_dialog_error_title">Update failed</string>
+    <string name="update_dialog_error_desc">Failed to download or launch update. You can update manually via GitHub.</string>
     <string name="update_dialog_button_github">Go to GitHub</string>
     <string name="update_dialog_button_later">Later</string>
     <string name="update_checking_toast">Checking for updates…</string>

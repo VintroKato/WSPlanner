@@ -192,11 +192,16 @@
     <!-- App Updates -->
     <string name="settings_update_header">Aktualizacja aplikacji</string>
     <string name="settings_update_check_button">Sprawdź</string>
+    <string name="settings_update_action_button">Zaktualizuj</string>
     <string name="settings_update_github_button">GitHub</string>
     <string name="update_dialog_title">Dostępna aktualizacja</string>
-    <string name="update_dialog_desc">Nowa wersja WSPlanner jest dostępna na GitHubie. Możesz przejść do strony wydań, aby pobrać i zainstalować aktualizację.</string>
+    <string name="update_dialog_desc">Nowa wersja WSPlanner jest dostępna na GitHubie. Możesz zaktualizować aplikację automatycznie lub przejść do strony wydań, aby pobrać ją ręcznie.</string>
     <string name="update_dialog_current_badge">Obecna: %1$s</string>
     <string name="update_dialog_new_badge">Nowa: %1$s</string>
+    <string name="update_dialog_button_auto">Zaktualizuj automatycznie</string>
+    <string name="update_dialog_downloading">Pobieranie…</string>
+    <string name="update_dialog_error_title">Błąd automatycznej aktualizacji</string>
+    <string name="update_dialog_error_desc">Nie udało się pobrać lub uruchomić aktualizacji. Możesz zaktualizować ręcznie przez GitHub.</string>
     <string name="update_dialog_button_github">Przejdź do GitHuba</string>
     <string name="update_dialog_button_later">Później</string>
     <string name="update_checking_toast">Sprawdzanie aktualizacji…</string>

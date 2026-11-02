@@ -10,7 +10,7 @@ android {
         applicationId "com.vintro.wsplanner"
         minSdk 29
         targetSdk 36
-        def appVersion = "1.0.1"
+        def appVersion = "1.0.2"
         versionName appVersion
 
         def versionParts = appVersion.tokenize('.').collect { it.toInteger() }

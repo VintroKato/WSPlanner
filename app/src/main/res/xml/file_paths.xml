@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="cache_schedules" path="plans/" />
+    <cache-path name="cache_updates" path="updates/" />
+    <external-cache-path name="external_cache_updates" path="updates/" />
     <external-files-path name="external_logs" path="logs/" />
     <files-path name="internal_logs" path="logs/" />
 </paths>

@@ -110,31 +110,96 @@
             android:textColor="?attr/app_text"
             android:textSize="14sp" />
 
+        <!-- Error / Failure Banner (Shown if automatic download or launch fails) -->
+        <LinearLayout
+            android:id="@+id/dialog_update_error_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_badge_rect"
+            android:backgroundTint="#24FF5252"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="10dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_marginEnd="10dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_update_alert"
+                app:tint="#FF5252" />
+
+            <TextView
+                android:id="@+id/dialog_update_error_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:lineSpacingExtra="2dp"
+                android:text="@string/update_dialog_error_desc"
+                android:textColor="?attr/app_text"
+                android:textSize="13sp" />
+        </LinearLayout>
+
         <!-- Buttons Container -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="18dp"
             android:orientation="vertical">
 
+            <!-- Primary Action: Auto Update -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/dialog_btn_auto_update"
+                    style="@style/button"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:text="@string/update_dialog_button_auto"
+                    android:textSize="15sp"
+                    app:icon="@drawable/ic_update_check"
+                    app:iconGravity="textStart"
+                    app:iconSize="18dp"
+                    app:iconTint="?attr/button_text" />
+
+                <ProgressBar
+                    android:id="@+id/dialog_auto_update_progress"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="16dp"
+                    android:indeterminate="true"
+                    android:indeterminateTint="?attr/button_text"
+                    android:visibility="gone" />
+            </FrameLayout>
+
+            <!-- Secondary Action: Open GitHub Release Page -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/dialog_btn_open_github"
-                style="@style/button"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="match_parent"
-                android:layout_height="50dp"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
                 android:text="@string/update_dialog_button_github"
-                android:textSize="15sp"
+                android:textColor="?attr/app_text"
+                android:textSize="14sp"
                 app:icon="@drawable/ic_arrow_outward"
                 app:iconGravity="textEnd"
                 app:iconSize="18dp"
-                app:iconTint="?attr/button_text" />
+                app:iconTint="?attr/app_text" />
 
+            <!-- Tertiary Action: Later -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/dialog_btn_later"
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:layout_marginTop="6dp"
+                android:layout_height="42dp"
+                android:layout_marginTop="4dp"
                 android:text="@string/update_dialog_button_later"
                 android:textColor="?attr/app_text"
                 android:textSize="14sp" />

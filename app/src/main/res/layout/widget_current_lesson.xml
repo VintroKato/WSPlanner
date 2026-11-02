@@ -91,7 +91,7 @@
             android:textSize="12.5sp"
             android:textStyle="bold"
             android:autoSizeTextType="uniform"
-            android:autoSizeMinTextSize="9sp"
+            android:autoSizeMinTextSize="10sp"
             android:autoSizeMaxTextSize="13sp"
             android:autoSizeStepGranularity="0.5sp" />
 

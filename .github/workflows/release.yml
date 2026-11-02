@@ -18,7 +18,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Важно: загружаем историю, чтобы искать коммит до merge
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -39,7 +39,7 @@ jobs:
         id: sign_app
         uses: r0adkll/sign-android-release@v1
         env:
-          BUILD_TOOLS_VERSION: "34.0.0"
+          BUILD_TOOLS_VERSION: "35.0.0"
         with:
           releaseDirectory: app/build/outputs/apk/release
           signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -47,32 +47,75 @@ jobs:
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Prepare artifact & Verification notes
+      - name: Prepare artifact & release notes
         run: |
-          COMMIT_MSG=$(git log -1 --no-merges --pretty=%s)
-          SHORT_SHA=$(git log -1 --no-merges --pretty=%h)
+          COMMIT_MSG=$(git log -1 --no-merges --pretty=%s | tr '|' '/')
           FULL_SHA=$(git log -1 --no-merges --pretty=%H)
-          
-          cd app/build/outputs/apk/release
-          
-          mv *-signed.apk WSPlanner-${{ github.ref_name }}.apk
-          
-          HASH=$(sha256sum WSPlanner-${{ github.ref_name }}.apk | awk '{print $1}')
-          echo "$HASH  WSPlanner-${{ github.ref_name }}.apk" > sha256sum.txt
-          
-          {
-            echo "### 🛡️ Build verification & Integrity"
-            echo "This APK was automatically built, signed, and attested by **GitHub Actions** directly from the source code."
-            echo ""
-            echo "* **Release Tag:** \`${{ github.ref_name }}\`"
-            echo "* **Source Commit:** ${FULL_SHA} — ${COMMIT_MSG}"
-            echo ""
+          APK_NAME="WSPlanner-${{ github.ref_name }}.apk"
 
-            echo "#### Verify Provenance via GitHub CLI:"
+          cd app/build/outputs/apk/release
+          mv *-signed.apk "$APK_NAME"
+
+          HASH=$(sha256sum "$APK_NAME" | awk '{print $1}')
+          echo "$HASH  $APK_NAME" > sha256sum.txt
+
+          echo "APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
+          echo "APK_HASH=$HASH" >> "$GITHUB_ENV"
+
+          {
+            echo "### Build Info"
+            echo ""
+            echo "> **Automated Build:** This APK was compiled and signed automatically by **GitHub Actions** directly from the public source code. It was not built or modified locally by the maintainer"
+            echo ""
+            echo "| Property | Value |"
+            echo "| :--- | :--- |"
+            echo "| **File** | \`${APK_NAME}\` |"
+            echo "| **Commit** | ${FULL_SHA} (${COMMIT_MSG}) |"
+            echo "| **SHA-256** | \`${HASH}\` |"
+            echo "| **VirusTotal** | [Scan Report](https://www.virustotal.com/gui/file/${HASH}) |"
+            echo ""
+            echo "**Verify build provenance (GitHub CLI):**"
             echo "\`\`\`bash"
-            echo "gh attestation verify WSPlanner-${{ github.ref_name }}.apk --repo ${{ github.repository }}"
+            echo "gh attestation verify ${APK_NAME} --repo ${{ github.repository }}"
             echo "\`\`\`"
-          } > $GITHUB_WORKSPACE/release_notes.md
+            echo ""
+            echo "---"
+          } > "$GITHUB_WORKSPACE/release_notes.md"
+
+      - name: Upload APK to VirusTotal
+        continue-on-error: true
+        env:
+          VT_API_KEY: ${{ secrets.VT_API_KEY }}
+        run: |
+          if [ -z "$VT_API_KEY" ]; then
+            echo "VT_API_KEY is not set, skipping VirusTotal upload."
+            exit 0
+          fi
+
+          APK_PATH="app/build/outputs/apk/release/$APK_NAME"
+          FILE_SIZE=$(stat -c%s "$APK_PATH")
+
+          if [ "$FILE_SIZE" -gt 33554432 ]; then
+            UPLOAD_URL=$(curl -s --request GET \
+              --url "https://www.virustotal.com/api/v3/files/upload_url" \
+              --header "x-apikey: $VT_API_KEY" | jq -r '.data')
+          else
+            UPLOAD_URL="https://www.virustotal.com/api/v3/files"
+          fi
+
+          RESPONSE=$(curl -s --request POST \
+            --url "$UPLOAD_URL" \
+            --header "x-apikey: $VT_API_KEY" \
+            --header "accept: application/json" \
+            --form "file=@$APK_PATH")
+
+          ANALYSIS_ID=$(echo "$RESPONSE" | jq -r '.data.id // empty')
+          if [ -n "$ANALYSIS_ID" ]; then
+            echo "Uploaded to VirusTotal. Analysis ID: $ANALYSIS_ID"
+            echo "Report URL: https://www.virustotal.com/gui/file/$APK_HASH"
+          else
+            echo "VirusTotal response: $RESPONSE"
+          fi
 
       - name: Generate attestation (SLSA Provenance)
         uses: actions/attest-build-provenance@v1

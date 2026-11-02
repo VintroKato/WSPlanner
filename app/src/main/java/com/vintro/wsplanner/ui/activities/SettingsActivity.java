@@ -50,6 +50,7 @@ public class SettingsActivity extends AppCompatActivity {
     GridLayout themeLayout;
 
     Button confirmButton;
+    private MaterialButton btnCheckUpdate;
     private boolean currentNightMode;
 
     @Override
@@ -110,8 +111,10 @@ public class SettingsActivity extends AppCompatActivity {
             });
         }
 
-        MaterialButton btnCheckUpdate = findViewById(R.id.btn_check_update);
+        btnCheckUpdate = findViewById(R.id.btn_check_update);
         MaterialButton btnOpenGithub = findViewById(R.id.btn_open_github);
+
+        refreshUpdateUI();
 
         if (btnOpenGithub != null) {
             btnOpenGithub.setOnClickListener(v -> {
@@ -122,7 +125,16 @@ public class SettingsActivity extends AppCompatActivity {
 
         if (btnCheckUpdate != null) {
             btnCheckUpdate.setOnClickListener(v -> {
-                Logger.i("SettingsActivity", "User tapped 'Check Update' button in Settings");
+                Logger.i("SettingsActivity", "User tapped update button in Settings");
+                if (UpdateManager.hasPendingUpdate(this)) {
+                    String pendingVersion = UpdateManager.getSavedLatestVersion(this);
+                    String pendingUrl = UpdateManager.getSavedReleaseUrl(this);
+                    String pendingApk = UpdateManager.getSavedApkUrl(this);
+                    Logger.i("SettingsActivity", "Opening update dialog with cached update: version=" + pendingVersion);
+                    UpdateManager.showUpdateDialog(this, pendingVersion, pendingUrl, pendingApk);
+                    return;
+                }
+
                 if (UpdateManager.isCooldownActive()) {
                     int remaining = UpdateManager.getRemainingCooldownSeconds();
                     Logger.w("SettingsActivity", "Manual update check blocked by cooldown (" + remaining + "s remaining)");
@@ -139,6 +151,7 @@ public class SettingsActivity extends AppCompatActivity {
                     public void onUpdateAvailable(String newVersion, String releaseUrl) {
                         Logger.i("SettingsActivity", "Manual update check callback -> onUpdateAvailable: " + newVersion + " (" + releaseUrl + ")");
                         btnCheckUpdate.setEnabled(true);
+                        refreshUpdateUI();
                         UpdateManager.showUpdateDialog(SettingsActivity.this, newVersion, releaseUrl);
                     }
 
@@ -146,6 +159,7 @@ public class SettingsActivity extends AppCompatActivity {
                     public void onUpToDate(String currentVersion) {
                         Logger.i("SettingsActivity", "Manual update check callback -> onUpToDate: " + currentVersion);
                         btnCheckUpdate.setEnabled(true);
+                        refreshUpdateUI();
                         Toast.makeText(SettingsActivity.this, getString(R.string.update_latest_installed_toast, currentVersion), Toast.LENGTH_SHORT).show();
                     }
 
@@ -153,6 +167,7 @@ public class SettingsActivity extends AppCompatActivity {
                     public void onError(String errorMessage) {
                         Logger.e("SettingsActivity", "Manual update check callback -> onError: " + errorMessage);
                         btnCheckUpdate.setEnabled(true);
+                        refreshUpdateUI();
                         Toast.makeText(SettingsActivity.this, getString(R.string.update_check_error_toast), Toast.LENGTH_SHORT).show();
                     }
                 });
@@ -301,6 +316,27 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             }, 200);
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        refreshUpdateUI();
+    }
+
+    private void refreshUpdateUI() {
+        if (btnCheckUpdate == null) return;
+        boolean hasUpdate = UpdateManager.hasPendingUpdate(this);
+        if (hasUpdate) {
+            String pendingVersion = UpdateManager.getSavedLatestVersion(this);
+            Logger.d("SettingsActivity", "refreshUpdateUI: pending update detected (" + pendingVersion + "), setting button to 'Update'");
+            btnCheckUpdate.setText(R.string.settings_update_action_button);
+            btnCheckUpdate.setIconResource(R.drawable.ic_update_alert);
+        } else {
+            Logger.d("SettingsActivity", "refreshUpdateUI: no pending update, setting button to 'Check'");
+            btnCheckUpdate.setText(R.string.settings_update_check_button);
+            btnCheckUpdate.setIconResource(R.drawable.ic_update_check);
+        }
     }
 
     @Override
