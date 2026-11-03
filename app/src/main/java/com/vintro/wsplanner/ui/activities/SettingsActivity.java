@@ -165,10 +165,16 @@ public class SettingsActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(String errorMessage) {
-                        Logger.e("SettingsActivity", "Manual update check callback -> onError: " + errorMessage);
+                        Logger.w("SettingsActivity", "Manual update check callback -> onError: " + errorMessage);
                         btnCheckUpdate.setEnabled(true);
                         refreshUpdateUI();
-                        Toast.makeText(SettingsActivity.this, getString(R.string.update_check_error_toast), Toast.LENGTH_SHORT).show();
+                        if (UpdateManager.hasPendingUpdate(SettingsActivity.this)) {
+                            String pendingVer = UpdateManager.getSavedLatestVersion(SettingsActivity.this);
+                            String pendingUrl = UpdateManager.getSavedReleaseUrl(SettingsActivity.this);
+                            UpdateManager.showUpdateDialog(SettingsActivity.this, pendingVer, pendingUrl);
+                        } else {
+                            Toast.makeText(SettingsActivity.this, getString(R.string.update_check_error_toast), Toast.LENGTH_SHORT).show();
+                        }
                     }
                 });
             });

@@ -37,13 +37,20 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.Dns;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -55,6 +62,7 @@ public class UpdateManager {
     public static final String GITHUB_REPO_URL = "https://github.com/VintroKato/WSPlanner";
     public static final String GITHUB_RELEASES_URL = "https://github.com/VintroKato/WSPlanner/releases";
     private static final String GITHUB_API_LATEST_RELEASE = "https://api.github.com/repos/VintroKato/WSPlanner/releases/latest";
+    private static final String GITHUB_API_RELEASES = "https://api.github.com/repos/VintroKato/WSPlanner/releases?per_page=15";
 
     private static final String PREFS_NAME = "wsplanner_update_prefs";
     private static final String KEY_LAST_AUTO_CHECK_TIME = "last_auto_check_timestamp";
@@ -71,6 +79,33 @@ public class UpdateManager {
     private static final OkHttpClient httpClient = new OkHttpClient.Builder()
             .followRedirects(true)
             .followSslRedirects(true)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .dns(new Dns() {
+                @NonNull
+                @Override
+                public List<InetAddress> lookup(@NonNull String hostname) throws UnknownHostException {
+                    try {
+                        return Dns.SYSTEM.lookup(hostname);
+                    } catch (UnknownHostException e) {
+                        String lower = hostname.toLowerCase(Locale.ROOT);
+                        if (lower.equals("api.github.com")) {
+                            Logger.w(TAG, "System DNS resolution failed for " + hostname + ", using fallback IP");
+                            return Arrays.asList(
+                                    InetAddress.getByAddress(hostname, new byte[]{(byte) 140, (byte) 82, (byte) 121, 6}),
+                                    InetAddress.getByAddress(hostname, new byte[]{(byte) 140, (byte) 82, (byte) 121, 5})
+                            );
+                        } else if (lower.equals("github.com")) {
+                            Logger.w(TAG, "System DNS resolution failed for " + hostname + ", using fallback IP");
+                            return Arrays.asList(
+                                    InetAddress.getByAddress(hostname, new byte[]{(byte) 140, (byte) 82, (byte) 121, 3}),
+                                    InetAddress.getByAddress(hostname, new byte[]{(byte) 140, (byte) 82, (byte) 121, 4})
+                            );
+                        }
+                        throw e;
+                    }
+                }
+            })
             .build();
     private static Handler mainHandler;
 
@@ -193,6 +228,19 @@ public class UpdateManager {
             return;
         }
 
+        String lastCheckedVer = getPrefs(context).getString("last_checked_app_version", null);
+        String currentAppVer = BuildConfig.VERSION_NAME;
+        String cachedChangelog = getPrefs(context).getString(KEY_LATEST_CHANGELOG, "");
+        boolean hasEmptyTitlesInCache = cachedChangelog.contains("\"title\":\"\"") || cachedChangelog.contains("\"title\": \"\"");
+
+        if (lastCheckedVer == null || !lastCheckedVer.equals(currentAppVer) || hasEmptyTitlesInCache) {
+            getPrefs(context).edit()
+                    .putString("last_checked_app_version", currentAppVer)
+                    .remove(KEY_LAST_AUTO_CHECK_TIME)
+                    .remove(KEY_LATEST_CHANGELOG)
+                    .apply();
+        }
+
         long lastCheck = getPrefs(context).getLong(KEY_LAST_AUTO_CHECK_TIME, 0L);
         long now = System.currentTimeMillis();
 
@@ -293,7 +341,7 @@ public class UpdateManager {
 
             @Override
             public void onError(String errorMessage) {
-                Logger.e(TAG, "Manual update check error: " + errorMessage);
+                Logger.w(TAG, "Manual update check error: " + errorMessage);
                 if (callback != null) {
                     callback.onError(errorMessage);
                 }
@@ -302,9 +350,9 @@ public class UpdateManager {
     }
 
     private static void executeGitHubCheck(Context context, UpdateCheckCallback callback) {
-        Logger.d(TAG, "Executing GitHub API request -> " + GITHUB_API_LATEST_RELEASE);
+        Logger.d(TAG, "Executing GitHub API request -> " + GITHUB_API_RELEASES);
         Request request = new Request.Builder()
-                .url(GITHUB_API_LATEST_RELEASE)
+                .url(GITHUB_API_RELEASES)
                 .header("User-Agent", "WSPlanner-Android-App")
                 .header("Accept", "application/vnd.github.v3+json")
                 .build();
@@ -312,7 +360,7 @@ public class UpdateManager {
         httpClient.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Logger.e(TAG, "GitHub release check HTTP failure: " + Logger.formatException(e), e);
+                Logger.w(TAG, "GitHub release check HTTP failure: " + Logger.formatException(e));
                 postToMain(() -> {
                     if (callback != null) {
                         callback.onError(e.getMessage());
@@ -333,19 +381,33 @@ public class UpdateManager {
                         return;
                     }
 
-                    String jsonStr = body.string();
-                    JSONObject json = new JSONObject(jsonStr);
-                    String tagName = json.optString("tag_name", "");
-                    String htmlUrl = json.optString("html_url", GITHUB_RELEASES_URL);
-                    String currentVersion = BuildConfig.VERSION_NAME;
+                    String jsonStr = body.string().trim();
+                    JSONArray releasesArray;
+                    if (jsonStr.startsWith("[")) {
+                        releasesArray = new JSONArray(jsonStr);
+                    } else if (jsonStr.startsWith("{")) {
+                        releasesArray = new JSONArray();
+                        releasesArray.put(new JSONObject(jsonStr));
+                    } else {
+                        throw new IOException("Unexpected API response format");
+                    }
 
-                    String releaseName = json.optString("name", "");
-                    String releaseBody = json.optString("body", "");
-                    String changelog = extractChangelog(releaseName, releaseBody);
+                    if (releasesArray.length() == 0) {
+                        Logger.w(TAG, "GitHub releases array is empty");
+                        postToMain(() -> {
+                            if (callback != null) callback.onUpToDate(BuildConfig.VERSION_NAME);
+                        });
+                        return;
+                    }
+
+                    JSONObject latestRelease = releasesArray.getJSONObject(0);
+                    String tagName = latestRelease.optString("tag_name", "");
+                    String htmlUrl = latestRelease.optString("html_url", GITHUB_RELEASES_URL);
+                    String currentVersion = BuildConfig.VERSION_NAME;
 
                     String apkUrl = "";
                     String sha256Url = "";
-                    JSONArray assets = json.optJSONArray("assets");
+                    JSONArray assets = latestRelease.optJSONArray("assets");
                     if (assets != null) {
                         for (int i = 0; i < assets.length(); i++) {
                             JSONObject asset = assets.optJSONObject(i);
@@ -375,20 +437,46 @@ public class UpdateManager {
                     }
 
                     boolean hasUpdate = isNewerVersion(currentVersion, tagName);
+
+                    JSONArray multiVersionChangelog = new JSONArray();
+                    if (hasUpdate) {
+                        for (int i = 0; i < releasesArray.length(); i++) {
+                            JSONObject rel = releasesArray.getJSONObject(i);
+                            String relTag = rel.optString("tag_name", "");
+                            if (!isNewerVersion(currentVersion, relTag)) {
+                                break;
+                            }
+                            String relName = rel.optString("name", "");
+                            String relBody = rel.optString("body", "");
+                            List<String> items = extractChangelogBulletList(relName, relBody);
+                            String commitMsg = extractCommitMessage(relName, relBody);
+
+                            JSONObject verObj = new JSONObject();
+                            verObj.put("version", relTag);
+                            verObj.put("title", commitMsg);
+                            JSONArray itemsJson = new JSONArray();
+                            for (String itm : items) {
+                                itemsJson.put(itm);
+                            }
+                            verObj.put("items", itemsJson);
+                            multiVersionChangelog.put(verObj);
+                        }
+                    }
+
                     Logger.i(TAG, "GitHub release check complete: responseCode=" + responseCode
                             + ", current=" + currentVersion
                             + ", remoteTag=" + tagName
                             + ", hasUpdate=" + hasUpdate
                             + ", releaseUrl=" + htmlUrl
                             + ", apkUrl=" + apkUrl
-                            + ", changelogLength=" + (changelog != null ? changelog.length() : 0));
+                            + ", missedVersionsCount=" + multiVersionChangelog.length());
 
                     if (hasUpdate) {
                         SharedPreferences.Editor editor = getPrefs(context).edit()
                                 .putString(KEY_LATEST_APK_URL, apkUrl)
                                 .putString(KEY_LATEST_SHA256_URL, sha256Url);
-                        if (changelog != null && !changelog.isEmpty()) {
-                            editor.putString(KEY_LATEST_CHANGELOG, changelog);
+                        if (multiVersionChangelog.length() > 0) {
+                            editor.putString(KEY_LATEST_CHANGELOG, multiVersionChangelog.toString());
                         } else {
                             editor.remove(KEY_LATEST_CHANGELOG);
                         }
@@ -418,6 +506,73 @@ public class UpdateManager {
                 }
             }
         });
+    }
+
+    public static List<String> extractChangelogBulletList(String releaseName, String body) {
+        List<String> items = new ArrayList<>();
+        String fullChangelog = extractChangelog(releaseName, body);
+        if (fullChangelog == null || fullChangelog.trim().isEmpty()) {
+            return items;
+        }
+
+        String cleanTitle = !isVersionTagOnly(releaseName) ? releaseName.trim() : null;
+        String[] lines = fullChangelog.split("\\r?\\n");
+        for (String rawLine : lines) {
+            String line = rawLine.trim();
+            if (line.isEmpty()) continue;
+            if (cleanTitle != null && line.equalsIgnoreCase(cleanTitle)) continue;
+
+            if (line.startsWith("•") || line.startsWith("-") || line.startsWith("*")) {
+                line = line.replaceFirst("^[-*•]\\s*", "").trim();
+            }
+            if (!line.isEmpty()) {
+                items.add(line);
+            }
+        }
+        return items;
+    }
+
+    public static String extractCommitMessage(String releaseName, String body) {
+        if (releaseName != null && !isVersionTagOnly(releaseName)) {
+            return releaseName.trim();
+        }
+        if (body == null || body.trim().isEmpty()) {
+            return "";
+        }
+
+        // Pattern 1: Table format from release.yml:
+        // | **Commit** | daf0753a1ca6c6a39cc0bc9f94ac7c9ab490f000 (Added automatic update option in update dialog) |
+        Pattern tablePattern = Pattern.compile("(?i)\\|\\s*\\*\\*Commit\\*\\*\\s*\\|\\s*[0-9a-fA-F]+\\s*\\(([^)]+)\\)");
+        Matcher tableMatcher = tablePattern.matcher(body);
+        if (tableMatcher.find()) {
+            String msg = tableMatcher.group(1);
+            if (msg != null && !msg.trim().isEmpty() && !isVersionTagOnly(msg)) {
+                return msg.trim();
+            }
+        }
+
+        // Pattern 2: List format from earlier releases (v1.0.1, v1.0.0, v0.6.3...):
+        // * **Source Commit:** 7f7d9a559fcf6e1d89d427bf502ee1084613225d — Added adaptive font size and sticky bottom to small widget
+        Pattern bulletPattern = Pattern.compile("(?i)\\*\\*\\s*Source Commit:\\*\\*\\s*[0-9a-fA-F]+\\s*(?:—|-|–)\\s*([^\\r\\n*]+)");
+        Matcher bulletMatcher = bulletPattern.matcher(body);
+        if (bulletMatcher.find()) {
+            String msg = bulletMatcher.group(1);
+            if (msg != null && !msg.trim().isEmpty() && !isVersionTagOnly(msg)) {
+                return msg.trim();
+            }
+        }
+
+        // Pattern 3: Any generic commit line
+        Pattern genericPattern = Pattern.compile("(?i)commit[:\\s]+[0-9a-fA-F]+\\s*(?:\\(([^)]+)\\)|(?:—|-|–)\\s*([^\\r\\n*|]+))");
+        Matcher genericMatcher = genericPattern.matcher(body);
+        if (genericMatcher.find()) {
+            String msg = genericMatcher.group(1) != null ? genericMatcher.group(1) : genericMatcher.group(2);
+            if (msg != null && !msg.trim().isEmpty() && !isVersionTagOnly(msg)) {
+                return msg.trim();
+            }
+        }
+
+        return "";
     }
 
     public static String extractChangelog(String releaseName, String body) {
@@ -737,164 +892,13 @@ public class UpdateManager {
         return sb.toString();
     }
 
-    // Show custom popup-styled dialog
+    // Show custom popup-styled dialog (delegated to UpdateDialog)
     public static void showUpdateDialog(Context context, String newVersion, String releaseUrl) {
         showUpdateDialog(context, newVersion, releaseUrl, getSavedApkUrl(context));
     }
 
     public static void showUpdateDialog(Context context, String newVersion, String releaseUrl, String apkUrl) {
-        if (context == null) {
-            Logger.w(TAG, "showUpdateDialog called with null context");
-            return;
-        }
-
-        String targetUrl = releaseUrl != null && !releaseUrl.isEmpty() ? releaseUrl : GITHUB_RELEASES_URL;
-        Logger.i(TAG, "Displaying update available dialog: newVersion=" + newVersion + ", targetUrl=" + targetUrl + ", apkUrl=" + apkUrl);
-
-        Dialog dialog = new Dialog(context);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-
-        View view = LayoutInflater.from(context).inflate(R.layout.dialog_update_available, null);
-        dialog.setContentView(view);
-
-        Window window = dialog.getWindow();
-        if (window != null) {
-            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT);
-            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            window.setDimAmount(0.60f);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
-                window.getAttributes().setBlurBehindRadius(24);
-            }
-        }
-
-        TextView currentBadge = view.findViewById(R.id.dialog_current_version_badge);
-        TextView newBadge = view.findViewById(R.id.dialog_new_version_badge);
-        ImageButton btnClose = view.findViewById(R.id.dialog_update_close);
-        MaterialButton btnAutoUpdate = view.findViewById(R.id.dialog_btn_auto_update);
-        ProgressBar progressAutoUpdate = view.findViewById(R.id.dialog_auto_update_progress);
-        LinearLayout errorCard = view.findViewById(R.id.dialog_update_error_card);
-        MaterialButton btnOpenGithub = view.findViewById(R.id.dialog_btn_open_github);
-        MaterialButton btnLater = view.findViewById(R.id.dialog_btn_later);
-
-        String currentVerStr = BuildConfig.VERSION_NAME;
-        if (!currentVerStr.startsWith("v") && !currentVerStr.startsWith("V")) {
-            currentVerStr = "v" + currentVerStr;
-        }
-        currentBadge.setText(context.getString(R.string.update_dialog_current_badge, currentVerStr));
-
-        String newVerStr = newVersion != null ? newVersion : "";
-        if (!newVerStr.startsWith("v") && !newVerStr.startsWith("V") && !newVerStr.isEmpty()) {
-            newVerStr = "v" + newVerStr;
-        }
-        newBadge.setText(context.getString(R.string.update_dialog_new_badge, newVerStr));
-
-        TextView descView = view.findViewById(R.id.dialog_update_desc);
-        String changelog = getSavedChangelog(context);
-        if (descView != null) {
-            if (changelog != null && !changelog.trim().isEmpty()) {
-                String cleanChangelog = changelog.trim();
-                if (!cleanChangelog.contains("•") && !cleanChangelog.contains("\n")) {
-                    descView.setText(cleanChangelog + "\n\n" + context.getString(R.string.update_dialog_desc));
-                } else {
-                    descView.setText(cleanChangelog);
-                }
-                descView.setMaxLines(8);
-                descView.setVerticalScrollBarEnabled(true);
-                descView.setMovementMethod(new ScrollingMovementMethod());
-            } else {
-                descView.setText(R.string.update_dialog_desc);
-            }
-        }
-
-        if (btnAutoUpdate != null) {
-            btnAutoUpdate.setOnClickListener(v -> {
-                Logger.i(TAG, "Update dialog: user clicked 'Update automatically' button for version: " + newVersion);
-                if (errorCard != null) {
-                    errorCard.setVisibility(View.GONE);
-                }
-                btnAutoUpdate.setEnabled(false);
-                btnAutoUpdate.setText(R.string.update_dialog_downloading);
-                if (progressAutoUpdate != null) {
-                    progressAutoUpdate.setVisibility(View.VISIBLE);
-                }
-                if (btnOpenGithub != null) btnOpenGithub.setEnabled(false);
-                if (btnLater != null) btnLater.setEnabled(false);
-                if (btnClose != null) btnClose.setEnabled(false);
-                dialog.setCancelable(false);
-
-                String resolvedApkUrl = apkUrl != null && !apkUrl.isEmpty() ? apkUrl : getSavedApkUrl(context);
-
-                downloadAndInstallApk(context, newVersion, resolvedApkUrl, new DownloadInstallCallback() {
-                    @Override
-                    public void onDownloadStarted() {
-                        Logger.d(TAG, "Auto-update download stream started");
-                    }
-
-                    @Override
-                    public void onVerifyingHash() {
-                        Logger.d(TAG, "Auto-update switching UI state to verifying hash");
-                        btnAutoUpdate.setText(R.string.update_dialog_verifying_hash);
-                    }
-
-                    @Override
-                    public void onSuccess() {
-                        Logger.i(TAG, "Auto-update succeeded: installer dispatched. Dismissing update dialog");
-                        dialog.dismiss();
-                    }
-
-                    @Override
-                    public void onFailure(Exception e) {
-                        Logger.w(TAG, "Auto-update failed: " + Logger.formatException(e));
-                        if (progressAutoUpdate != null) {
-                            progressAutoUpdate.setVisibility(View.GONE);
-                        }
-                        btnAutoUpdate.setText(R.string.update_dialog_button_auto);
-                        btnAutoUpdate.setEnabled(true);
-                        if (btnOpenGithub != null) btnOpenGithub.setEnabled(true);
-                        if (btnLater != null) btnLater.setEnabled(true);
-                        if (btnClose != null) btnClose.setEnabled(true);
-                        dialog.setCancelable(true);
-                        if (errorCard != null) {
-                            errorCard.setVisibility(View.VISIBLE);
-                        }
-                    }
-                });
-            });
-        }
-
-        btnOpenGithub.setOnClickListener(v -> {
-            Logger.i(TAG, "Update dialog: user clicked 'Go to GitHub' button -> targetUrl: " + targetUrl);
-            try {
-                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl));
-                if (!(context instanceof android.app.Activity)) {
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                }
-                context.startActivity(intent);
-                Logger.i(TAG, "Update dialog: successfully launched browser intent for release URL: " + targetUrl);
-            } catch (Exception e) {
-                Logger.e(TAG, "Update dialog: failed to open release URL: " + targetUrl + " | " + Logger.formatException(e), e);
-            }
-            dialog.dismiss();
-        });
-
-        btnLater.setOnClickListener(v -> {
-            Logger.i(TAG, "Update dialog: user clicked 'Later' button (dialog dismissed)");
-            dialog.dismiss();
-        });
-
-        btnClose.setOnClickListener(v -> {
-            Logger.i(TAG, "Update dialog: user clicked close ('X') button (dialog dismissed)");
-            dialog.dismiss();
-        });
-
-        dialog.setOnCancelListener(d -> {
-            Logger.i(TAG, "Update dialog: dialog was cancelled/dismissed via back button or touch outside");
-        });
-
-        dialog.show();
+        com.vintro.wsplanner.ui.dialogs.UpdateDialog.show(context, newVersion, releaseUrl, apkUrl);
     }
 
     public static void openGitHubRepo(Context context) {

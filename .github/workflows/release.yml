@@ -65,17 +65,19 @@ jobs:
 
           CHANGELOG_FILE="$GITHUB_WORKSPACE/.github/release-notes/changelist.md"
           {
+            echo "### What's changed"
+            echo "#### ${COMMIT_MSG}"
+            echo ""
+
             if [ -f "$CHANGELOG_FILE" ]; then
               TRIMMED=$(grep -v '^[[:space:]]*$' "$CHANGELOG_FILE" || true)
               if [ -n "$TRIMMED" ]; then
-                echo "### What's changed"
-                echo ""
                 cat "$CHANGELOG_FILE"
-                echo ""
-                echo "---"
                 echo ""
               fi
             fi
+            echo "---"
+            echo ""
 
             echo "### Build info"
             echo ""
@@ -139,7 +141,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ env.COMMIT_MSG }}
+          name: ${{ github.ref_name }}
           body_path: release_notes.md
           files: |
             app/build/outputs/apk/release/WSPlanner-*.apk

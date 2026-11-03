@@ -142,4 +142,31 @@ public class ExampleUnitTest {
         assertTrue(result.contains("• Feature number 25: detailed description of change"));
         assertFalse(result.contains("…"));
     }
+
+    @Test
+    public void testExtractChangelogBulletList() {
+        String releaseName = "v1.1.0";
+        String body = "### What's Changed\n\n- The last name is now saved in encrypted storage\n- Added changelist to dialog\n\n---\n### Build info\n";
+        java.util.List<String> items = com.vintro.wsplanner.services.UpdateManager.extractChangelogBulletList(releaseName, body);
+        assertEquals(2, items.size());
+        assertEquals("The last name is now saved in encrypted storage", items.get(0));
+        assertEquals("Added changelist to dialog", items.get(1));
+    }
+
+    @Test
+    public void testExtractCommitMessage() {
+        // Case 1: Table format (e.g. v1.0.2)
+        String bodyTable = "| **Commit** | daf0753a1ca6c6a39cc0bc9f94ac7c9ab490f000 (Added automatic update option in update dialog) |";
+        assertEquals("Added automatic update option in update dialog",
+                com.vintro.wsplanner.services.UpdateManager.extractCommitMessage("v1.0.2", bodyTable));
+
+        // Case 2: Source Commit list format (e.g. v1.0.1)
+        String bodyBullet = "* **Source Commit:** 7f7d9a559fcf6e1d89d427bf502ee1084613225d — Added adaptive font size and sticky bottom to small widget";
+        assertEquals("Added adaptive font size and sticky bottom to small widget",
+                com.vintro.wsplanner.services.UpdateManager.extractCommitMessage("v1.0.1", bodyBullet));
+
+        // Case 3: Release name already has commit message
+        assertEquals("Fix crash on Android 14",
+                com.vintro.wsplanner.services.UpdateManager.extractCommitMessage("Fix crash on Android 14", bodyTable));
+    }
 }

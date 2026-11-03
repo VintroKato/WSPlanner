@@ -196,8 +196,10 @@
     <string name="settings_update_github_button">GitHub</string>
     <string name="update_dialog_title">Доступно обновление</string>
     <string name="update_dialog_desc">На GitHub доступна новая версия WSPlanner. Вы можете обновить приложение автоматически или перейти на страницу релизов для установки вручную</string>
-    <string name="update_dialog_current_badge">Текущая: %1$s</string>
-    <string name="update_dialog_new_badge">Новая: %1$s</string>
+    <string name="update_dialog_changelog_subtitle">Список изменений:</string>
+    <string name="update_dialog_legacy_version_note">Коммит: %1$s</string>
+    <string name="update_dialog_current_badge" formatted="false">Текущая: %1$s</string>
+    <string name="update_dialog_new_badge" formatted="false">Новая: %1$s</string>
     <string name="update_dialog_button_auto">Обновить автоматически</string>
     <string name="update_dialog_downloading">Скачивание…</string>
     <string name="update_dialog_verifying_hash">Проверка хеша…</string>

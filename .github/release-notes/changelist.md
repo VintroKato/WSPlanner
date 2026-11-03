@@ -1,8 +1,2 @@
-- The last name is now saved in encrypted storage (previously there was a risk via Android exploits). Migration will run automatically
-- Improved masking of personal data in logs (the last name used to be logged in plain text). Personal info in old logs will be hidden automatically after the update
-- Added a changelist to the update dialog
-- Automatic SHA-256 checksum verification of the downloaded APK
-- The downloaded APK file will be automatically deleted after the update
-- Widgets are now protected from third-party app signals
-- When minimizing the app on the login screen, the password hides automatically to prevent accidental leaks
-- Added cookie expiration checks
+- Now shows all changes from skipped versions
+- Visual and stability improvements

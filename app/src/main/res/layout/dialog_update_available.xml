@@ -98,19 +98,63 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Description Note / Changelog -->
-        <TextView
-            android:id="@+id/dialog_update_desc"
+        <!-- Changelog Section Header -->
+        <LinearLayout
+            android:id="@+id/dialog_changelog_header"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:alpha="0.85"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_edit_note"
+                app:tint="?attr/update_badge_new_text" />
+
+            <TextView
+                android:id="@+id/dialog_changelog_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="@string/update_dialog_changelog_subtitle"
+                android:textColor="?attr/app_text"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Changelog Scrollable Card Container -->
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/dialog_changelog_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_badge_rect"
+            android:backgroundTint="?attr/card_bg"
             android:fadeScrollbars="false"
-            android:lineSpacingExtra="3dp"
-            android:scrollbars="vertical"
-            android:text="@string/update_dialog_desc"
-            android:textColor="?attr/app_text"
-            android:textSize="14sp" />
+            android:overScrollMode="ifContentScrolls"
+            android:padding="12dp"
+            android:scrollbars="vertical">
+
+            <LinearLayout
+                android:id="@+id/dialog_changelog_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/dialog_update_desc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:alpha="0.85"
+                    android:lineSpacingExtra="3dp"
+                    android:text="@string/update_dialog_desc"
+                    android:textColor="?attr/app_text"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
 
         <!-- Error / Failure Banner (Shown if automatic download or launch fails) -->
         <LinearLayout

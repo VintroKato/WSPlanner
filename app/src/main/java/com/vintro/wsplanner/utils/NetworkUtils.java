@@ -26,7 +26,8 @@ public class NetworkUtils {
                     capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                     (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
                      capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
-                     capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
+                     capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
+                     capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN))
             );
             if (!available) {
                 Logger.d("NetworkUtils.isNetworkAvailable", "Network has no internet transport capability, device is offline");
