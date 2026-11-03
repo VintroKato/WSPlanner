@@ -61,9 +61,23 @@ jobs:
 
           echo "APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
           echo "APK_HASH=$HASH" >> "$GITHUB_ENV"
+          echo "COMMIT_MSG=$COMMIT_MSG" >> "$GITHUB_ENV"
 
+          CHANGELOG_FILE="$GITHUB_WORKSPACE/.github/release-notes/changelist.md"
           {
-            echo "### Build Info"
+            if [ -f "$CHANGELOG_FILE" ]; then
+              TRIMMED=$(grep -v '^[[:space:]]*$' "$CHANGELOG_FILE" || true)
+              if [ -n "$TRIMMED" ]; then
+                echo "### What's changed"
+                echo ""
+                cat "$CHANGELOG_FILE"
+                echo ""
+                echo "---"
+                echo ""
+              fi
+            fi
+
+            echo "### Build info"
             echo ""
             echo "> **Automated Build:** This APK was compiled and signed automatically by **GitHub Actions** directly from the public source code. It was not built or modified locally by the maintainer"
             echo ""
@@ -125,10 +139,11 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          name: ${{ env.COMMIT_MSG }}
           body_path: release_notes.md
           files: |
             app/build/outputs/apk/release/WSPlanner-*.apk
             app/build/outputs/apk/release/sha256sum.txt
-          generate_release_notes: true
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

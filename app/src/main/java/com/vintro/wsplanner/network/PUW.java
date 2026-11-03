@@ -84,7 +84,18 @@ public class PUW {
                         @Override
                         public List<Cookie> loadForRequest(@NonNull HttpUrl url) {
                             List<Cookie> cookies = globalCookieStore.get(url.host());
-                            return cookies != null ? cookies : List.of();
+                            if (cookies == null || cookies.isEmpty()) {
+                                return List.of();
+                            }
+                            long now = System.currentTimeMillis();
+                            cookies.removeIf(c -> c.expiresAt() < now);
+                            List<Cookie> validCookies = new java.util.ArrayList<>();
+                            for (Cookie c : cookies) {
+                                if (c.expiresAt() >= now && c.matches(url)) {
+                                    validCookies.add(c);
+                                }
+                            }
+                            return validCookies;
                         }
                     })
                     .build();
@@ -95,8 +106,9 @@ public class PUW {
     private static boolean hasMoodleSessionCookie() {
         List<Cookie> cookies = globalCookieStore.get("puw.wspa.pl");
         if (cookies != null) {
+            long now = System.currentTimeMillis();
             for (Cookie c : cookies) {
-                if (c.name().equalsIgnoreCase("MoodleSession") && !c.value().isEmpty()) {
+                if (c.name().equalsIgnoreCase("MoodleSession") && !c.value().isEmpty() && c.expiresAt() >= now) {
                     return true;
                 }
             }
@@ -278,7 +290,7 @@ public class PUW {
 
                 if (userDropdown != null && userDropdown.hasAttr("aria-label")) {
                     String fullName = userDropdown.attr("aria-label").trim();
-                    Logger.d("PUW.getStudentFullName", "Name extracted from dashboard: " + fullName);
+                    Logger.d("PUW.getStudentFullName", "Name extracted from dashboard: " + Logger.maskName(fullName));
                     return fullName;
                 } else {
                     Logger.w("PUW.getStudentFullName", "Dropdown element or aria-label not found on dashboard");
@@ -302,7 +314,7 @@ public class PUW {
 
                 if (h1Element != null) {
                     String fullName = h1Element.text().trim();
-                    Logger.d("PUW.getStudentFullName", "Name extracted from files.php: " + fullName);
+                    Logger.d("PUW.getStudentFullName", "Name extracted from files.php: " + Logger.maskName(fullName));
                     return fullName;
                 } else {
                     Logger.w("PUW.getStudentFullName", "H1 element not found on files.php");

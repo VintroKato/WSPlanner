@@ -285,6 +285,16 @@ public class AllCoursesActivity extends AppCompatActivity {
 
             if (url == null || url.trim().isEmpty()) {
                 url = PUW.baseUrl + "/my/";
+            } else {
+                Uri parsedUri = Uri.parse(url.trim());
+                String scheme = parsedUri.getScheme();
+                String host = parsedUri.getHost();
+                if (!"https".equalsIgnoreCase(scheme)
+                        || host == null
+                        || (!host.equalsIgnoreCase("puw.wspa.pl") && !host.toLowerCase(Locale.ROOT).endsWith(".wspa.pl"))) {
+                    Logger.w("AllCoursesActivity.openStudentZone", "Blocked untrusted student zone URL: " + url + ", falling back to default");
+                    url = PUW.baseUrl + "/my/";
+                }
             }
 
             final String finalUrl = url;

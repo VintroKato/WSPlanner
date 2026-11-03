@@ -14,6 +14,9 @@ public class WSPlannerApp extends Application {
         // initialize file-based logger
         Logger.init(this);
 
+        // handle any version-specific migrations once per upgrade
+        com.vintro.wsplanner.services.AppUpgradeManager.onAppStart(this);
+
         // install top-level uncaught exception handler to capture all runtime crashes into app logs
         Thread.UncaughtExceptionHandler defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {

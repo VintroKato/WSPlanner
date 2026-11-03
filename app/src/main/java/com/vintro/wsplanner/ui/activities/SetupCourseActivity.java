@@ -108,7 +108,7 @@ public class SetupCourseActivity extends AppCompatActivity {
         courseSetupService.loadCourseSetupData(this, new CourseSetupService.OnSetupDataLoadedCallback() {
             @Override
             public void onSuccess(List<ParsedCourse> courses, Integer englishGroup, String studentFullName, String seminarTeacher) {
-                Logger.i("SetupCourseActivity.fetchCourses", "Loaded " + courses.size() + " courses. Full name: '" + studentFullName + "'");
+                Logger.i("SetupCourseActivity.fetchCourses", "Loaded " + courses.size() + " courses. Full name: '" + Logger.maskName(studentFullName) + "'");
                 availableCourses = courses;
                 loadedStudentFullName = studentFullName;
                 runOnUiThread(() -> {

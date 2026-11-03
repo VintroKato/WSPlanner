@@ -124,6 +124,15 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onPause() {
+        if (isPasswordVisible) {
+            isPasswordVisible = false;
+            applyPasswordVisibility();
+        }
+        super.onPause();
+    }
+
     private void updateLoginState() {
         setLoginState(InputState.NORMAL);
     }

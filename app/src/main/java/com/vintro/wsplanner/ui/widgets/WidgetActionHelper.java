@@ -26,8 +26,27 @@ public class WidgetActionHelper {
     public static void openLocationInMaps(Context context, String query) {
         if (query == null || query.trim().isEmpty()) return;
         try {
+            Uri uri = Uri.parse(query.trim());
+            String scheme = uri.getScheme();
+            boolean isAllowed = false;
+            if ("geo".equalsIgnoreCase(scheme)) {
+                isAllowed = true;
+            } else if ("https".equalsIgnoreCase(scheme)) {
+                String host = uri.getHost();
+                if (host != null) {
+                    String lowerHost = host.toLowerCase(java.util.Locale.ROOT);
+                    isAllowed = lowerHost.equals("maps.google.com")
+                            || lowerHost.equals("www.google.com")
+                            || lowerHost.equals("google.com")
+                            || lowerHost.equals("maps.app.goo.gl");
+                }
+            }
+            if (!isAllowed) {
+                Logger.w("WidgetActionHelper.openLocationInMaps", "Blocked untrusted map URI: " + query);
+                return;
+            }
             Logger.d("WidgetActionHelper.openLocationInMaps", "Opening maps with query: " + query);
-            Intent mapIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(query));
+            Intent mapIntent = new Intent(Intent.ACTION_VIEW, uri);
             mapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(mapIntent);
         } catch (Exception e) {

@@ -110,7 +110,7 @@ public class CourseSetupService {
                     PreferencesManager.setDetectedSeminarTeacher(context, seminarTeacher);
                 }
 
-                Logger.i("CourseSetupService.loadCourseSetupData", "Course setup data loaded successfully: " + cachedCourses.size() + " courses, EnglishGroup=" + englishGroup + ", StudentName='" + studentFullName + "', SeminarTeacher='" + seminarTeacher + "'");
+                Logger.i("CourseSetupService.loadCourseSetupData", "Course setup data loaded successfully: " + cachedCourses.size() + " courses, EnglishGroup=" + englishGroup + ", StudentName='" + Logger.maskName(studentFullName) + "', SeminarTeacher='" + seminarTeacher + "'");
                 callback.onSuccess(cachedCourses, cachedEnglishGroup, cachedStudentFullName, cachedSeminarTeacher);
             } catch (Exception e) {
                 Logger.e("CourseSetupService.loadCourseSetupData", "Error loading course setup data: " + Logger.formatException(e));
@@ -169,7 +169,7 @@ public class CourseSetupService {
                     PreferencesManager.setDetectedSeminarTeacher(context, seminarTeacher);
                 }
 
-                Logger.i("CourseSetupService.loadAdditionalSetupData", "Additional setup data fetched: English=" + englishGroup + ", FullName='" + studentFullName + "', Seminar='" + seminarTeacher + "'");
+                Logger.i("CourseSetupService.loadAdditionalSetupData", "Additional setup data fetched: English=" + englishGroup + ", FullName='" + Logger.maskName(studentFullName) + "', Seminar='" + seminarTeacher + "'");
                 callback.onSuccess(englishGroup, studentFullName, seminarTeacher);
             } catch (Exception e) {
                 Logger.e("CourseSetupService.loadAdditionalSetupData", "Error loading additional setup data: " + Logger.formatException(e));

@@ -116,11 +116,40 @@ public class Logger {
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("(?i)([a-zA-Z0-9_.+-]{1,3})([a-zA-Z0-9_.+-]*)@([a-zA-Z0-9-.]+)(\\.[a-zA-Z]{2,})");
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("(?i)(password|passwd|pwd)\\s*[=:]\\s*[^&\\s,]+");
+    private static final Pattern WORD_PATTERN = Pattern.compile("[\\p{L}*]+");
 
-    public static String maskSurname(String surname) {
-        if (surname == null) return "";
-        String s = surname.trim();
+    // Patterns to detect student names / full names / surnames in log messages
+    private static final Pattern QUOTED_NAME_PATTERN = Pattern.compile(
+            "(?i)((?:StudentName|FullName|studentFullName|student_name|student_surname|studentSurname|surname|Full\\s*name|Student\\s*name|Student\\s*surname|for\\s+student|student)\\s*[:=]\\s*|for\\s+student\\s+)(['\"])([^'\"\\r\\n]+)\\2"
+    );
+
+    private static final Pattern SCRAPED_NAME_PATTERN = Pattern.compile(
+            "(?i)(Name extracted from (?:dashboard|files(?:\\.php)?):\\s*)(['\"]?)([^'\"\\r\\n]+)\\2"
+    );
+
+    private static final Pattern SETTING_NAME_PATTERN = Pattern.compile(
+            "(?i)(Setting (?:global )?student (?:name|surname):\\s*)(['\"]?)([^'\"\\r\\n]+)\\2"
+    );
+
+    private static final Pattern UNQUOTED_NAME_KEY_PATTERN = Pattern.compile(
+            "(?i)((?:StudentName|FullName|studentFullName|student_name|student_surname|studentSurname|surname|Full\\s*name|Student\\s*name|Student\\s*surname)\\s*[:=]\\s*)(?!['\"])([^,\\r\\n;\\)]+)"
+    );
+
+    private static final Pattern UNQUOTED_FOR_STUDENT_PATTERN = Pattern.compile(
+            "(?i)(for\\s+student\\s+)(?!['\"])([^,\\r\\n;\\)]+)"
+    );
+
+    /**
+     * Masks a single word/token (keeping first and last characters, masking middle with *).
+     * If the word is already masked (contains '*'), it is returned as-is to avoid double-masking.
+     */
+    public static String maskWord(String word) {
+        if (word == null) return "";
+        String s = word.trim();
         if (s.isEmpty()) return "";
+        if (s.contains("*") || s.equalsIgnoreCase("null") || s.equalsIgnoreCase("none")) {
+            return s;
+        }
         if (s.length() == 1) return s + "*";
         if (s.length() == 2) return s.charAt(0) + "*" + s.charAt(1);
         StringBuilder sb = new StringBuilder();
@@ -130,6 +159,40 @@ public class Logger {
         }
         sb.append(s.charAt(s.length() - 1));
         return sb.toString();
+    }
+
+    /**
+     * Masks first name, surname, or full name (each word keeping first and last letter, replacing the rest with '*').
+     * Handles single names ("Kowalski" -> "K******i"), full names ("Artem Sysoiev" -> "A***m S*****v"),
+     * and hyphenated names.
+     */
+    public static String maskName(String name) {
+        if (name == null) return "";
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) return "";
+        if (trimmed.equalsIgnoreCase("null") || trimmed.equalsIgnoreCase("none")) {
+            return trimmed;
+        }
+        try {
+            Matcher matcher = WORD_PATTERN.matcher(name);
+            StringBuffer sb = new StringBuffer();
+            while (matcher.find()) {
+                String word = matcher.group();
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(maskWord(word)));
+            }
+            matcher.appendTail(sb);
+            return sb.toString();
+        } catch (Throwable ignored) {
+            return name;
+        }
+    }
+
+    public static String maskSurname(String surname) {
+        return maskName(surname);
+    }
+
+    public static String maskFullName(String fullName) {
+        return maskName(fullName);
     }
 
     // format exception to string ensuring class name and cause details are never null
@@ -163,54 +226,113 @@ public class Logger {
     // sanitize log message to prevent null error output and mask sensitive data
     public static String sanitizeLogMessage(String message) {
         if (message == null) return "[null]";
-        String cleaned = message;
-        if (cleaned.contains("Error: null")) {
-            cleaned = cleaned.replace("Error: null", "Error: [Unknown/No message]");
+        try {
+            String cleaned = message;
+            if (cleaned.contains("Error: null")) {
+                cleaned = cleaned.replace("Error: null", "Error: [Unknown/No message]");
+            }
+            if (cleaned.contains("error: null")) {
+                cleaned = cleaned.replace("error: null", "error: [Unknown/No message]");
+            }
+            if (cleaned.contains(": null")) {
+                cleaned = cleaned.replace(": null", ": [No message]");
+            }
+            return maskSensitiveData(cleaned);
+        } catch (Throwable ignored) {
+            return message;
         }
-        if (cleaned.contains("error: null")) {
-            cleaned = cleaned.replace("error: null", "error: [Unknown/No message]");
-        }
-        if (cleaned.contains(": null")) {
-            cleaned = cleaned.replace(": null", ": [No message]");
-        }
-        return maskSensitiveData(cleaned);
     }
 
-    // mask password credentials, emails, and student surnames in logs
+    // mask password credentials, emails, and student names/surnames in logs
     public static String maskSensitiveData(String message) {
         if (message == null || message.isEmpty()) return "";
-        
-        // mask passwords
-        String masked = PASSWORD_PATTERN.matcher(message).replaceAll("$1=***");
 
-        // mask emails: keep first up to 3 chars, mask the rest up to the domain ending
-        Matcher emailMatcher = EMAIL_PATTERN.matcher(masked);
-        StringBuffer sb = new StringBuffer();
-        while (emailMatcher.find()) {
-            String prefix = emailMatcher.group(1);
-            String middle = emailMatcher.group(2);
-            String domain = emailMatcher.group(3);
-            String tld = emailMatcher.group(4);
-            int maskLen = Math.max(middle != null ? middle.length() : 3, 3);
-            String stars = "*".repeat(maskLen);
-            String maskedEmail = prefix + stars + "@" + (domain.length() > 2 ? domain.substring(0, 2) + "***" : "***") + tld;
-            emailMatcher.appendReplacement(sb, Matcher.quoteReplacement(maskedEmail));
-        }
-        emailMatcher.appendTail(sb);
-        masked = sb.toString();
+        try {
+            // mask passwords
+            String masked = PASSWORD_PATTERN.matcher(message).replaceAll("$1=***");
 
-        // mask student surnames: e.g. Kowalski -> K******i in standard log patterns
-        Pattern surnamePattern = Pattern.compile("(?i)(surname\\s*=\\s*['\"]?|StudentSurname:\\s*['\"]|for student\\s*['\"]|surname:\\s*['\"]|student\\s*['\"])([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]{2,})(['\"]?)");
-        Matcher surnameMatcher = surnamePattern.matcher(masked);
-        StringBuffer surnameSb = new StringBuffer();
-        while (surnameMatcher.find()) {
-            String prefix = surnameMatcher.group(1);
-            String name = surnameMatcher.group(2);
-            String suffix = surnameMatcher.group(3);
-            surnameMatcher.appendReplacement(surnameSb, Matcher.quoteReplacement(prefix + maskSurname(name) + suffix));
+            // mask emails: keep first up to 3 chars, mask the rest up to the domain ending
+            Matcher emailMatcher = EMAIL_PATTERN.matcher(masked);
+            StringBuffer emailSb = new StringBuffer();
+            while (emailMatcher.find()) {
+                String prefix = emailMatcher.group(1);
+                String middle = emailMatcher.group(2);
+                String domain = emailMatcher.group(3);
+                String tld = emailMatcher.group(4);
+                int maskLen = Math.max(middle != null ? middle.length() : 3, 3);
+                StringBuilder starsSb = new StringBuilder();
+                for (int i = 0; i < maskLen; i++) {
+                    starsSb.append('*');
+                }
+                String maskedEmail = prefix + starsSb.toString() + "@" + (domain.length() > 2 ? domain.substring(0, 2) + "***" : "***") + tld;
+                emailMatcher.appendReplacement(emailSb, Matcher.quoteReplacement(maskedEmail));
+            }
+            emailMatcher.appendTail(emailSb);
+            masked = emailSb.toString();
+
+            // mask quoted student names / full names / surnames: e.g. StudentName='Artem Sysoiev', for student 'Kowalski'
+            Matcher quotedMatcher = QUOTED_NAME_PATTERN.matcher(masked);
+            StringBuffer quotedSb = new StringBuffer();
+            while (quotedMatcher.find()) {
+                String prefix = quotedMatcher.group(1);
+                String quote = quotedMatcher.group(2);
+                String rawName = quotedMatcher.group(3);
+                quotedMatcher.appendReplacement(quotedSb, Matcher.quoteReplacement(prefix + quote + maskName(rawName) + quote));
+            }
+            quotedMatcher.appendTail(quotedSb);
+            masked = quotedSb.toString();
+
+            // mask scraped student names: e.g. "Name extracted from dashboard: Artem Sysoiev"
+            Matcher scrapedMatcher = SCRAPED_NAME_PATTERN.matcher(masked);
+            StringBuffer scrapedSb = new StringBuffer();
+            while (scrapedMatcher.find()) {
+                String prefix = scrapedMatcher.group(1);
+                String quote = scrapedMatcher.group(2);
+                String rawName = scrapedMatcher.group(3);
+                String q = (quote != null) ? quote : "";
+                scrapedMatcher.appendReplacement(scrapedSb, Matcher.quoteReplacement(prefix + q + maskName(rawName) + q));
+            }
+            scrapedMatcher.appendTail(scrapedSb);
+            masked = scrapedSb.toString();
+
+            // mask settings student names: e.g. "Setting global student name: Artem Sysoiev"
+            Matcher settingMatcher = SETTING_NAME_PATTERN.matcher(masked);
+            StringBuffer settingSb = new StringBuffer();
+            while (settingMatcher.find()) {
+                String prefix = settingMatcher.group(1);
+                String quote = settingMatcher.group(2);
+                String rawName = settingMatcher.group(3);
+                String q = (quote != null) ? quote : "";
+                settingMatcher.appendReplacement(settingSb, Matcher.quoteReplacement(prefix + q + maskName(rawName) + q));
+            }
+            settingMatcher.appendTail(settingSb);
+            masked = settingSb.toString();
+
+            // mask unquoted student key-values: e.g. StudentName=Artem Sysoiev, EnglishGroup=...
+            Matcher unquotedMatcher = UNQUOTED_NAME_KEY_PATTERN.matcher(masked);
+            StringBuffer unquotedSb = new StringBuffer();
+            while (unquotedMatcher.find()) {
+                String prefix = unquotedMatcher.group(1);
+                String rawName = unquotedMatcher.group(2);
+                unquotedMatcher.appendReplacement(unquotedSb, Matcher.quoteReplacement(prefix + maskName(rawName)));
+            }
+            unquotedMatcher.appendTail(unquotedSb);
+            masked = unquotedSb.toString();
+
+            // mask unquoted "for student": e.g. for student Kowalski
+            Matcher forStudentMatcher = UNQUOTED_FOR_STUDENT_PATTERN.matcher(masked);
+            StringBuffer forStudentSb = new StringBuffer();
+            while (forStudentMatcher.find()) {
+                String prefix = forStudentMatcher.group(1);
+                String rawName = forStudentMatcher.group(2);
+                forStudentMatcher.appendReplacement(forStudentSb, Matcher.quoteReplacement(prefix + maskName(rawName)));
+            }
+            forStudentMatcher.appendTail(forStudentSb);
+
+            return forStudentSb.toString();
+        } catch (Throwable ignored) {
+            return message;
         }
-        surnameMatcher.appendTail(surnameSb);
-        return surnameSb.toString();
     }
 
     private static final long MAX_LOG_SIZE = 10 * 1024 * 1024L; // 10 MB

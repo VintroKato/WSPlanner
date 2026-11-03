@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.method.ScrollingMovementMethod;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Window;
@@ -32,10 +33,14 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.MessageDigest;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -56,6 +61,8 @@ public class UpdateManager {
     private static final String KEY_LATEST_VERSION = "latest_available_version";
     private static final String KEY_LATEST_URL = "latest_release_url";
     private static final String KEY_LATEST_APK_URL = "latest_apk_download_url";
+    private static final String KEY_LATEST_SHA256_URL = "latest_sha256_download_url";
+    private static final String KEY_LATEST_CHANGELOG = "latest_release_changelog";
 
     public static final long COOLDOWN_MS = 60_000L;
     public static final long AUTO_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000L; // 24 hours
@@ -118,12 +125,42 @@ public class UpdateManager {
         return getPrefs(context).getString(KEY_LATEST_APK_URL, null);
     }
 
+    public static String getSavedSha256Url(Context context) {
+        return getPrefs(context).getString(KEY_LATEST_SHA256_URL, null);
+    }
+
+    public static String getSavedChangelog(Context context) {
+        return getPrefs(context).getString(KEY_LATEST_CHANGELOG, null);
+    }
+
     public static void clearSavedUpdate(Context context) {
         getPrefs(context).edit()
                 .remove(KEY_LATEST_VERSION)
                 .remove(KEY_LATEST_URL)
                 .remove(KEY_LATEST_APK_URL)
+                .remove(KEY_LATEST_SHA256_URL)
+                .remove(KEY_LATEST_CHANGELOG)
                 .apply();
+    }
+
+    public static void cleanupDownloadedApks(Context context) {
+        if (context == null) return;
+        deleteApksInDir(context.getExternalCacheDir());
+        deleteApksInDir(context.getCacheDir());
+    }
+
+    private static void deleteApksInDir(File baseCacheDir) {
+        if (baseCacheDir == null) return;
+        File updateDir = new File(baseCacheDir, "updates");
+        if (!updateDir.exists() || !updateDir.isDirectory()) return;
+        File[] files = updateDir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
+            if (f != null && f.isFile() && f.getName().toLowerCase(Locale.ROOT).endsWith(".apk")) {
+                boolean deleted = f.delete();
+                Logger.d(TAG, "Cleaned up cached update APK: " + f.getName() + " (deleted=" + deleted + ")");
+            }
+        }
     }
 
     // Check if a newer version is known and pending install
@@ -133,9 +170,13 @@ public class UpdateManager {
         return isNewerVersion(BuildConfig.VERSION_NAME, savedVersion);
     }
 
-    // Automatic update check (e.g. called in MainActivity on launch)
+    // Automatic update check
     public static void checkAutoUpdate(Context context, UpdateCheckCallback callback) {
         Logger.d(TAG, "checkAutoUpdate triggered");
+        if (context != null) {
+            Context appCtx = context.getApplicationContext();
+            new Thread(() -> cleanupDownloadedApks(appCtx)).start();
+        }
         if (!NetworkUtils.isNetworkAvailable(context)) {
             Logger.d(TAG, "Device is offline, skipping auto update check");
             if (callback != null) {
@@ -298,17 +339,25 @@ public class UpdateManager {
                     String htmlUrl = json.optString("html_url", GITHUB_RELEASES_URL);
                     String currentVersion = BuildConfig.VERSION_NAME;
 
+                    String releaseName = json.optString("name", "");
+                    String releaseBody = json.optString("body", "");
+                    String changelog = extractChangelog(releaseName, releaseBody);
+
                     String apkUrl = "";
+                    String sha256Url = "";
                     JSONArray assets = json.optJSONArray("assets");
                     if (assets != null) {
                         for (int i = 0; i < assets.length(); i++) {
                             JSONObject asset = assets.optJSONObject(i);
                             if (asset != null) {
                                 String assetName = asset.optString("name", "");
-                                if (assetName.toLowerCase(Locale.ROOT).endsWith(".apk")) {
+                                String assetLower = assetName.toLowerCase(Locale.ROOT);
+                                if (assetLower.endsWith(".apk") && apkUrl.isEmpty()) {
                                     apkUrl = asset.optString("browser_download_url", "");
                                     Logger.i(TAG, "Discovered APK asset in GitHub release: " + assetName + " -> " + apkUrl);
-                                    break;
+                                } else if (assetLower.equals("sha256sum.txt")) {
+                                    sha256Url = asset.optString("browser_download_url", "");
+                                    Logger.i(TAG, "Discovered SHA-256 asset in GitHub release: " + assetName + " -> " + sha256Url);
                                 }
                             }
                         }
@@ -320,18 +369,36 @@ public class UpdateManager {
                         Logger.i(TAG, "No explicit asset parsed; using fallback download URL: " + apkUrl);
                     }
 
+                    if ((sha256Url == null || sha256Url.isEmpty()) && !tagName.isEmpty()) {
+                        sha256Url = "https://github.com/VintroKato/WSPlanner/releases/download/" + tagName + "/sha256sum.txt";
+                        Logger.i(TAG, "No explicit sha256sum.txt asset parsed; using fallback URL: " + sha256Url);
+                    }
+
                     boolean hasUpdate = isNewerVersion(currentVersion, tagName);
                     Logger.i(TAG, "GitHub release check complete: responseCode=" + responseCode
                             + ", current=" + currentVersion
                             + ", remoteTag=" + tagName
                             + ", hasUpdate=" + hasUpdate
                             + ", releaseUrl=" + htmlUrl
-                            + ", apkUrl=" + apkUrl);
+                            + ", apkUrl=" + apkUrl
+                            + ", changelogLength=" + (changelog != null ? changelog.length() : 0));
 
                     if (hasUpdate) {
-                        getPrefs(context).edit().putString(KEY_LATEST_APK_URL, apkUrl).apply();
+                        SharedPreferences.Editor editor = getPrefs(context).edit()
+                                .putString(KEY_LATEST_APK_URL, apkUrl)
+                                .putString(KEY_LATEST_SHA256_URL, sha256Url);
+                        if (changelog != null && !changelog.isEmpty()) {
+                            editor.putString(KEY_LATEST_CHANGELOG, changelog);
+                        } else {
+                            editor.remove(KEY_LATEST_CHANGELOG);
+                        }
+                        editor.apply();
                     } else {
-                        getPrefs(context).edit().remove(KEY_LATEST_APK_URL).apply();
+                        getPrefs(context).edit()
+                                .remove(KEY_LATEST_APK_URL)
+                                .remove(KEY_LATEST_SHA256_URL)
+                                .remove(KEY_LATEST_CHANGELOG)
+                                .apply();
                     }
 
                     postToMain(() -> {
@@ -351,6 +418,65 @@ public class UpdateManager {
                 }
             }
         });
+    }
+
+    public static String extractChangelog(String releaseName, String body) {
+        String cleanTitle = !isVersionTagOnly(releaseName) ? releaseName.trim() : null;
+        if (body == null || body.trim().isEmpty()) {
+            return cleanTitle;
+        }
+
+        String raw = body.trim();
+        String changelogSection = null;
+
+        // Strictly search for a "What's Changed" / "Changelog" / "Changes" section
+        Pattern p = Pattern.compile("(?i)#{1,4}\\s*(?:what['’]s changed|changelog|changes)[:\\s]*([\\s\\S]*?)(?:---|#{1,4}\\s*build info|\\Z)");
+        Matcher m = p.matcher(raw);
+        if (m.find()) {
+            changelogSection = m.group(1);
+        } else {
+            // Check if there is user text placed before "### Build info"
+            int buildInfoIdx = raw.indexOf("### Build info");
+            if (buildInfoIdx > 0) {
+                String prefix = raw.substring(0, buildInfoIdx).trim();
+                // Ensure prefix is not technical boilerplate
+                if (!prefix.isEmpty() && !prefix.startsWith(">") && !prefix.startsWith("#") && !prefix.startsWith("|")) {
+                    changelogSection = prefix;
+                }
+            }
+        }
+
+        // If no user changelog section exists in the release body:
+        if (changelogSection == null) {
+            return cleanTitle;
+        }
+
+        String cleaned = changelogSection
+                .replaceAll("(?m)^\\s*[-*•]\\s*", "• ")
+                .replaceAll("(?m)^\\s*#{1,6}\\s*", "")
+                .replaceAll("`", "")
+                .replaceAll("---", "")
+                .trim();
+
+        // Guard against any leftover technical boilerplate
+        if (cleaned.isEmpty()
+                || cleaned.toLowerCase(Locale.ROOT).startsWith("build info")
+                || cleaned.startsWith(">")
+                || cleaned.startsWith("|")) {
+            return cleanTitle;
+        }
+
+        if (cleanTitle != null && !cleanTitle.equalsIgnoreCase(cleaned) && !cleaned.startsWith(cleanTitle)) {
+            return cleanTitle + "\n\n" + cleaned;
+        }
+
+        return cleaned;
+    }
+
+    public static boolean isVersionTagOnly(String text) {
+        if (text == null) return true;
+        String trimmed = text.trim();
+        return trimmed.isEmpty() || trimmed.matches("(?i)^v?\\d+(\\.\\d+)*([-_\\w]+)?$");
     }
 
     // Semantic Version comparison: returns true if remoteTag is strictly newer than currentVersion
@@ -390,6 +516,7 @@ public class UpdateManager {
 
     public interface DownloadInstallCallback {
         void onDownloadStarted();
+        default void onVerifyingHash() {}
         void onSuccess();
         void onFailure(Exception e);
     }
@@ -417,7 +544,18 @@ public class UpdateManager {
             Logger.d(TAG, "Using computed download URL: " + targetUrl);
         }
 
+        String savedSha256Url = getSavedSha256Url(context);
+        if (savedSha256Url == null || savedSha256Url.trim().isEmpty()) {
+            int lastSlash = targetUrl.lastIndexOf('/');
+            if (lastSlash > 0) {
+                savedSha256Url = targetUrl.substring(0, lastSlash + 1) + "sha256sum.txt";
+            } else {
+                savedSha256Url = "https://github.com/VintroKato/WSPlanner/releases/download/" + cleanVer + "/sha256sum.txt";
+            }
+        }
+
         final String finalUrl = targetUrl;
+        final String finalSha256Url = savedSha256Url;
         Logger.i(TAG, "Starting background download from: " + finalUrl + " -> file: " + fileName);
 
         if (callback != null) {
@@ -425,58 +563,70 @@ public class UpdateManager {
         }
 
         new Thread(() -> {
+            File destFile = null;
             try {
+                cleanupDownloadedApks(context);
+
                 Request request = new Request.Builder()
                         .url(finalUrl)
                         .header("User-Agent", "WSPlanner-Android-App")
                         .build();
 
-                Response response = httpClient.newCall(request).execute();
-                if (!response.isSuccessful()) {
-                    throw new IOException("Download HTTP error: " + response.code() + " " + response.message());
-                }
-
-                ResponseBody body = response.body();
-                if (body == null) {
-                    throw new IOException("Response body is null");
-                }
-
-                File cacheDir = context.getExternalCacheDir();
-                if (cacheDir == null) {
-                    cacheDir = context.getCacheDir();
-                }
-                File updateDir = new File(cacheDir, "updates");
-                if (!updateDir.exists()) {
-                    boolean created = updateDir.mkdirs();
-                    Logger.d(TAG, "Created update cache directory: " + updateDir.getAbsolutePath() + " (success: " + created + ")");
-                }
-
-                File destFile = new File(updateDir, fileName);
-                if (destFile.exists()) {
-                    destFile.delete();
-                }
-
-                long totalBytes = body.contentLength();
-                Logger.i(TAG, "Writing APK stream to " + destFile.getAbsolutePath() + " (expected: " + totalBytes + " bytes)");
-
-                try (InputStream in = body.byteStream();
-                     FileOutputStream out = new FileOutputStream(destFile)) {
-                    byte[] buffer = new byte[8192];
-                    int bytesRead;
-                    long downloadedBytes = 0;
-                    while ((bytesRead = in.read(buffer)) != -1) {
-                        out.write(buffer, 0, bytesRead);
-                        downloadedBytes += bytesRead;
+                try (Response response = httpClient.newCall(request).execute()) {
+                    if (!response.isSuccessful()) {
+                        throw new IOException("Download HTTP error: " + response.code() + " " + response.message());
                     }
-                    out.flush();
-                    Logger.i(TAG, "Download finished. Total bytes written: " + downloadedBytes);
+
+                    ResponseBody body = response.body();
+                    if (body == null) {
+                        throw new IOException("Response body is null");
+                    }
+
+                    File cacheDir = context.getExternalCacheDir();
+                    if (cacheDir == null) {
+                        cacheDir = context.getCacheDir();
+                    }
+                    File updateDir = new File(cacheDir, "updates");
+                    if (!updateDir.exists()) {
+                        boolean created = updateDir.mkdirs();
+                        Logger.d(TAG, "Created update cache directory: " + updateDir.getAbsolutePath() + " (success: " + created + ")");
+                    }
+
+                    destFile = new File(updateDir, fileName);
+                    if (destFile.exists()) {
+                        destFile.delete();
+                    }
+
+                    long totalBytes = body.contentLength();
+                    Logger.i(TAG, "Writing APK stream to " + destFile.getAbsolutePath() + " (expected: " + totalBytes + " bytes)");
+
+                    try (InputStream in = body.byteStream();
+                         FileOutputStream out = new FileOutputStream(destFile)) {
+                        byte[] buffer = new byte[8192];
+                        int bytesRead;
+                        long downloadedBytes = 0;
+                        while ((bytesRead = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, bytesRead);
+                            downloadedBytes += bytesRead;
+                        }
+                        out.flush();
+                        Logger.i(TAG, "Download finished. Total bytes written: " + downloadedBytes);
+                    }
                 }
 
-                if (!destFile.exists() || destFile.length() == 0) {
-                    throw new IOException("Downloaded file is empty or missing: " + destFile.getAbsolutePath());
+                if (destFile == null || !destFile.exists() || destFile.length() == 0) {
+                    throw new IOException("Downloaded file is empty or missing");
                 }
 
-                Logger.i(TAG, "APK successfully downloaded (" + destFile.length() + " bytes). Generating FileProvider URI…");
+                Logger.i(TAG, "APK downloaded (" + destFile.length() + " bytes). Starting SHA-256 verification…");
+                postToMain(() -> {
+                    if (callback != null) {
+                        callback.onVerifyingHash();
+                    }
+                });
+
+                verifyApkSha256(destFile, fileName, finalSha256Url);
+                Logger.i(TAG, "SHA-256 verification passed! Generating FileProvider URI…");
 
                 Uri apkUri = FileProvider.getUriForFile(
                         context.getApplicationContext(),
@@ -502,7 +652,11 @@ public class UpdateManager {
                 });
 
             } catch (Exception e) {
-                Logger.e(TAG, "Failed to download and launch update APK: " + Logger.formatException(e), e);
+                if (destFile != null && destFile.exists()) {
+                    boolean deleted = destFile.delete();
+                    Logger.w(TAG, "Deleted unverified/failed APK file after error (deleted=" + deleted + ")");
+                }
+                Logger.e(TAG, "Failed to download, verify, or launch update APK: " + Logger.formatException(e), e);
                 postToMain(() -> {
                     if (callback != null) {
                         callback.onFailure(e);
@@ -510,6 +664,77 @@ public class UpdateManager {
                 });
             }
         }).start();
+    }
+
+    private static void verifyApkSha256(File apkFile, String apkFileName, String sha256Url) throws Exception {
+        Logger.i(TAG, "Fetching SHA-256 checksum file from: " + sha256Url);
+        Request hashRequest = new Request.Builder()
+                .url(sha256Url)
+                .header("User-Agent", "WSPlanner-Android-App")
+                .build();
+
+        String sha256Content;
+        try (Response response = httpClient.newCall(hashRequest).execute()) {
+            if (!response.isSuccessful() || response.body() == null) {
+                throw new IOException("Failed to fetch sha256sum.txt: HTTP " + response.code());
+            }
+            sha256Content = response.body().string();
+        }
+
+        String expectedHash = parseExpectedSha256(sha256Content, apkFileName);
+        if (expectedHash == null || expectedHash.length() != 64) {
+            throw new IOException("Invalid or missing SHA-256 hash in sha256sum.txt");
+        }
+
+        String actualHash = computeFileSha256(apkFile);
+        Logger.i(TAG, "SHA-256 check: expected=" + expectedHash + ", actual=" + actualHash);
+
+        if (!expectedHash.equalsIgnoreCase(actualHash)) {
+            throw new SecurityException("SHA-256 hash mismatch! Expected: " + expectedHash + ", Actual: " + actualHash);
+        }
+    }
+
+    private static String parseExpectedSha256(String content, String targetFileName) {
+        if (content == null) return null;
+        String[] lines = content.split("\\r?\\n");
+        String fallbackHash = null;
+        for (String rawLine : lines) {
+            String line = rawLine.trim();
+            if (line.isEmpty()) continue;
+            String[] parts = line.split("\\s+");
+            if (parts.length >= 1) {
+                String candidate = parts[0].trim();
+                if (candidate.matches("^[0-9a-fA-F]{64}$")) {
+                    if (fallbackHash == null) {
+                        fallbackHash = candidate;
+                    }
+                    if (parts.length >= 2) {
+                        String filePart = parts[parts.length - 1].replace("*", "").trim();
+                        if (filePart.equalsIgnoreCase(targetFileName)) {
+                            return candidate;
+                        }
+                    }
+                }
+            }
+        }
+        return fallbackHash;
+    }
+
+    private static String computeFileSha256(File file) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        try (InputStream fis = new FileInputStream(file)) {
+            byte[] buffer = new byte[8192];
+            int n;
+            while ((n = fis.read(buffer)) != -1) {
+                digest.update(buffer, 0, n);
+            }
+        }
+        byte[] hashBytes = digest.digest();
+        StringBuilder sb = new StringBuilder(hashBytes.length * 2);
+        for (byte b : hashBytes) {
+            sb.append(String.format(Locale.ROOT, "%02x", b));
+        }
+        return sb.toString();
     }
 
     // Show custom popup-styled dialog
@@ -566,6 +791,24 @@ public class UpdateManager {
         }
         newBadge.setText(context.getString(R.string.update_dialog_new_badge, newVerStr));
 
+        TextView descView = view.findViewById(R.id.dialog_update_desc);
+        String changelog = getSavedChangelog(context);
+        if (descView != null) {
+            if (changelog != null && !changelog.trim().isEmpty()) {
+                String cleanChangelog = changelog.trim();
+                if (!cleanChangelog.contains("•") && !cleanChangelog.contains("\n")) {
+                    descView.setText(cleanChangelog + "\n\n" + context.getString(R.string.update_dialog_desc));
+                } else {
+                    descView.setText(cleanChangelog);
+                }
+                descView.setMaxLines(8);
+                descView.setVerticalScrollBarEnabled(true);
+                descView.setMovementMethod(new ScrollingMovementMethod());
+            } else {
+                descView.setText(R.string.update_dialog_desc);
+            }
+        }
+
         if (btnAutoUpdate != null) {
             btnAutoUpdate.setOnClickListener(v -> {
                 Logger.i(TAG, "Update dialog: user clicked 'Update automatically' button for version: " + newVersion);
@@ -588,6 +831,12 @@ public class UpdateManager {
                     @Override
                     public void onDownloadStarted() {
                         Logger.d(TAG, "Auto-update download stream started");
+                    }
+
+                    @Override
+                    public void onVerifyingHash() {
+                        Logger.d(TAG, "Auto-update switching UI state to verifying hash");
+                        btnAutoUpdate.setText(R.string.update_dialog_verifying_hash);
                     }
 
                     @Override

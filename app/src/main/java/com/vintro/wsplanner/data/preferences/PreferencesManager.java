@@ -90,6 +90,58 @@ public class PreferencesManager {
         return context.getSharedPreferences(prefs_name, Context.MODE_PRIVATE);
     }
 
+    public static int getLastRunVersionCode(Context context) {
+        return getPreferences(context).getInt("last_run_version_code", 0);
+    }
+
+    public static void setLastRunVersionCode(Context context, int versionCode) {
+        getPreferences(context).edit().putInt("last_run_version_code", versionCode).apply();
+    }
+
+    public static boolean isLogsSanitized(Context context) {
+        return getPreferences(context).getBoolean("logs_sanitized", false);
+    }
+
+    public static void setLogsSanitized(Context context, boolean sanitized) {
+        getPreferences(context).edit().putBoolean("logs_sanitized", sanitized).apply();
+    }
+
+    // one-time migration hook executed exclusively by AppUpgradeManager during version upgrades
+    public static void migrateLegacyStudentData(Context context) {
+        try {
+            SharedPreferences plainPrefs = getPreferences(context);
+            String legacyName = plainPrefs.getString(key_detected_student_name, null);
+            String legacySurname = plainPrefs.getString(key_detected_student_surname, null);
+
+            if (legacyName != null || legacySurname != null) {
+                Logger.i("PreferencesManager.migrateLegacyStudentData", "Migrating legacy student name/surname to secure preferences");
+                SharedPreferences securePrefs = getEncryptedPreferences(context);
+                SharedPreferences.Editor secureEditor = securePrefs.edit();
+                SharedPreferences.Editor plainEditor = plainPrefs.edit();
+
+                if (legacyName != null && !legacyName.trim().isEmpty()) {
+                    if (securePrefs.getString(key_detected_student_name, null) == null) {
+                        secureEditor.putString(key_detected_student_name, legacyName.trim());
+                    }
+                    plainEditor.remove(key_detected_student_name);
+                }
+
+                if (legacySurname != null && !legacySurname.trim().isEmpty()) {
+                    if (securePrefs.getString(key_detected_student_surname, null) == null) {
+                        secureEditor.putString(key_detected_student_surname, legacySurname.trim());
+                    }
+                    plainEditor.remove(key_detected_student_surname);
+                }
+
+                secureEditor.apply();
+                plainEditor.apply();
+                Logger.d("PreferencesManager.migrateLegacyStudentData", "Legacy student profile data migration finished successfully");
+            }
+        } catch (Throwable t) {
+            Logger.w("PreferencesManager.migrateLegacyStudentData", "Non-fatal error migrating legacy student data: " + Logger.formatException(t));
+        }
+    }
+
     // save global user profile preferences
     public static void saveGlobalPrefs(Context context, String login, String password, String major, DegreeLevel degreeLevel, StudyMode studyMode, int year, String specialty, String englishGroup) {
         savePrefs(context, GLOBAL_ID, login, password, major, degreeLevel, studyMode, year, specialty, englishGroup);
@@ -155,7 +207,7 @@ public class PreferencesManager {
     }
 
     public static void setGlobalStudentNamePref(Context context, String studentName) {
-        Logger.d("PreferencesManager.setGlobalStudentNamePref", "Setting global student name: " + studentName);
+        Logger.d("PreferencesManager.setGlobalStudentNamePref", "Setting global student name: " + Logger.maskName(studentName));
         setStudentNamePref(context, GLOBAL_ID, studentName);
     }
 
@@ -275,6 +327,8 @@ public class PreferencesManager {
                 .remove(key_student_name + widgetId)
                 .remove(key_student_surname + widgetId)
                 .remove(key_specialty_configured + widgetId)
+                .remove(widgetId == GLOBAL_ID ? key_detected_student_name : "")
+                .remove(widgetId == GLOBAL_ID ? key_detected_student_surname : "")
                 .apply();
         if (widgetId == GLOBAL_ID) {
             getPreferences(context).edit()
@@ -318,26 +372,26 @@ public class PreferencesManager {
     }
 
     public static String getDetectedStudentName(Context context) {
-        return getPreferences(context).getString(key_detected_student_name, null);
+        return getEncryptedPreferences(context).getString(key_detected_student_name, null);
     }
 
     public static void setDetectedStudentName(Context context, String name) {
         if (name != null && !name.trim().isEmpty()) {
-            getPreferences(context).edit().putString(key_detected_student_name, name.trim()).apply();
+            getEncryptedPreferences(context).edit().putString(key_detected_student_name, name.trim()).apply();
         } else {
-            getPreferences(context).edit().remove(key_detected_student_name).apply();
+            getEncryptedPreferences(context).edit().remove(key_detected_student_name).apply();
         }
     }
 
     public static String getDetectedStudentSurname(Context context) {
-        return getPreferences(context).getString(key_detected_student_surname, null);
+        return getEncryptedPreferences(context).getString(key_detected_student_surname, null);
     }
 
     public static void setDetectedStudentSurname(Context context, String surname) {
         if (surname != null && !surname.trim().isEmpty()) {
-            getPreferences(context).edit().putString(key_detected_student_surname, surname.trim()).apply();
+            getEncryptedPreferences(context).edit().putString(key_detected_student_surname, surname.trim()).apply();
         } else {
-            getPreferences(context).edit().remove(key_detected_student_surname).apply();
+            getEncryptedPreferences(context).edit().remove(key_detected_student_surname).apply();
         }
     }
 
