@@ -11,6 +11,20 @@
         android:animateLayoutChanges="true"
         android:paddingBottom="80dp">
 
+        <ImageButton
+            android:id="@+id/back_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/button_back"
+            android:src="@drawable/ic_arrow_back"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@+id/title_label"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/title_label"
+            app:tint="?attr/app_text" />
+
         <TextView
             android:id="@+id/title_label"
             style="@style/label"

@@ -83,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
     private final DateTimeFormatter syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm");
     private final DateTimeFormatter syncDateFormatter = DateTimeFormatter.ofPattern("dd.MM, HH:mm");
     private Language currentLanguage;
+    private String activeConfigSignature;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -163,6 +164,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         scheduleRepository = ScheduleRepository.getInstance(this);
+        activeConfigSignature = scheduleRepository.buildConfigSignature();
 
         initViews();
         setupRecyclerView();
@@ -437,8 +439,8 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(coursesIntent);
                 return true;
             } else if (id == R.id.action_change_group) {
-                Intent setupIntent = new Intent(this, SetupCourseActivity.class);
-                startActivity(setupIntent);
+                Intent studentPanelIntent = new Intent(this, StudentPanelActivity.class);
+                startActivity(studentPanelIntent);
                 return true;
             } else if (id == R.id.action_settings) {
                 Intent settingsIntent = new Intent(this, SettingsActivity.class);
@@ -510,8 +512,18 @@ public class MainActivity extends AppCompatActivity {
         setupSwipeRefreshColors();
         startMinuteTicker();
 
-        // Immediately update timeline states on resume so "NOW" / "NEXT" match the real current time
-        if (selectedDate.isEqual(today)) {
+        String currentSig = scheduleRepository != null ? scheduleRepository.buildConfigSignature() : null;
+        boolean configChanged = currentSig != null && !currentSig.equals(activeConfigSignature);
+        if (configChanged) {
+            Logger.i("MainActivity.onResume", "Student configuration changed, reloading schedule");
+            activeConfigSignature = currentSig;
+            currentDaySchedule = null;
+            if (scheduleAdapter != null) {
+                scheduleAdapter.clear();
+            }
+            loadSchedule(false);
+        } else if (selectedDate.isEqual(today)) {
+            // Immediately update timeline states on resume so "NOW" / "NEXT" match the real current time
             if (currentDaySchedule != null && scheduleAdapter != null) {
                 scheduleAdapter.submitDaySchedule(currentDaySchedule);
             } else {

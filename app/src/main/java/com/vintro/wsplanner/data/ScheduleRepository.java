@@ -675,18 +675,20 @@ public class ScheduleRepository {
         return new File(dir, CACHE_FILE_PREFIX + year + ".xlsx");
     }
 
-    private String buildConfigSignature() {
+    public String buildConfigSignature() {
         String major = PreferencesManager.getGlobalMajorPref(appContext);
         DegreeLevel degree = PreferencesManager.getGlobalDegreeLevelPref(appContext);
         StudyMode mode = PreferencesManager.getGlobalStudyModePref(appContext);
         int year = PreferencesManager.getGlobalYearPref(appContext);
         String spec = PreferencesManager.getGlobalSpecialtyPref(appContext);
         String lang = PreferencesManager.getGlobalEnglishGroupPref(appContext);
+        String seminar = PreferencesManager.getGlobalSeminarTeacherPref(appContext);
+        String surname = PreferencesManager.getGlobalStudentSurnamePref(appContext);
 
         if (major == null || degree == null || mode == null) {
             return null;
         }
-        return major + "|" + degree.name() + "|" + mode.name() + "|" + year + "|" + spec + "|" + lang;
+        return major + "|" + degree.name() + "|" + mode.name() + "|" + year + "|" + spec + "|" + lang + "|" + seminar + "|" + surname;
     }
 
     private void saveLastSyncTime(LocalDateTime time) {
@@ -715,6 +717,15 @@ public class ScheduleRepository {
             } catch (Exception ignored) {}
         }
         return null;
+    }
+
+    // clear only in-memory parsed lessons so the local Excel file is re-parsed with updated filters
+    public void invalidateMemoryCache() {
+        Logger.d("ScheduleRepository.invalidateMemoryCache", "Invalidating in-memory schedule cache for filter update");
+        synchronized (cacheLock) {
+            cachedAllLessons = null;
+            lastConfigSignature = null;
+        }
     }
 
     // clear in-memory and disk cache

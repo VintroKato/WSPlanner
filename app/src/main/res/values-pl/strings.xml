@@ -82,8 +82,19 @@
     <string name="schedule_progress_format">Postęp: %1$d z %2$d (%3$d%%)</string>
 
     <string name="menu_refresh_schedule">Odśwież plan</string>
-    <string name="menu_change_group">Wybierz grupę</string>
+    <string name="menu_change_group">Panel studenta</string>
+    <string name="menu_student_panel">Panel studenta</string>
     <string name="menu_settings">Ustawienia</string>
+
+    <string name="student_panel_title">Panel studenta</string>
+    <string name="student_panel_course_section">Informacje o studiach</string>
+    <string name="student_panel_specialty_label">Specjalność</string>
+    <string name="student_panel_personal_section">Parametry osobiste</string>
+    <string name="student_panel_btn_re_onboarding">Zmień kierunek</string>
+    <string name="student_panel_btn_change_login">Login i hasło</string>
+    <string name="student_panel_save_button">Zapisz</string>
+    <string name="student_panel_saved_toast">Zapisano dane studenta</string>
+    <string name="student_panel_not_specified">Brak</string>
 
     <string name="schedule_empty_title">Brak zajęć w tym dniu</string>
     <string name="schedule_empty_subtitle">Możesz odpocząć lub sprawdzić inny termin</string>

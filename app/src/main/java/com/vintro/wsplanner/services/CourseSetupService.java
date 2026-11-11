@@ -320,5 +320,6 @@ public class CourseSetupService {
         cachedCourses = null;
         cachedEnglishGroup = null;
         cachedStudentFullName = null;
+        cachedSeminarTeacher = null;
     }
 }

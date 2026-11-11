@@ -90,8 +90,19 @@
     <string name="schedule_progress_format">Progress: %1$d of %2$d (%3$d%%)</string>
 
     <string name="menu_refresh_schedule">Refresh schedule</string>
-    <string name="menu_change_group">Change group / course</string>
+    <string name="menu_change_group">Student panel</string>
+    <string name="menu_student_panel">Student panel</string>
     <string name="menu_settings">Settings</string>
+
+    <string name="student_panel_title">Student Panel</string>
+    <string name="student_panel_course_section">Study Information</string>
+    <string name="student_panel_specialty_label">Specialty</string>
+    <string name="student_panel_personal_section">Personal Parameters</string>
+    <string name="student_panel_btn_re_onboarding">Change course</string>
+    <string name="student_panel_btn_change_login">Login &amp; password</string>
+    <string name="student_panel_save_button">Save</string>
+    <string name="student_panel_saved_toast">Student data updated</string>
+    <string name="student_panel_not_specified">None</string>
 
     <string name="schedule_empty_title">No classes on this day</string>
     <string name="schedule_empty_subtitle">You can take a rest or check another date</string>

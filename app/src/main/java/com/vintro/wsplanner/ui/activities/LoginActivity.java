@@ -29,23 +29,28 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.vintro.wsplanner.R;
+import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.network.PUW;
 import com.vintro.wsplanner.enums.AppTheme;
 import com.vintro.wsplanner.enums.InputState;
 import com.vintro.wsplanner.enums.Language;
+import com.vintro.wsplanner.services.CourseSetupService;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.utils.Logger;
 import com.vintro.wsplanner.utils.NetworkUtils;
 
 public class LoginActivity extends AppCompatActivity {
+    public static final String EXTRA_FROM_STUDENT_PANEL = "extra_from_student_panel";
+
     ViewGroup layout;
     EditText loginInput;
     EditText passwordInput;
     ProgressBar progressBar;
     TextView errorLabel;
     Button confirmButton;
+    ImageButton backButton;
     ImageButton buttonSettings;
     ImageButton buttonTogglePassword;
     Handler handler = new Handler(Looper.getMainLooper());
@@ -55,6 +60,7 @@ public class LoginActivity extends AppCompatActivity {
     private Language currentLanguage;
     private AppTheme currentTheme;
     private boolean isPasswordVisible = false;
+    private boolean isFromStudentPanel = false;
 
     @Override
     public void onCreate(Bundle icicle) {
@@ -70,17 +76,29 @@ public class LoginActivity extends AppCompatActivity {
             return insets;
         });
 
+        isFromStudentPanel = getIntent().getBooleanExtra(EXTRA_FROM_STUDENT_PANEL, false);
+
         layout = findViewById(R.id.content_container);
         loginInput = findViewById(R.id.login_input);
         passwordInput = findViewById(R.id.password_input);
         progressBar = findViewById(R.id.progress_bar);
         errorLabel = findViewById(R.id.error_label);
         confirmButton = findViewById(R.id.confirm_button);
+        backButton = findViewById(R.id.back_button);
         buttonSettings = findViewById(R.id.button_settings);
         buttonTogglePassword = findViewById(R.id.button_toggle_password);
 
         currentLanguage = PreferencesManager.getLanguagePref(this);
         currentTheme = PreferencesManager.getThemePref(this);
+
+        if (backButton != null) {
+            if (isFromStudentPanel) {
+                backButton.setVisibility(View.VISIBLE);
+                backButton.setOnClickListener(v -> finish());
+            } else {
+                backButton.setVisibility(View.GONE);
+            }
+        }
 
         if (buttonSettings != null) {
             buttonSettings.setOnClickListener(v -> {
@@ -111,6 +129,19 @@ public class LoginActivity extends AppCompatActivity {
 
         loginInput.setOnFocusChangeListener((v, hasFocus) -> updateInputBackgrounds());
         passwordInput.setOnFocusChangeListener((v, hasFocus) -> updateInputBackgrounds());
+
+        if (isFromStudentPanel && icicle == null) {
+            String savedLogin = PreferencesManager.getGlobalLoginPref(this);
+            String savedPassword = PreferencesManager.getGlobalPasswordPref(this);
+            if (savedLogin != null) {
+                loginInput.setText(savedLogin);
+                loginInput.setSelection(savedLogin.length());
+            }
+            if (savedPassword != null) {
+                passwordInput.setText(savedPassword);
+                passwordInput.setSelection(savedPassword.length());
+            }
+        }
     }
 
     @Override
@@ -151,10 +182,16 @@ public class LoginActivity extends AppCompatActivity {
         String password = passwordInput.getText().toString();
 
         Logger.i("LoginActivity.handleBtnClick", "Saving global login credentials for user: " + Logger.maskSensitiveData(login) + ", advancing to SetupCourseActivity");
+        CourseSetupService.getInstance().clearCache();
+        ScheduleRepository.getInstance(this).invalidateCache();
+        PreferencesManager.deleteGlobalPrefs(this);
         PreferencesManager.saveGlobalPrefs(this, login, password, null, null, null, 1, null, null);
         PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_COURSE);
         
         Intent intent = new Intent(this, SetupCourseActivity.class);
+        if (isFromStudentPanel) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        }
         startActivity(intent);
         finish();
     }

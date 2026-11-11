@@ -1,0 +1,432 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/app_bg"
+    android:fillViewport="true"
+    tools:context=".ui.activities.StudentPanelActivity">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/root_constraint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:animateLayoutChanges="true"
+        android:paddingBottom="32dp">
+
+        <ImageButton
+            android:id="@+id/back_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="14dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/button_back"
+            android:src="@drawable/ic_arrow_back"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="?attr/app_text" />
+
+        <TextView
+            android:id="@+id/title_label"
+            style="@style/label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="56dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginEnd="56dp"
+            android:layout_marginBottom="0dp"
+            android:gravity="center"
+            android:text="@string/student_panel_title"
+            android:textAlignment="center"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <LinearLayout
+            android:id="@+id/content_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:animateLayoutChanges="true"
+            android:orientation="vertical"
+            android:paddingTop="24dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/title_label">
+
+            <!-- Onboarding / Study Information Header -->
+            <TextView
+                android:id="@+id/course_section_header"
+                style="@style/label"
+                android:layout_marginStart="16dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/student_panel_course_section"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <!-- Study Information Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_course_info"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                app:cardBackgroundColor="?attr/card_bg"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeColor="?attr/card_border"
+                app:strokeWidth="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:id="@+id/tv_major_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:alpha="0.65"
+                        android:text="@string/onboarding_major_label"
+                        android:textAllCaps="true"
+                        android:textColor="?attr/app_text"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_major_value"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="?attr/app_text"
+                        android:textSize="19sp"
+                        android:textStyle="bold"
+                        tools:text="Informatyka" />
+
+                    <View
+                        android:id="@+id/course_details_divider"
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginVertical="12dp"
+                        android:alpha="0.4"
+                        android:background="?attr/card_border" />
+
+                    <LinearLayout
+                        android:id="@+id/layout_course_metrics"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:paddingEnd="8dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:alpha="0.65"
+                                android:text="@string/onboarding_level_label"
+                                android:textColor="?attr/app_text"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/tv_level_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textColor="?attr/app_text"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                tools:text="I stopień" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:paddingEnd="8dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:alpha="0.65"
+                                android:text="@string/onboarding_mode_label"
+                                android:textColor="?attr/app_text"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/tv_mode_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textColor="?attr/app_text"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                tools:text="Stacjonarne" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="56dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:alpha="0.65"
+                                android:text="@string/onboarding_year_label"
+                                android:textColor="?attr/app_text"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/tv_year_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textColor="?attr/app_text"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                tools:text="2" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/layout_specialty_row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone"
+                        tools:visibility="visible">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginVertical="12dp"
+                            android:alpha="0.4"
+                            android:background="?attr/card_border" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:alpha="0.65"
+                            android:text="@string/student_panel_specialty_label"
+                            android:textColor="?attr/app_text"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tv_specialty_value"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:textColor="?attr/app_text"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            tools:text="Programowanie" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Action Buttons for Course Re-Onboarding and Credentials Change -->
+            <LinearLayout
+                android:id="@+id/layout_onboarding_actions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_re_onboarding"
+                    style="@style/settings_secondary_button"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:paddingHorizontal="10dp"
+                    android:text="@string/student_panel_btn_re_onboarding"
+                    android:textSize="14sp"
+                    app:icon="@drawable/ic_school"
+                    app:iconGravity="textStart"
+                    app:iconSize="20dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_change_credentials"
+                    style="@style/settings_secondary_button"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:paddingHorizontal="10dp"
+                    android:text="@string/student_panel_btn_change_login"
+                    android:textSize="14sp"
+                    app:icon="@drawable/ic_key"
+                    app:iconGravity="textStart"
+                    app:iconSize="20dp" />
+            </LinearLayout>
+
+            <!-- Personal Parameters Header -->
+            <TextView
+                android:id="@+id/personal_section_header"
+                style="@style/label"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="28dp"
+                android:layout_marginBottom="12dp"
+                android:text="@string/student_panel_personal_section"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/searching_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="14dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:id="@+id/searching_progress"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:indeterminate="true" />
+
+                <TextView
+                    android:id="@+id/searching_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:alpha="0.75"
+                    android:text="@string/onboarding_searching_additional_data"
+                    android:textColor="?attr/app_text"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- Student Surname Inline Edit -->
+            <TextView
+                android:id="@+id/surname_title_label"
+                style="@style/label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="2dp"
+                android:text="@string/onboarding_surname_title"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/surname_subtitle_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:alpha="0.65"
+                android:text="@string/onboarding_surname_subtitle"
+                android:textColor="?attr/app_text"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/student_surname_input"
+                style="@style/input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="8dp"
+                android:ems="8"
+                android:hint="@string/onboarding_surname_hint"
+                android:inputType="textCapWords"
+                android:paddingHorizontal="12dp"
+                android:textAlignment="textStart" />
+
+            <!-- English Group Switch & Input -->
+            <LinearLayout
+                android:id="@+id/english_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:animateLayoutChanges="true"
+                android:orientation="vertical">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/english_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
+                    android:layout_marginTop="20dp"
+                    android:text="@string/onboarding_english_switch"
+                    android:textColor="?attr/app_text"
+                    android:textSize="16sp" />
+
+                <EditText
+                    android:id="@+id/english_input"
+                    style="@style/input"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginHorizontal="16dp"
+                    android:layout_marginTop="8dp"
+                    android:ems="8"
+                    android:hint="@string/onboarding_english_hint"
+                    android:inputType="number"
+                    android:paddingHorizontal="12dp"
+                    android:textAlignment="textStart"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- Diploma Seminar Switch & Input -->
+            <LinearLayout
+                android:id="@+id/seminar_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:animateLayoutChanges="true"
+                android:orientation="vertical">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/seminar_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
+                    android:layout_marginTop="20dp"
+                    android:text="@string/onboarding_seminar_switch"
+                    android:textColor="?attr/app_text"
+                    android:textSize="16sp" />
+
+                <EditText
+                    android:id="@+id/seminar_input"
+                    style="@style/input"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginHorizontal="16dp"
+                    android:layout_marginTop="8dp"
+                    android:ems="8"
+                    android:hint="@string/onboarding_seminar_hint"
+                    android:inputType="textPersonName"
+                    android:paddingHorizontal="12dp"
+                    android:textAlignment="textStart"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- Save Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/confirm_button"
+                style="@style/button"
+                android:layout_width="183dp"
+                android:layout_height="57dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="36dp"
+                android:layout_marginBottom="16dp"
+                android:text="@string/student_panel_save_button" />
+
+        </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.core.widget.NestedScrollView>

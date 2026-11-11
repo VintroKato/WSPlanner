@@ -10,6 +10,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.GridLayout;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -36,6 +37,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SetupCourseActivity extends AppCompatActivity {
+    public static final String EXTRA_FROM_STUDENT_PANEL = "extra_from_student_panel";
+
+    private ImageButton backButton;
     private View loadingLayout;
     private LinearLayout contentLayout;
     private MaterialCardView majorCard;
@@ -67,6 +71,7 @@ public class SetupCourseActivity extends AppCompatActivity {
             return insets;
         });
 
+        backButton = findViewById(R.id.back_button);
         loadingLayout = findViewById(R.id.loading_layout);
         contentLayout = findViewById(R.id.content_layout);
         majorCard = findViewById(R.id.major_card);
@@ -78,6 +83,17 @@ public class SetupCourseActivity extends AppCompatActivity {
         modeLayout = findViewById(R.id.mode_layout);
         yearLayout = findViewById(R.id.year_layout);
         confirmButton = findViewById(R.id.confirm_button);
+
+        if (backButton != null) {
+            boolean showBack = getIntent().getBooleanExtra(EXTRA_FROM_STUDENT_PANEL, false)
+                    || PreferencesManager.isOnboardingCompleted(this);
+            if (showBack) {
+                backButton.setVisibility(View.VISIBLE);
+                backButton.setOnClickListener(v -> finish());
+            } else {
+                backButton.setVisibility(View.GONE);
+            }
+        }
 
         confirmButton.setEnabled(false);
         confirmButton.setAlpha(0.5f);

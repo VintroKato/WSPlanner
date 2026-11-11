@@ -82,8 +82,19 @@
     <string name="schedule_progress_format">Пройдено: %1$d з %2$d (%3$d%%)</string>
 
     <string name="menu_refresh_schedule">Оновити розклад</string>
-    <string name="menu_change_group">Змінити групу / курс</string>
+    <string name="menu_change_group">Панель студента</string>
+    <string name="menu_student_panel">Панель студента</string>
     <string name="menu_settings">Налаштування</string>
+
+    <string name="student_panel_title">Панель студента</string>
+    <string name="student_panel_course_section">Дані навчання</string>
+    <string name="student_panel_specialty_label">Спеціальність</string>
+    <string name="student_panel_personal_section">Особисті параметри</string>
+    <string name="student_panel_btn_re_onboarding">Змінити курс</string>
+    <string name="student_panel_btn_change_login">Логін і пароль</string>
+    <string name="student_panel_save_button">Зберегти</string>
+    <string name="student_panel_saved_toast">Дані студента збережено</string>
+    <string name="student_panel_not_specified">Не вказано</string>
 
     <string name="schedule_empty_title">У цей день занять немає</string>
     <string name="schedule_empty_subtitle">Можна відпочити або перевірити іншу дату</string>

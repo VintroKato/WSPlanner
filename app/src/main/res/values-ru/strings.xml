@@ -82,8 +82,19 @@
     <string name="schedule_progress_format">Пройдено: %1$d из %2$d (%3$d%%)</string>
 
     <string name="menu_refresh_schedule">Обновить расписание</string>
-    <string name="menu_change_group">Сменить группу / курс</string>
+    <string name="menu_change_group">Панель студента</string>
+    <string name="menu_student_panel">Панель студента</string>
     <string name="menu_settings">Настройки</string>
+
+    <string name="student_panel_title">Панель студента</string>
+    <string name="student_panel_course_section">Данные обучения</string>
+    <string name="student_panel_specialty_label">Специальность</string>
+    <string name="student_panel_personal_section">Личные параметры</string>
+    <string name="student_panel_btn_re_onboarding">Изменить курс</string>
+    <string name="student_panel_btn_change_login">Логин и пароль</string>
+    <string name="student_panel_save_button">Сохранить</string>
+    <string name="student_panel_saved_toast">Данные студента сохранены</string>
+    <string name="student_panel_not_specified">Не указана</string>
 
     <string name="schedule_empty_title">В этот день пар нет</string>
     <string name="schedule_empty_subtitle">Можно отдохнуть или выбрать другую дату</string>
