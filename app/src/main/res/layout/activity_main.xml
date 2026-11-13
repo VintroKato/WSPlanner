@@ -94,77 +94,66 @@
         <!-- Date Navigation Bar -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_badge_rect"
+            android:backgroundTint="?attr/card_bg"
             android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="8dp">
+            android:orientation="horizontal">
 
-            <!-- Segmented Date Selector Container -->
-            <LinearLayout
+            <!-- Previous Day Button -->
+            <ImageButton
+                android:id="@+id/button_prev_day"
+                android:layout_width="38dp"
+                android:layout_height="match_parent"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Previous day"
+                android:src="@drawable/ic_chevron_left" />
+
+            <!-- Return to Today Button (Visible only when not today) -->
+            <ImageButton
+                android:id="@+id/button_today"
+                android:layout_width="36dp"
+                android:layout_height="match_parent"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Return to today"
+                android:src="@drawable/ic_restore"
+                android:visibility="invisible" />
+
+            <!-- Selected Date Label (Click opens calendar) -->
+            <TextView
+                android:id="@+id/selected_date_text"
                 android:layout_width="0dp"
-                android:layout_height="40dp"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:background="@drawable/bg_badge_rect"
-                android:backgroundTint="?attr/card_bg"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <!-- Previous Day Button -->
-                <ImageButton
-                    android:id="@+id/button_prev_day"
-                    android:layout_width="38dp"
-                    android:layout_height="match_parent"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Previous day"
-                    android:src="@drawable/ic_chevron_left" />
-
-                <!-- Return to Today Button (Visible only when not today) -->
-                <ImageButton
-                    android:id="@+id/button_today"
-                    android:layout_width="36dp"
-                    android:layout_height="match_parent"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Return to today"
-                    android:src="@drawable/ic_restore"
-                    android:visibility="invisible" />
-
-                <!-- Selected Date Label (Click opens calendar) -->
-                <TextView
-                    android:id="@+id/selected_date_text"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:background="?attr/selectableItemBackground"
-                    android:text="Środa, 02.09"
-                    android:textColor="?attr/app_text"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <!-- Next Day Button -->
-                <ImageButton
-                    android:id="@+id/button_next_day"
-                    android:layout_width="38dp"
-                    android:layout_height="match_parent"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Next day"
-                    android:src="@drawable/ic_chevron_right" />
-            </LinearLayout>
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="Środa, 02.09"
+                android:textColor="?attr/app_text"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <!-- Calendar Picker Button -->
             <ImageButton
                 android:id="@+id/button_calendar_picker"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/bg_badge_rect"
-                android:backgroundTint="?attr/card_bg"
+                android:layout_width="36dp"
+                android:layout_height="match_parent"
+                android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Open calendar picker"
                 android:src="@drawable/ic_calendar" />
+
+            <!-- Next Day Button -->
+            <ImageButton
+                android:id="@+id/button_next_day"
+                android:layout_width="38dp"
+                android:layout_height="match_parent"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Next day"
+                android:src="@drawable/ic_chevron_right" />
         </LinearLayout>
 
         <!-- Last Sync Info Label -->
@@ -179,19 +168,17 @@
             android:textColor="?attr/app_text"
             android:textSize="11sp" />
 
-        <!-- SwipeRefreshLayout with RecyclerView -->
+        <!-- SwipeRefreshLayout with ViewPager2 for day swiping -->
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
             android:id="@+id/swipe_refresh_layout"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1">
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_schedule"
+            <androidx.viewpager2.widget.ViewPager2
+                android:id="@+id/schedule_view_pager"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:clipToPadding="false"
-                android:paddingBottom="32dp" />
+                android:layout_height="match_parent" />
 
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
     </LinearLayout>

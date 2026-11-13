@@ -270,7 +270,7 @@ public class UpdateDialog {
         }
 
         // Legacy / plain-text changelog format
-        List<String> bulletItems = parseBulletLines(trimmed);
+        List<String> bulletItems = UpdateManager.parseBulletLines(trimmed);
         if (!bulletItems.isEmpty()) {
             if (fallbackDesc != null) {
                 fallbackDesc.setVisibility(View.GONE);
@@ -313,12 +313,15 @@ public class UpdateDialog {
         }
 
         if (!items.isEmpty()) {
+            itemsContainer.setVisibility(View.VISIBLE);
             for (String itemText : items) {
                 View bulletView = inflater.inflate(R.layout.item_update_changelog_bullet, itemsContainer, false);
                 TextView txt = bulletView.findViewById(R.id.bullet_text);
                 txt.setText(itemText);
                 itemsContainer.addView(bulletView);
             }
+        } else {
+            itemsContainer.setVisibility(View.GONE);
         }
         if (legacyNote != null) {
             legacyNote.setVisibility(View.GONE);
@@ -329,25 +332,6 @@ public class UpdateDialog {
         }
 
         container.addView(versionView);
-    }
-
-    private static List<String> parseBulletLines(String text) {
-        List<String> list = new ArrayList<>();
-        if (text == null) return list;
-
-        String[] lines = text.split("\\r?\\n");
-        for (String rawLine : lines) {
-            String line = rawLine.trim();
-            if (line.isEmpty()) continue;
-
-            if (line.startsWith("•") || line.startsWith("-") || line.startsWith("*")) {
-                line = line.replaceFirst("^[-*•]\\s*", "").trim();
-            }
-            if (!line.isEmpty()) {
-                list.add(line);
-            }
-        }
-        return list;
     }
 
     private static String formatBadgeText(@NonNull Context context, int resId, @NonNull String version) {

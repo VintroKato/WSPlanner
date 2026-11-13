@@ -65,8 +65,8 @@ jobs:
 
           CHANGELOG_FILE="$GITHUB_WORKSPACE/.github/release-notes/changelist.md"
           {
-            echo "### What's changed"
-            echo "#### ${COMMIT_MSG}"
+            echo "## What's changed"
+            echo "### ${COMMIT_MSG}"
             echo ""
 
             if [ -f "$CHANGELOG_FILE" ]; then
@@ -79,7 +79,7 @@ jobs:
             echo "---"
             echo ""
 
-            echo "### Build info"
+            echo "## Build info"
             echo ""
             echo "> **Automated Build:** This APK was compiled and signed automatically by **GitHub Actions** directly from the public source code. It was not built or modified locally by the maintainer"
             echo ""

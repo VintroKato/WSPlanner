@@ -71,6 +71,8 @@ public class UpdateManager {
     private static final String KEY_LATEST_APK_URL = "latest_apk_download_url";
     private static final String KEY_LATEST_SHA256_URL = "latest_sha256_download_url";
     private static final String KEY_LATEST_CHANGELOG = "latest_release_changelog";
+    private static final String KEY_CHANGELOG_PARSER_VERSION = "changelog_parser_version";
+    private static final int CHANGELOG_PARSER_VERSION = 2;
 
     public static final long COOLDOWN_MS = 60_000L;
     public static final long AUTO_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000L; // 24 hours
@@ -232,10 +234,12 @@ public class UpdateManager {
         String currentAppVer = BuildConfig.VERSION_NAME;
         String cachedChangelog = getPrefs(context).getString(KEY_LATEST_CHANGELOG, "");
         boolean hasEmptyTitlesInCache = cachedChangelog.contains("\"title\":\"\"") || cachedChangelog.contains("\"title\": \"\"");
+        int cachedParserVersion = getPrefs(context).getInt(KEY_CHANGELOG_PARSER_VERSION, 0);
 
-        if (lastCheckedVer == null || !lastCheckedVer.equals(currentAppVer) || hasEmptyTitlesInCache) {
+        if (lastCheckedVer == null || !lastCheckedVer.equals(currentAppVer) || hasEmptyTitlesInCache || cachedParserVersion < CHANGELOG_PARSER_VERSION) {
             getPrefs(context).edit()
                     .putString("last_checked_app_version", currentAppVer)
+                    .putInt(KEY_CHANGELOG_PARSER_VERSION, CHANGELOG_PARSER_VERSION)
                     .remove(KEY_LAST_AUTO_CHECK_TIME)
                     .remove(KEY_LATEST_CHANGELOG)
                     .apply();
@@ -508,28 +512,60 @@ public class UpdateManager {
         });
     }
 
+    // Extract only bulleted list items from the release changelog section, excluding headings and commit titles
     public static List<String> extractChangelogBulletList(String releaseName, String body) {
+        String section = extractChangelogSection(body);
+        if (section == null || section.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        return parseBulletLines(section);
+    }
+
+    // Parse lines formatted as markdown or text bullet points ('-', '*', or '•' followed by whitespace)
+    public static List<String> parseBulletLines(String text) {
         List<String> items = new ArrayList<>();
-        String fullChangelog = extractChangelog(releaseName, body);
-        if (fullChangelog == null || fullChangelog.trim().isEmpty()) {
+        if (text == null || text.trim().isEmpty()) {
             return items;
         }
 
-        String cleanTitle = !isVersionTagOnly(releaseName) ? releaseName.trim() : null;
-        String[] lines = fullChangelog.split("\\r?\\n");
+        String[] lines = text.split("\\r?\\n");
         for (String rawLine : lines) {
             String line = rawLine.trim();
-            if (line.isEmpty()) continue;
-            if (cleanTitle != null && line.equalsIgnoreCase(cleanTitle)) continue;
-
-            if (line.startsWith("•") || line.startsWith("-") || line.startsWith("*")) {
-                line = line.replaceFirst("^[-*•]\\s*", "").trim();
-            }
-            if (!line.isEmpty()) {
-                items.add(line);
+            if (line.matches("^[-*•]\\s+.*")) {
+                String item = line.replaceFirst("^[-*•]\\s+", "")
+                        .replace("`", "")
+                        .trim();
+                if (!item.isEmpty()) {
+                    items.add(item);
+                }
             }
         }
         return items;
+    }
+
+    private static String extractChangelogSection(String body) {
+        if (body == null || body.trim().isEmpty()) {
+            return null;
+        }
+
+        String raw = body.trim();
+        Pattern p = Pattern.compile("(?i)#{1,4}\\s*(?:what['’]s changed|changelog|changes)[:\\s]*([\\s\\S]*?)(?:---|#{1,4}\\s*build info|\\Z)");
+        Matcher m = p.matcher(raw);
+        if (m.find()) {
+            return m.group(1);
+        }
+
+        // Check if there is user text placed before "### Build info" / "## Build info"
+        Matcher buildInfoMatcher = Pattern.compile("(?i)(?m)^#{1,4}\\s*build info").matcher(raw);
+        if (buildInfoMatcher.find() && buildInfoMatcher.start() > 0) {
+            String prefix = raw.substring(0, buildInfoMatcher.start()).trim();
+            // Ensure prefix is not technical boilerplate
+            if (!prefix.isEmpty() && !prefix.startsWith(">") && !prefix.startsWith("#") && !prefix.startsWith("|")) {
+                return prefix;
+            }
+        }
+
+        return null;
     }
 
     public static String extractCommitMessage(String releaseName, String body) {
@@ -542,7 +578,7 @@ public class UpdateManager {
 
         // Pattern 1: Table format from release.yml:
         // | **Commit** | daf0753a1ca6c6a39cc0bc9f94ac7c9ab490f000 (Added automatic update option in update dialog) |
-        Pattern tablePattern = Pattern.compile("(?i)\\|\\s*\\*\\*Commit\\*\\*\\s*\\|\\s*[0-9a-fA-F]+\\s*\\(([^)]+)\\)");
+        Pattern tablePattern = Pattern.compile("(?im)^\\s*\\|\\s*\\*\\*Commit\\*\\*\\s*\\|\\s*[0-9a-fA-F]+\\s*\\(([^\\r\\n|]+)\\)\\s*(?:\\||$)");
         Matcher tableMatcher = tablePattern.matcher(body);
         if (tableMatcher.find()) {
             String msg = tableMatcher.group(1);
@@ -577,29 +613,7 @@ public class UpdateManager {
 
     public static String extractChangelog(String releaseName, String body) {
         String cleanTitle = !isVersionTagOnly(releaseName) ? releaseName.trim() : null;
-        if (body == null || body.trim().isEmpty()) {
-            return cleanTitle;
-        }
-
-        String raw = body.trim();
-        String changelogSection = null;
-
-        // Strictly search for a "What's Changed" / "Changelog" / "Changes" section
-        Pattern p = Pattern.compile("(?i)#{1,4}\\s*(?:what['’]s changed|changelog|changes)[:\\s]*([\\s\\S]*?)(?:---|#{1,4}\\s*build info|\\Z)");
-        Matcher m = p.matcher(raw);
-        if (m.find()) {
-            changelogSection = m.group(1);
-        } else {
-            // Check if there is user text placed before "### Build info"
-            int buildInfoIdx = raw.indexOf("### Build info");
-            if (buildInfoIdx > 0) {
-                String prefix = raw.substring(0, buildInfoIdx).trim();
-                // Ensure prefix is not technical boilerplate
-                if (!prefix.isEmpty() && !prefix.startsWith(">") && !prefix.startsWith("#") && !prefix.startsWith("|")) {
-                    changelogSection = prefix;
-                }
-            }
-        }
+        String changelogSection = extractChangelogSection(body);
 
         // If no user changelog section exists in the release body:
         if (changelogSection == null) {

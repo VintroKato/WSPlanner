@@ -26,12 +26,8 @@ import androidx.core.graphics.Insets;
 import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.recyclerview.widget.DefaultItemAnimator;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-import android.view.animation.AnimationUtils;
-import android.view.animation.LayoutAnimationController;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
@@ -39,16 +35,16 @@ import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.DegreeLevel;
 import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.models.DaySchedule;
-import com.vintro.wsplanner.ui.adapters.ScheduleAdapter;
+import com.vintro.wsplanner.ui.adapters.DayPagerAdapter;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.ui.widgets.WidgetUpdateManager;
 import com.vintro.wsplanner.utils.Logger;
 import com.vintro.wsplanner.utils.NetworkUtils;
 import com.vintro.wsplanner.utils.ScheduleFileOpener;
 
-import java.io.File;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
@@ -68,13 +64,12 @@ public class MainActivity extends AppCompatActivity {
     private TextView selectedDateText;
     private TextView lastSyncText;
     private SwipeRefreshLayout swipeRefreshLayout;
-    private RecyclerView recyclerSchedule;
+    private ViewPager2 scheduleViewPager;
 
-    private ScheduleAdapter scheduleAdapter;
+    private DayPagerAdapter dayPagerAdapter;
     private ScheduleRepository scheduleRepository;
 
     private LocalDate selectedDate = LocalDate.now();
-    private DaySchedule currentDaySchedule;
 
     // timer handler for minute updates
     private final Handler tickerHandler = new Handler(Looper.getMainLooper());
@@ -167,7 +162,7 @@ public class MainActivity extends AppCompatActivity {
         activeConfigSignature = scheduleRepository.buildConfigSignature();
 
         initViews();
-        setupRecyclerView();
+        setupViewPager();
         setupListeners();
         boolean isOutdated = scheduleRepository != null && scheduleRepository.isScheduleOutdated();
         loadSchedule(isOutdated);
@@ -186,7 +181,7 @@ public class MainActivity extends AppCompatActivity {
         selectedDateText = findViewById(R.id.selected_date_text);
         lastSyncText = findViewById(R.id.last_sync_text);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
-        recyclerSchedule = findViewById(R.id.recycler_schedule);
+        scheduleViewPager = findViewById(R.id.schedule_view_pager);
 
         setupSwipeRefreshColors();
     }
@@ -210,13 +205,57 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void setupRecyclerView() {
-        scheduleAdapter = new ScheduleAdapter(this);
-        recyclerSchedule.setLayoutManager(new LinearLayoutManager(this));
-        recyclerSchedule.setAdapter(scheduleAdapter);
-        recyclerSchedule.setItemAnimator(new DefaultItemAnimator());
-        LayoutAnimationController animation = AnimationUtils.loadLayoutAnimation(this, R.anim.layout_animation_slide_up);
-        recyclerSchedule.setLayoutAnimation(animation);
+    private void setupViewPager() {
+        dayPagerAdapter = new DayPagerAdapter(this, scheduleRepository);
+        scheduleViewPager.setAdapter(dayPagerAdapter);
+        // keep at least 1 adjacent day pre-rendered on both sides for instant swiping
+        scheduleViewPager.setOffscreenPageLimit(1);
+        int initialPos = dayPagerAdapter.getPositionForDate(selectedDate);
+        scheduleViewPager.setCurrentItem(initialPos, false);
+
+        scheduleViewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                LocalDate pageDate = dayPagerAdapter.getDateForPosition(position);
+                if (!pageDate.isEqual(selectedDate)) {
+                    selectedDate = pageDate;
+                    Logger.d("MainActivity.onPageSelected", "Selected date changed by pager to: " + selectedDate);
+                    updateDateUI();
+                }
+            }
+
+            @Override
+            public void onPageScrollStateChanged(int state) {
+                if (swipeRefreshLayout != null && !swipeRefreshLayout.isRefreshing()) {
+                    swipeRefreshLayout.setEnabled(state == ViewPager2.SCROLL_STATE_IDLE);
+                }
+            }
+        });
+    }
+
+    private void navigateToDate(LocalDate targetDate) {
+        if (dayPagerAdapter == null || scheduleViewPager == null || targetDate == null) return;
+        int currentPos = scheduleViewPager.getCurrentItem();
+        int targetPos = dayPagerAdapter.getPositionForDate(targetDate);
+        LocalDate clampedDate = dayPagerAdapter.getDateForPosition(targetPos);
+        selectedDate = clampedDate;
+        updateDateUI();
+
+        if (targetPos == currentPos) {
+            return;
+        }
+
+        int distance = Math.abs(targetPos - currentPos);
+        if (distance == 1) {
+            // smooth horizontal transition for adjacent days
+            Logger.d("MainActivity.navigateToDate", "Smooth scrolling to adjacent date: " + clampedDate);
+            scheduleViewPager.setCurrentItem(targetPos, true);
+        } else {
+            // instant switch with card slide-up animation for multi-day jumps
+            Logger.d("MainActivity.navigateToDate", "Jumping to date: " + clampedDate + " with card entrance animation");
+            dayPagerAdapter.triggerCardAnimationForPosition(targetPos);
+            scheduleViewPager.setCurrentItem(targetPos, false);
+        }
     }
 
     private void setupListeners() {
@@ -237,32 +276,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // day navigation buttons
-        buttonPrevDay.setOnClickListener(v -> {
-            selectedDate = selectedDate.minusDays(1);
-            if (scheduleAdapter != null) {
-                scheduleAdapter.clear();
-            }
-            updateDateUI();
-            loadSchedule(false);
-        });
+        buttonPrevDay.setOnClickListener(v -> navigateToDate(selectedDate.minusDays(1)));
 
-        buttonNextDay.setOnClickListener(v -> {
-            selectedDate = selectedDate.plusDays(1);
-            if (scheduleAdapter != null) {
-                scheduleAdapter.clear();
-            }
-            updateDateUI();
-            loadSchedule(false);
-        });
+        buttonNextDay.setOnClickListener(v -> navigateToDate(selectedDate.plusDays(1)));
 
-        buttonToday.setOnClickListener(v -> {
-            selectedDate = LocalDate.now();
-            if (scheduleAdapter != null) {
-                scheduleAdapter.clear();
-            }
-            updateDateUI();
-            loadSchedule(false);
-        });
+        buttonToday.setOnClickListener(v -> navigateToDate(LocalDate.now()));
 
         // calendar picker dialog
         buttonCalendarPicker.setOnClickListener(v -> openCalendarPicker());
@@ -323,12 +341,12 @@ public class MainActivity extends AppCompatActivity {
         scheduleRepository.getScheduleForDate(selectedDate, forceRefresh, new ScheduleRepository.ScheduleCallback<DaySchedule>() {
             @Override
             public void onSuccess(DaySchedule result) {
-                currentDaySchedule = result;
                 Logger.i("MainActivity.loadSchedule", "Schedule loaded successfully. Day items count: " + (result != null ? result.getLessons().size() : 0));
                 runOnUiThread(() -> {
                     swipeRefreshLayout.setRefreshing(false);
-                    scheduleAdapter.submitDaySchedule(result);
-                    recyclerSchedule.scheduleLayoutAnimation();
+                    if (dayPagerAdapter != null && scheduleViewPager != null) {
+                        dayPagerAdapter.onScheduleLoaded(scheduleViewPager.getCurrentItem());
+                    }
                     updateLastSyncUI();
                     if (forceRefresh && result != null && result.isFromCacheFallback()) {
                         Logger.i("MainActivity.loadSchedule", "Displaying schedule from offline cache fallback");
@@ -343,7 +361,9 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     swipeRefreshLayout.setRefreshing(false);
                     updateLastSyncUI();
-                    scheduleAdapter.showNoInternetState();
+                    if (dayPagerAdapter != null) {
+                        dayPagerAdapter.showNoInternetState();
+                    }
                 });
             }
         });
@@ -398,17 +418,26 @@ public class MainActivity extends AppCompatActivity {
         DatePickerDialog picker = new DatePickerDialog(
                 this,
                 (view, year, month, dayOfMonth) -> {
-                    selectedDate = LocalDate.of(year, month + 1, dayOfMonth);
-                    if (scheduleAdapter != null) {
-                        scheduleAdapter.clear();
-                    }
-                    updateDateUI();
-                    loadSchedule(false);
+                    LocalDate pickedDate = LocalDate.of(year, month + 1, dayOfMonth);
+                    navigateToDate(pickedDate);
                 },
                 selectedDate.getYear(),
                 selectedDate.getMonthValue() - 1,
                 selectedDate.getDayOfMonth()
         );
+        if (dayPagerAdapter != null) {
+            long minMillis = dayPagerAdapter.getMinDate()
+                    .atStartOfDay(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli();
+            long maxMillis = dayPagerAdapter.getMaxDate()
+                    .atTime(23, 59, 59)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli();
+            picker.getDatePicker().setMinDate(minMillis);
+            picker.getDatePicker().setMaxDate(maxMillis);
+        }
         picker.show();
     }
 
@@ -479,9 +508,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void onMinuteTick() {
-        if (selectedDate.isEqual(LocalDate.now()) && currentDaySchedule != null) {
-            // refresh schedule items for timer updates
-            scheduleAdapter.submitDaySchedule(currentDaySchedule);
+        if (dayPagerAdapter != null) {
+            // refresh today page items for active lesson timer updates
+            dayPagerAdapter.refreshDate(LocalDate.now());
         }
     }
 
@@ -499,11 +528,15 @@ public class MainActivity extends AppCompatActivity {
         }
 
         LocalDate today = LocalDate.now();
-        // If app was minimized yesterday and reopened today without user navigating away
+        boolean rangeUpdated = dayPagerAdapter != null && dayPagerAdapter.updateAnchorDateIfNeeded(today);
+        // if app was minimized yesterday and reopened today without user navigating away
         if (selectedDate.isBefore(today)) {
             selectedDate = today;
-            if (scheduleAdapter != null) {
-                scheduleAdapter.clear();
+        }
+        if (dayPagerAdapter != null && scheduleViewPager != null) {
+            int expectedPos = dayPagerAdapter.getPositionForDate(selectedDate);
+            if (rangeUpdated || scheduleViewPager.getCurrentItem() != expectedPos) {
+                scheduleViewPager.setCurrentItem(expectedPos, false);
             }
         }
 
@@ -517,18 +550,17 @@ public class MainActivity extends AppCompatActivity {
         if (configChanged) {
             Logger.i("MainActivity.onResume", "Student configuration changed, reloading schedule");
             activeConfigSignature = currentSig;
-            currentDaySchedule = null;
-            if (scheduleAdapter != null) {
-                scheduleAdapter.clear();
+            if (dayPagerAdapter != null) {
+                dayPagerAdapter.clearAll();
             }
             loadSchedule(false);
-        } else if (selectedDate.isEqual(today)) {
-            // Immediately update timeline states on resume so "NOW" / "NEXT" match the real current time
-            if (currentDaySchedule != null && scheduleAdapter != null) {
-                scheduleAdapter.submitDaySchedule(currentDaySchedule);
-            } else {
-                loadSchedule(false);
+        } else if (scheduleRepository != null && scheduleRepository.isMemoryCacheLoaded()) {
+            // immediately update timeline states on resume so active lesson badges match real current time
+            if (dayPagerAdapter != null) {
+                dayPagerAdapter.refreshDate(today);
             }
+        } else {
+            loadSchedule(false);
         }
 
         // Auto-refresh schedule if older than 6 hours

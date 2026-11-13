@@ -154,6 +154,55 @@ public class ExampleUnitTest {
     }
 
     @Test
+    public void testExtractChangelogBulletList_ExcludesCommitHeadingAndNonBulletLines() {
+        String releaseName = "v1.2.0";
+        String body = "## What's changed\n"
+                + "### Added Student panel (profile page)\n\n"
+                + "- Added a Student Panel with options to change your login and password\n"
+                + "- Changed the \"Change group\" button on the main screen to \"Student Panel\"\n\n"
+                + "---\n\n"
+                + "## Build info\n\n"
+                + "| **Commit** | 9c40e0e000000000000000000000000000000000 (Added Student panel (profile page)) |\n";
+
+        java.util.List<String> items = com.vintro.wsplanner.services.UpdateManager.extractChangelogBulletList(releaseName, body);
+        assertEquals(2, items.size());
+        assertEquals("Added a Student Panel with options to change your login and password", items.get(0));
+        assertEquals("Changed the \"Change group\" button on the main screen to \"Student Panel\"", items.get(1));
+        assertEquals("Added Student panel (profile page)",
+                com.vintro.wsplanner.services.UpdateManager.extractCommitMessage(releaseName, body));
+    }
+
+    @Test
+    public void testExtractChangelogBulletList_WhenOnlyCommitHeadingPresent() {
+        String releaseName = "v1.2.1";
+        String body = "## What's changed\n"
+                + "### Minor bugfix\n\n"
+                + "---\n\n"
+                + "## Build info\n\n"
+                + "| **Commit** | abcdef123456 (Minor bugfix) |\n";
+
+        java.util.List<String> items = com.vintro.wsplanner.services.UpdateManager.extractChangelogBulletList(releaseName, body);
+        assertTrue(items.isEmpty());
+        assertEquals("Minor bugfix",
+                com.vintro.wsplanner.services.UpdateManager.extractCommitMessage(releaseName, body));
+    }
+
+    @Test
+    public void testParseBulletLines_IgnoresNonBulletAndMarkdownFormatting() {
+        String text = "Heading line\n"
+                + "### Subheading\n"
+                + "**Bold note:** not a bullet\n"
+                + "---\n"
+                + "- First `-` item\n"
+                + "  - Nested `-` item\n";
+
+        java.util.List<String> items = com.vintro.wsplanner.services.UpdateManager.parseBulletLines(text);
+        assertEquals(2, items.size());
+        assertEquals("First - item", items.get(0));
+        assertEquals("Nested - item", items.get(1));
+    }
+
+    @Test
     public void testExtractCommitMessage() {
         // Case 1: Table format (e.g. v1.0.2)
         String bodyTable = "| **Commit** | daf0753a1ca6c6a39cc0bc9f94ac7c9ab490f000 (Added automatic update option in update dialog) |";

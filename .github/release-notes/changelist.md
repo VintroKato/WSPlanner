@@ -1,2 +1,3 @@
-- Добавлена панель студента с возможностью изменить логин и пароль, пройти онбоардинг заново, а также исправить фамилию, группу по английскому и учителя по семинару диплома
-- На главном экране кнопка "Изменить группу" изменена на "Панель студента"
+- Added horizontal left and right swiping between days on the main screen
+- Moved the calendar button inside the date bar to the left of the next-day arrow for a cleaner layout
+- Fixed the update dialog so the commit title is no longer duplicated in the list of changes

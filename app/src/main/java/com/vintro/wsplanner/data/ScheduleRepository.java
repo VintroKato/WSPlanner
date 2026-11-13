@@ -231,6 +231,22 @@ public class ScheduleRepository {
         return createDayScheduleForDate(date);
     }
 
+    // check if in-memory lesson cache is loaded and matches current configuration
+    public boolean isMemoryCacheLoaded() {
+        String currentConfig = buildConfigSignature();
+        if (currentConfig == null) return false;
+        synchronized (cacheLock) {
+            return cachedAllLessons != null && currentConfig.equals(lastConfigSignature);
+        }
+    }
+
+    // get day schedule directly from in-memory cache without disk or network access
+    public DaySchedule getScheduleForDateFromMemory(LocalDate date) {
+        synchronized (cacheLock) {
+            return createDayScheduleForDate(date);
+        }
+    }
+
     // load schedule from disk cache if in-memory cache is missing or invalidated, without any network operations
     public void ensureLocalCacheLoadedOnly() {
         String currentConfig = buildConfigSignature();
