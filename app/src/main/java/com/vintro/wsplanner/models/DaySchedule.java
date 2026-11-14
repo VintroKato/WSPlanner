@@ -11,23 +11,35 @@ import java.util.List;
 
 // schedule for a single day
 public class DaySchedule implements Serializable {
+    public static final Comparator<Lesson> START_TIME_COMPARATOR = (a, b) -> {
+        if (a.getStartTime() == null && b.getStartTime() == null) return 0;
+        if (a.getStartTime() == null) return 1;
+        if (b.getStartTime() == null) return -1;
+        return a.getStartTime().compareTo(b.getStartTime());
+    };
+
     private final LocalDate date;
     private final List<Lesson> lessons;
     private final LocalDateTime lastSyncTimestamp;
     private boolean isFromCacheFallback = false;
 
     public DaySchedule(LocalDate date, List<Lesson> lessons, LocalDateTime lastSyncTimestamp) {
+        this(date, lessons, lastSyncTimestamp, false);
+    }
+
+    public DaySchedule(LocalDate date, List<Lesson> lessons, LocalDateTime lastSyncTimestamp, boolean alreadySorted) {
         this.date = date;
-        this.lessons = lessons != null ? new ArrayList<>(lessons) : new ArrayList<>();
         this.lastSyncTimestamp = lastSyncTimestamp;
 
-        // sort by start time
-        this.lessons.sort((a, b) -> {
-            if (a.getStartTime() == null && b.getStartTime() == null) return 0;
-            if (a.getStartTime() == null) return 1;
-            if (b.getStartTime() == null) return -1;
-            return a.getStartTime().compareTo(b.getStartTime());
-        });
+        if (lessons == null || lessons.isEmpty()) {
+            this.lessons = Collections.emptyList();
+        } else {
+            this.lessons = new ArrayList<>(lessons);
+            if (!alreadySorted && this.lessons.size() > 1) {
+                // sort by start time
+                this.lessons.sort(START_TIME_COMPARATOR);
+            }
+        }
     }
 
     // get ongoing lesson

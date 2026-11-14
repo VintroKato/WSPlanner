@@ -8,7 +8,6 @@ import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
 
 import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -30,6 +29,7 @@ public class DayPagerAdapter extends RecyclerView.Adapter<DayPagerAdapter.DayPag
     private final Context context;
     private final ScheduleRepository scheduleRepository;
     private final Set<DayPageViewHolder> boundHolders = new HashSet<>();
+    private final RecyclerView.RecycledViewPool sharedViewPool = new RecyclerView.RecycledViewPool();
 
     private LocalDate anchorDate;
     private LocalDate minDate;
@@ -42,6 +42,9 @@ public class DayPagerAdapter extends RecyclerView.Adapter<DayPagerAdapter.DayPag
     public DayPagerAdapter(Context context, ScheduleRepository scheduleRepository) {
         this.context = context;
         this.scheduleRepository = scheduleRepository;
+        sharedViewPool.setMaxRecycledViews(ScheduleItem.TYPE_LESSON, 15);
+        sharedViewPool.setMaxRecycledViews(ScheduleItem.TYPE_BREAK_GAP, 10);
+        sharedViewPool.setMaxRecycledViews(ScheduleItem.TYPE_EMPTY, 5);
         updateDateRange(LocalDate.now());
     }
 
@@ -185,9 +188,13 @@ public class DayPagerAdapter extends RecyclerView.Adapter<DayPagerAdapter.DayPag
             super(itemView);
             recyclerView = itemView.findViewById(R.id.day_recycler_view);
             scheduleAdapter = new ScheduleAdapter(context);
-            recyclerView.setLayoutManager(new LinearLayoutManager(context));
+            LinearLayoutManager layoutManager = new LinearLayoutManager(context);
+            layoutManager.setInitialPrefetchItemCount(6);
+            recyclerView.setLayoutManager(layoutManager);
+            recyclerView.setRecycledViewPool(sharedViewPool);
+            recyclerView.setHasFixedSize(true);
             recyclerView.setAdapter(scheduleAdapter);
-            recyclerView.setItemAnimator(new DefaultItemAnimator());
+            recyclerView.setItemAnimator(null);
         }
 
         void bind(LocalDate date, boolean animateCards) {

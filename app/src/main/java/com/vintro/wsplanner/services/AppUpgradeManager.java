@@ -45,6 +45,7 @@ public class AppUpgradeManager {
         }
         new Thread(() -> {
             try {
+                Logger.flush();
                 File logFile = Logger.getLogFile(context);
                 if (logFile != null && logFile.exists() && logFile.length() > 0) {
                     File parentDir = logFile.getParentFile();

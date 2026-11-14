@@ -213,7 +213,7 @@ public class ParserTest {
         BachelorFullTimeParser parser = new BachelorFullTimeParser();
         parser.setAcademicYears(2025, 2026);
 
-        // case 1: added date with custom hours
+        // added date with custom hours
         String case1 = "Sp.: Projektowanie i konfiguracja sieci komputerowych zorientowana na bezpieczeństwo cz. 2 - laboratorium 40h\n" +
                 "mgr Piotr Janiec\n" +
                 "daty: 07.04, 14.04, 21.04, 28.04, 05.05, 12.05, 19.05, 26.05, 09.06\n" +
@@ -240,7 +240,7 @@ public class ParserTest {
         assertEquals("Sala 207", l1706.getLocation().getDisplayText());
         assertEquals("laboratorium", l1706.getLessonType());
 
-        // case 2: multiple added dates
+        // multiple added dates
         String case2 = "Sp.: Projektowanie i konfiguracja sieci komputerowych zorientowana na bezpieczeństwo cz. II - wykład 20h\n" +
                 "mgr Piotr Janiec\n" +
                 "daty: 05.03, 12.03, 09.04, 16.04, 23.04, 07.05, 14.05, 21.05\n" +
@@ -270,7 +270,7 @@ public class ParserTest {
         assertTrue(found0206);
         assertTrue(found1606);
 
-        // case 3: ignored hour entry
+        // ignored hour entry
         String case3 = "Bezpieczeństwo systemów informatycznych - wykład 20h\n" +
                 "mgr Agnieszka Paradzińska\n" +
                 "daty: 06.03, 20.03, 10.04, 17.04, 24.04, 22.05, 29.05, 12.06\n" +
@@ -287,7 +287,7 @@ public class ParserTest {
             assertNotNull(l.getDate());
         }
 
-        // case 4: dot as time separator and ignored hour entry
+        // dot as time separator and ignored hour entry
         String case4 = "Inżynieria oprogramowania - projekt 30h\n" +
                 "mgr Małgorzata Wieleba\n" +
                 "daty: 02.03, 09.03, 16.03, 23.03, 30.03, 13.04, 20.04, 27.04, 11.05\n" +

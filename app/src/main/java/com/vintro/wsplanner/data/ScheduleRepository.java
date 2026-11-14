@@ -28,6 +28,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,7 @@ public class ScheduleRepository {
     private final Object downloadLock = new Object();
     private final java.util.concurrent.atomic.AtomicBoolean isDownloadingInProgress = new java.util.concurrent.atomic.AtomicBoolean(false);
     private List<Lesson> cachedAllLessons;
+    private Map<LocalDate, List<Lesson>> cachedLessonsByDate;
     private LocalDateTime lastSyncTime;
     private String lastConfigSignature;
     private boolean isLastLoadFromCacheFallback = false;
@@ -212,7 +214,7 @@ public class ScheduleRepository {
         }).start();
     }
 
-    // get schedule for a day synchronously (STRICTLY NON-BLOCKING, NEVER RUNS NETWORK ON CALLING THREAD)
+    // get schedule for a day synchronously without blocking or running network on calling thread
     public DaySchedule getScheduleForDateSync(LocalDate date) {
         Logger.d("ScheduleRepository.getScheduleForDateSync", "Requesting sync schedule for date: " + date);
         if (!isConfigurationComplete()) {
@@ -220,7 +222,7 @@ public class ScheduleRepository {
             return createDayScheduleForDate(date);
         }
 
-        // Ensure in-memory or disk cache is loaded WITHOUT network
+        // ensure in-memory or disk cache is loaded without network
         ensureLocalCacheLoadedOnly();
 
         // If schedule is outdated (> 6 hours) and device is online, trigger asynchronous background refresh
@@ -231,19 +233,17 @@ public class ScheduleRepository {
         return createDayScheduleForDate(date);
     }
 
-    // check if in-memory lesson cache is loaded and matches current configuration
+    // check if in-memory lesson cache is loaded without re-reading preferences on every swipe
     public boolean isMemoryCacheLoaded() {
-        String currentConfig = buildConfigSignature();
-        if (currentConfig == null) return false;
         synchronized (cacheLock) {
-            return cachedAllLessons != null && currentConfig.equals(lastConfigSignature);
+            return cachedAllLessons != null && lastConfigSignature != null;
         }
     }
 
     // get day schedule directly from in-memory cache without disk or network access
     public DaySchedule getScheduleForDateFromMemory(LocalDate date) {
         synchronized (cacheLock) {
-            return createDayScheduleForDate(date);
+            return createDayScheduleForDateFromMemory(date);
         }
     }
 
@@ -370,23 +370,52 @@ public class ScheduleRepository {
         return result;
     }
 
-    private DaySchedule createDayScheduleForDate(LocalDate date) {
-        LocalDateTime syncTime = getLastSyncTime();
-        if (cachedAllLessons == null || cachedAllLessons.isEmpty()) {
-            DaySchedule ds = new DaySchedule(date, Collections.emptyList(), syncTime);
+    private void rebuildLessonsByDateIndex(List<Lesson> lessons) {
+        if (lessons == null || lessons.isEmpty()) {
+            cachedLessonsByDate = Collections.emptyMap();
+            return;
+        }
+        Map<LocalDate, List<Lesson>> grouped = new HashMap<>();
+        for (Lesson lesson : lessons) {
+            if (lesson == null || lesson.getDate() == null) continue;
+            grouped.computeIfAbsent(lesson.getDate(), d -> new ArrayList<>()).add(lesson);
+        }
+        for (Map.Entry<LocalDate, List<Lesson>> entry : grouped.entrySet()) {
+            List<Lesson> dayList = entry.getValue();
+            if (dayList.size() > 1) {
+                dayList.sort(DaySchedule.START_TIME_COMPARATOR);
+            }
+            entry.setValue(Collections.unmodifiableList(dayList));
+        }
+        cachedLessonsByDate = Collections.unmodifiableMap(grouped);
+    }
+
+    private DaySchedule buildDayScheduleFromIndex(LocalDate date, LocalDateTime syncTime) {
+        if (date == null || cachedLessonsByDate == null || cachedLessonsByDate.isEmpty()) {
+            DaySchedule ds = new DaySchedule(date, Collections.emptyList(), syncTime, true);
             ds.setFromCacheFallback(isLastLoadFromCacheFallback);
             return ds;
         }
-
-        List<Lesson> dayLessons = new ArrayList<>();
-        for (Lesson l : cachedAllLessons) {
-            if (l.getDate() != null && l.getDate().isEqual(date)) {
-                dayLessons.add(l);
-            }
-        }
-        DaySchedule ds = new DaySchedule(date, dayLessons, syncTime);
+        List<Lesson> dayLessons = cachedLessonsByDate.get(date);
+        DaySchedule ds = new DaySchedule(
+                date,
+                dayLessons != null ? dayLessons : Collections.emptyList(),
+                syncTime,
+                true
+        );
         ds.setFromCacheFallback(isLastLoadFromCacheFallback);
         return ds;
+    }
+
+    private DaySchedule createDayScheduleForDateFromMemory(LocalDate date) {
+        return buildDayScheduleFromIndex(date, lastSyncTime);
+    }
+
+    private DaySchedule createDayScheduleForDate(LocalDate date) {
+        LocalDateTime syncTime = getLastSyncTime();
+        synchronized (cacheLock) {
+            return buildDayScheduleFromIndex(date, syncTime);
+        }
     }
 
     private SubjectDetails createSubjectDetails(String subjectName, String rawLessonType) {
@@ -571,8 +600,8 @@ public class ScheduleRepository {
                 }
             }
 
-            // CRITICAL: Only notify widgets if download SUCCEEDED, NOT on every local cache read or failure fallback!
-            // Notifying widgets on cache read caused an infinite loop because widget update calls getScheduleForDateSync!
+            // only notify widgets if download succeeded, not on local cache read or failure fallback
+            // notifying widgets on cache read caused an infinite loop because widget update calls getScheduleForDateSync
             if (downloadSucceeded) {
                 try {
                     WidgetUpdateManager.updateAllWidgets(appContext);
@@ -618,16 +647,23 @@ public class ScheduleRepository {
 
         try (InputStream in = new FileInputStream(file)) {
             Schedule schedule = parser.parse(in, major, semester, surname, specialty, langGroup, seminarTeacher);
-            if (schedule != null && schedule.getLessons() != null) {
-                cachedAllLessons = new ArrayList<>(schedule.getLessons());
-                Logger.i("ScheduleRepository.parseFile", "Successfully cached " + cachedAllLessons.size() + " lessons from file: " + file.getName());
-            } else {
-                cachedAllLessons = new ArrayList<>();
-                Logger.w("ScheduleRepository.parseFile", "Parser returned null or empty lessons list");
+            synchronized (cacheLock) {
+                if (schedule != null && schedule.getLessons() != null) {
+                    cachedAllLessons = new ArrayList<>(schedule.getLessons());
+                    rebuildLessonsByDateIndex(cachedAllLessons);
+                    Logger.i("ScheduleRepository.parseFile", "Successfully cached " + cachedAllLessons.size() + " lessons from file: " + file.getName());
+                } else {
+                    cachedAllLessons = new ArrayList<>();
+                    cachedLessonsByDate = Collections.emptyMap();
+                    Logger.w("ScheduleRepository.parseFile", "Parser returned null or empty lessons list");
+                }
             }
         } catch (Exception e) {
             Logger.e("ScheduleRepository.parseFile", "Error parsing schedule file: " + Logger.formatException(e), e);
-            cachedAllLessons = new ArrayList<>();
+            synchronized (cacheLock) {
+                cachedAllLessons = new ArrayList<>();
+                cachedLessonsByDate = Collections.emptyMap();
+            }
         }
     }
 
@@ -740,6 +776,7 @@ public class ScheduleRepository {
         Logger.d("ScheduleRepository.invalidateMemoryCache", "Invalidating in-memory schedule cache for filter update");
         synchronized (cacheLock) {
             cachedAllLessons = null;
+            cachedLessonsByDate = null;
             lastConfigSignature = null;
         }
     }
@@ -749,6 +786,7 @@ public class ScheduleRepository {
         Logger.d("ScheduleRepository.invalidateCache", "Invalidating memory and disk schedule cache");
         synchronized (cacheLock) {
             cachedAllLessons = null;
+            cachedLessonsByDate = null;
             lastConfigSignature = null;
             lastSyncTime = null;
             isLastLoadFromCacheFallback = false;

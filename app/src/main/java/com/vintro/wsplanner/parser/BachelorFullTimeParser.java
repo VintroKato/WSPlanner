@@ -293,7 +293,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
         String globalTeacher = "Unknown Teacher";
         String globalRoom = "Unknown Room";
 
-        // 1. Gather all subject header lines (multi-line subjects wrapped across lines)
+        // gather all subject header lines including multi-line wrapped subjects
         List<String> subjectHeaderLines = new ArrayList<>();
         int lineIdx = 0;
         while (lineIdx < lines.size()) {
@@ -578,7 +578,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
                         if (globalRoom.equals("Unknown Room") || globalRoom.equals("WSPA")) {
                             globalRoom = potentialRoom;
                         } else if (potentialRoom.equals("WSPA")) {
-                            // If globalRoom is already set (e.g. "sala 111") or offsite, ignore redundant "WSPA"
+                            // ignore redundant default university label when room or offsite address is already set
                         } else if (globalRoom.equals("online") && potentialRoom.startsWith("sala")) {
                             // If global room was tentatively online, a concrete physical room is the base room
                             globalRoom = potentialRoom;

@@ -44,28 +44,28 @@ public class ExampleUnitTest {
         String masked2 = Logger.maskSensitiveData(log2);
         assertTrue(masked2.contains("StudentSurname: 'N***k'"));
 
-        // User case 1: Name extracted from dashboard
+        // dashboard extracted name log
         String log3 = "Name extracted from dashboard: Jan Kowalski";
         String masked3 = Logger.maskSensitiveData(log3);
         assertEquals("Name extracted from dashboard: J*n K******i", masked3);
 
-        // User case 2: CourseSetupService log
+        // course setup service log
         String log4 = "Course setup data loaded successfully: 17 courses, EnglishGroup=null, StudentName='Jan Kowalski', SeminarTeacher='mgr inż. Sebastian Witek'";
         String masked4 = Logger.maskSensitiveData(log4);
         assertTrue(masked4.contains("StudentName='J*n K******i'"));
         assertTrue(masked4.contains("SeminarTeacher='mgr inż. Sebastian Witek'"));
 
-        // User case 3: SetupCourseActivity log
+        // setup course activity log
         String log5 = "Loaded 17 courses. Full name: 'Jan Kowalski'";
         String masked5 = Logger.maskSensitiveData(log5);
         assertEquals("Loaded 17 courses. Full name: 'J*n K******i'", masked5);
 
-        // User case 4: PreferencesManager log
+        // preferences manager log
         String log6 = "Setting global student name: Jan Kowalski";
         String masked6 = Logger.maskSensitiveData(log6);
         assertEquals("Setting global student name: J*n K******i", masked6);
 
-        // Additional cases: extracted from files.php, FullName, etc.
+        // additional cases for files.php and full name keys
         String log7 = "Name extracted from files.php: Jan Kowalski";
         assertEquals("Name extracted from files.php: J*n K******i", Logger.maskSensitiveData(log7));
 
@@ -101,11 +101,11 @@ public class ExampleUnitTest {
 
     @Test
     public void testExtractChangelog_WhenNoChangelogSection_AndBodyIsTechnical() {
-        // Reproduce exact case from user's screenshot: v1.0.2 with only Build Info
+        // release with only build info must return null
         String releaseName = "v1.0.2";
         String body = "### Build Info\n\n> **Automated Build:** This APK was compiled and signed automatically by **GitHub Actions**...\n\n| Property | Value |\n| File | WSPlanner-v1.0.2.apk |";
         String result = com.vintro.wsplanner.services.UpdateManager.extractChangelog(releaseName, body);
-        assertNull(result); // Must be null so dialog falls back to localized update_dialog_desc!
+        assertNull(result); // must be null so dialog falls back to localized text
     }
 
     @Test
@@ -204,17 +204,17 @@ public class ExampleUnitTest {
 
     @Test
     public void testExtractCommitMessage() {
-        // Case 1: Table format (e.g. v1.0.2)
+        // table format release notes
         String bodyTable = "| **Commit** | daf0753a1ca6c6a39cc0bc9f94ac7c9ab490f000 (Added automatic update option in update dialog) |";
         assertEquals("Added automatic update option in update dialog",
                 com.vintro.wsplanner.services.UpdateManager.extractCommitMessage("v1.0.2", bodyTable));
 
-        // Case 2: Source Commit list format (e.g. v1.0.1)
+        // bullet list source commit format
         String bodyBullet = "* **Source Commit:** 7f7d9a559fcf6e1d89d427bf502ee1084613225d — Added adaptive font size and sticky bottom to small widget";
         assertEquals("Added adaptive font size and sticky bottom to small widget",
                 com.vintro.wsplanner.services.UpdateManager.extractCommitMessage("v1.0.1", bodyBullet));
 
-        // Case 3: Release name already has commit message
+        // release name already containing commit message
         assertEquals("Fix crash on Android 14",
                 com.vintro.wsplanner.services.UpdateManager.extractCommitMessage("Fix crash on Android 14", bodyTable));
     }

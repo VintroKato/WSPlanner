@@ -77,6 +77,7 @@ public class PreferencesManager {
     public static void resetCorruptedStorage(Context context) {
         try {
             encryptedPrefsInstance = null;
+            SecurePreferences.clearKeyCache();
             context.deleteSharedPreferences(prefs_name);
             context.deleteSharedPreferences(secure_prefs_name);
             Logger.i("PreferencesManager.resetCorruptedStorage", "Corrupted storage reset successfully");

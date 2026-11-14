@@ -22,6 +22,7 @@ public class WSPlannerApp extends Application {
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
             String errorDetails = Logger.formatException(throwable);
             Logger.e("WSPlannerApp.uncaughtException", "CRASH: Uncaught exception in thread '" + thread.getName() + "': " + errorDetails, throwable);
+            Logger.flush();
             if (defaultHandler != null) {
                 defaultHandler.uncaughtException(thread, throwable);
             }

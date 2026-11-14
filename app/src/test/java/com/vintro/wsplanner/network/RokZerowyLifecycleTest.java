@@ -29,7 +29,7 @@ import static org.junit.Assert.assertTrue;
 // end-to-end tests verifying all lifecycle stages of rok zerowy preparatory course support
 public class RokZerowyLifecycleTest {
 
-    // stage 1: puw html parsing and student zone prioritization
+    // puw html parsing and student zone prioritization
 
     @Test
     public void testPuwParsing_WhenBothRegularAndRokZerowy_PrioritizesRegularStudentZone() {
@@ -69,7 +69,7 @@ public class RokZerowyLifecycleTest {
         assertEquals(DegreeLevel.ZERO_YEAR, zeroCourse.degreeLevel);
         assertEquals("https://e-learning.wspa.pl/course/view.php?id=808", zeroCourse.courseUrl);
 
-        // Verify available modes and years defaults: only full-time (st) and year 1
+        // verify available modes and years defaults: only full-time and year one
         assertNotNull(zeroCourse.availableModesAndYears);
         assertTrue("Must contain full-time mode 'st'", zeroCourse.availableModesAndYears.containsKey("st"));
         assertEquals(Collections.singletonList(1), zeroCourse.availableModesAndYears.get("st"));
@@ -92,7 +92,7 @@ public class RokZerowyLifecycleTest {
         assertEquals(DegreeLevel.ZERO_YEAR, courses.get(0).degreeLevel);
     }
 
-    // stage 2: student zone url resolution
+    // student zone url resolution
 
     @Test
     public void testExtractStudentZoneUrl_PriorityAndMatching() {
@@ -110,11 +110,11 @@ public class RokZerowyLifecycleTest {
         assertEquals("https://e-learning.wspa.pl/course/view.php?id=808", urlZero);
     }
 
-    // stage 3: schedule excel file resolution
+    // schedule excel file resolution
 
     @Test
     public void testExtractScheduleFileFromFolderDoc_RokZerowyFiles() {
-        // Variation 1: "Rok zerowy - semestr zimowy.xlsx"
+        // winter semester filename variation
         String htmlWinter = "<html><body>" +
                 "<a href=\"https://e-learning.wspa.pl/mod/folder/view.php?id=10\">Plany zajęć</a>" +
                 "<a href=\"https://e-learning.wspa.pl/pluginfile.php/123/mod_folder/content/0/Rok%20zerowy%20-%20semestr%20zimowy.xlsx\">" +
@@ -126,7 +126,7 @@ public class RokZerowyLifecycleTest {
         assertTrue(urlWinter.contains("Rok%20zerowy%20-%20semestr%20zimowy.xlsx"));
         assertTrue(urlWinter.contains("forcedownload=1"));
 
-        // Variation 2: "semestr letni.xlsx"
+        // summer semester filename variation
         String htmlSummer = "<html><body>" +
                 "<a href=\"https://e-learning.wspa.pl/pluginfile.php/456/mod_folder/content/0/semestr%20letni.xlsx\">" +
                 "<span class=\"fp-filename\">semestr letni.xlsx</span></a>" +
@@ -137,7 +137,7 @@ public class RokZerowyLifecycleTest {
         assertTrue(urlSummer.contains("semestr%20letni.xlsx"));
         assertTrue(urlSummer.contains("forcedownload=1"));
 
-        // Variation 3: Simple "Rok zerowy.xlsx" (with other irrelevant files present)
+        // simple filename variation with extra unrelated files
         String htmlSimple = "<html><body>" +
                 "<a href=\"https://e-learning.wspa.pl/pluginfile.php/789/mod_folder/content/0/Regulamin.pdf\">" +
                 "<span class=\"fp-filename\">Regulamin.pdf</span></a>" +
@@ -166,7 +166,7 @@ public class RokZerowyLifecycleTest {
         assertFalse("Must not match empty string", StudyPlanScraper.isRokZerowyScheduleFile(""));
     }
 
-    // stage 4: course setup service rules for rok zerowy
+    // course setup service rules for rok zerowy
 
     @Test
     public void testCourseSetupService_RulesAndConstraints() {
@@ -185,12 +185,12 @@ public class RokZerowyLifecycleTest {
         assertNotNull(primary);
         assertEquals("Rok zerowy", primary.fieldOfStudy);
 
-        // degree levels: only ZERO_YEAR
+        // degree levels: only zero year
         List<DegreeLevel> degrees = service.getAvailableDegreeLevels(listOnlyZero, "Rok zerowy");
         assertEquals(1, degrees.size());
         assertEquals(DegreeLevel.ZERO_YEAR, degrees.get(0));
 
-        // study modes: only FULL_TIME
+        // study modes: only full time
         List<StudyMode> modes = service.getAvailableStudyModes(zeroCourse);
         assertEquals(1, modes.size());
         assertEquals(StudyMode.FULL_TIME, modes.get(0));
@@ -204,12 +204,12 @@ public class RokZerowyLifecycleTest {
         assertNotNull(found);
         assertEquals(zeroCourse, found);
 
-        // findCourse when looking for BACHELORS should return null
+        // findCourse when looking for bachelors should return null
         ParsedCourse notFound = service.findCourse(listOnlyZero, "Rok zerowy", DegreeLevel.BACHELORS);
         assertNull(notFound);
     }
 
-    // stage 5: parser factory and parser implementation
+    // parser factory and parser implementation
 
     @Test
     public void testParserFactory_MapsZeroYearToBachelorFullTimeParser() {
@@ -222,13 +222,13 @@ public class RokZerowyLifecycleTest {
     public void testBachelorFullTimeParser_HeaderAndColumnResolutionForRokZerowy() throws Exception {
         BachelorFullTimeParser parser = new BachelorFullTimeParser();
 
-        // 1. verify header detection treats "rok zerowy" as non-lesson meta header
+        // verify header detection treats "rok zerowy" as non-lesson meta header
         Method isDayOrMeta = BachelorFullTimeParser.class.getDeclaredMethod("isDayOrMetaHeader", String.class);
         isDayOrMeta.setAccessible(true);
         boolean isHeader = (boolean) isDayOrMeta.invoke(parser, "Rok zerowy I SEMESTR rok akademicki 2026/2027");
         assertTrue("Must detect 'Rok zerowy' as day or meta header", isHeader);
 
-        // 2. verify findTargetColumns selects all weekday columns when no student groups exist
+        // verify findTargetColumns selects all weekday columns when no student groups exist
         Map<Integer, Map<Integer, String>> rowMap = new HashMap<>();
 
         Map<Integer, String> r0 = new HashMap<>();
@@ -269,11 +269,11 @@ public class RokZerowyLifecycleTest {
         assertTrue(cols.contains(5));
     }
 
-    // stage 6: degree level enum and string naming standards
+    // degree level enum and string naming standards
 
     @Test
     public void testDegreeLevelEnum_NamingAndConversions() {
-        // enforce English enum constant name
+        // enforce english enum constant name
         assertEquals("ZERO_YEAR", DegreeLevel.ZERO_YEAR.name());
 
         // test scraper string conversions

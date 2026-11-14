@@ -1,3 +1,4 @@
-- Added horizontal left and right swiping between days on the main screen
-- Moved the calendar button inside the date bar to the left of the next-day arrow for a cleaner layout
-- Fixed the update dialog so the commit title is no longer duplicated in the list of changes
+- Moved file logging to a background thread so writing and trimming log files no longer blocks the UI
+- Cached the encryption key and decrypted settings in memory to avoid slow keystore and decryption work on the main thread
+- Indexed schedule lessons by date in memory and removed disk and preference reads while swiping between days
+- Added a shared view pool, item prefetching, and cached theme colors in the schedule adapters for smoother horizontal swiping

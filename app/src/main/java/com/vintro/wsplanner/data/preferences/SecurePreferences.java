@@ -18,6 +18,7 @@ import java.security.KeyStore;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -33,7 +34,20 @@ public class SecurePreferences implements SharedPreferences {
     private static final int GCM_IV_LENGTH = 12; // 96-bit IV standard for GCM
     private static final int GCM_TAG_LENGTH = 128; // 128-bit authentication tag
 
+    private static volatile SecretKey cachedSecretKey;
+
     private final SharedPreferences delegate;
+    private final Map<String, CachedEntry> decryptedCache = new ConcurrentHashMap<>();
+
+    private static final class CachedEntry {
+        final String encrypted;
+        final String decrypted;
+
+        CachedEntry(String encrypted, String decrypted) {
+            this.encrypted = encrypted;
+            this.decrypted = decrypted;
+        }
+    }
 
     private SecurePreferences(SharedPreferences delegate) {
         this.delegate = delegate;
@@ -67,10 +81,23 @@ public class SecurePreferences implements SharedPreferences {
         }
     }
 
+    public static void clearKeyCache() {
+        cachedSecretKey = null;
+    }
+
     private static SecretKey getKey() throws GeneralSecurityException, IOException {
-        KeyStore keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
-        keyStore.load(null);
-        return (SecretKey) keyStore.getKey(KEY_ALIAS, null);
+        SecretKey key = cachedSecretKey;
+        if (key != null) {
+            return key;
+        }
+        synchronized (SecurePreferences.class) {
+            if (cachedSecretKey == null) {
+                KeyStore keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
+                keyStore.load(null);
+                cachedSecretKey = (SecretKey) keyStore.getKey(KEY_ALIAS, null);
+            }
+            return cachedSecretKey;
+        }
     }
 
     // encrypt plaintext using aes-gcm with random iv
@@ -87,6 +114,10 @@ public class SecurePreferences implements SharedPreferences {
             buffer.put(iv);
             buffer.put(cipherText);
             return Base64.encodeToString(buffer.array(), Base64.NO_WRAP);
+        } catch (GeneralSecurityException e) {
+            cachedSecretKey = null;
+            Logger.e("SecurePreferences.encrypt", "Encryption failed: " + Logger.formatException(e));
+            return null;
         } catch (Exception e) {
             Logger.e("SecurePreferences.encrypt", "Encryption failed: " + Logger.formatException(e));
             return null;
@@ -112,6 +143,10 @@ public class SecurePreferences implements SharedPreferences {
             cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(GCM_TAG_LENGTH, iv));
             byte[] plainBytes = cipher.doFinal(cipherText);
             return new String(plainBytes, StandardCharsets.UTF_8);
+        } catch (GeneralSecurityException e) {
+            cachedSecretKey = null;
+            Logger.e("SecurePreferences.decrypt", "Decryption failed: " + Logger.formatException(e));
+            return null;
         } catch (Exception e) {
             Logger.e("SecurePreferences.decrypt", "Decryption failed: " + Logger.formatException(e));
             return null;
@@ -137,9 +172,20 @@ public class SecurePreferences implements SharedPreferences {
     @Override
     public String getString(String key, @Nullable String defValue) {
         String encrypted = delegate.getString(key, null);
-        if (encrypted == null) return defValue;
+        if (encrypted == null) {
+            decryptedCache.remove(key);
+            return defValue;
+        }
+        CachedEntry cached = decryptedCache.get(key);
+        if (cached != null && encrypted.equals(cached.encrypted)) {
+            return cached.decrypted;
+        }
         String decrypted = decrypt(encrypted);
-        return decrypted != null ? decrypted : defValue;
+        if (decrypted != null) {
+            decryptedCache.put(key, new CachedEntry(encrypted, decrypted));
+            return decrypted;
+        }
+        return defValue;
     }
 
     @Nullable
@@ -220,10 +266,12 @@ public class SecurePreferences implements SharedPreferences {
         public Editor putString(String key, @Nullable String value) {
             if (value == null) {
                 delegateEditor.remove(key);
+                decryptedCache.remove(key);
             } else {
                 String encrypted = encrypt(value);
                 if (encrypted != null) {
                     delegateEditor.putString(key, encrypted);
+                    decryptedCache.put(key, new CachedEntry(encrypted, value));
                 }
             }
             return this;
@@ -258,12 +306,14 @@ public class SecurePreferences implements SharedPreferences {
         @Override
         public Editor remove(String key) {
             delegateEditor.remove(key);
+            decryptedCache.remove(key);
             return this;
         }
 
         @Override
         public Editor clear() {
             delegateEditor.clear();
+            decryptedCache.clear();
             return this;
         }
 

@@ -17,35 +17,61 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Logger {
-    private static File logFile;
+    private static volatile File logFile;
+    private static final Object FILE_LOCK = new Object();
+    private static final SimpleDateFormat LOG_DATE_FORMAT =
+            new SimpleDateFormat("dd-MM-yyyy HH:mm:ss.SSS", Locale.getDefault());
+    private static final ExecutorService LOG_EXECUTOR = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "wsplanner-logger");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     public static void init(Context context) {
         if (logFile != null || context == null) return;
 
-        try {
-            File baseDir = context.getExternalFilesDir(null);
-            if (baseDir == null) {
-                baseDir = context.getFilesDir();
-            }
-            File dir = new File(baseDir, "logs");
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
-            logFile = new File(dir, "app_log.txt");
-
-            if (!logFile.exists()) {
-                logFile.createNewFile();
-            }
-        } catch (IOException e) {
+        synchronized (FILE_LOCK) {
+            if (logFile != null) return;
             try {
-                Log.e("Logger.init", "Error getting file: " + e.toString());
-            } catch (Throwable ignored) {
-                System.err.println("Logger.init: Error getting file: " + e.toString());
+                File baseDir = context.getExternalFilesDir(null);
+                if (baseDir == null) {
+                    baseDir = context.getFilesDir();
+                }
+                File dir = new File(baseDir, "logs");
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
+                File targetFile = new File(dir, "app_log.txt");
+
+                if (!targetFile.exists()) {
+                    targetFile.createNewFile();
+                }
+                logFile = targetFile;
+            } catch (IOException e) {
+                try {
+                    Log.e("Logger.init", "Error getting file: " + e.toString());
+                } catch (Throwable ignored) {
+                    System.err.println("Logger.init: Error getting file: " + e.toString());
+                }
             }
+        }
+    }
+
+    // wait briefly for queued log entries to finish writing to disk
+    public static void flush() {
+        if (logFile == null) return;
+        try {
+            Future<?> future = LOG_EXECUTOR.submit(() -> {});
+            future.get(2, TimeUnit.SECONDS);
+        } catch (Throwable ignored) {
         }
     }
 
@@ -62,6 +88,7 @@ public class Logger {
             return;
         }
         init(context);
+        flush();
 
         if (logFile == null) {
             w("Logger.shareLogFile", "Log file handle is null");
@@ -139,10 +166,8 @@ public class Logger {
             "(?i)(for\\s+student\\s+)(?!['\"])([^,\\r\\n;\\)]+)"
     );
 
-    /**
-     * Masks a single word/token (keeping first and last characters, masking middle with *).
-     * If the word is already masked (contains '*'), it is returned as-is to avoid double-masking.
-     */
+    // mask a single word keeping first and last characters
+    // return already masked words as-is to avoid double masking
     public static String maskWord(String word) {
         if (word == null) return "";
         String s = word.trim();
@@ -161,11 +186,8 @@ public class Logger {
         return sb.toString();
     }
 
-    /**
-     * Masks first name, surname, or full name (each word keeping first and last letter, replacing the rest with '*').
-     * Handles single names ("Kowalski" -> "K******i"), full names ("Artem Sysoiev" -> "A***m S*****v"),
-     * and hyphenated names.
-     */
+    // mask first name, surname, or full name by keeping first and last letters of each word
+    // handles single names ("Kowalski" -> "K******i"), full names ("Jan Kowalski" -> "J*n K******i"), and hyphenated names
     public static String maskName(String name) {
         if (name == null) return "";
         String trimmed = name.trim();
@@ -270,7 +292,7 @@ public class Logger {
             emailMatcher.appendTail(emailSb);
             masked = emailSb.toString();
 
-            // mask quoted student names / full names / surnames: e.g. StudentName='Artem Sysoiev', for student 'Kowalski'
+            // mask quoted student names like StudentName='Jan Kowalski' or for student 'Kowalski'
             Matcher quotedMatcher = QUOTED_NAME_PATTERN.matcher(masked);
             StringBuffer quotedSb = new StringBuffer();
             while (quotedMatcher.find()) {
@@ -282,7 +304,7 @@ public class Logger {
             quotedMatcher.appendTail(quotedSb);
             masked = quotedSb.toString();
 
-            // mask scraped student names: e.g. "Name extracted from dashboard: Artem Sysoiev"
+            // mask scraped student names like "Name extracted from dashboard: Jan Kowalski"
             Matcher scrapedMatcher = SCRAPED_NAME_PATTERN.matcher(masked);
             StringBuffer scrapedSb = new StringBuffer();
             while (scrapedMatcher.find()) {
@@ -295,7 +317,7 @@ public class Logger {
             scrapedMatcher.appendTail(scrapedSb);
             masked = scrapedSb.toString();
 
-            // mask settings student names: e.g. "Setting global student name: Artem Sysoiev"
+            // mask settings student names like "Setting global student name: Jan Kowalski"
             Matcher settingMatcher = SETTING_NAME_PATTERN.matcher(masked);
             StringBuffer settingSb = new StringBuffer();
             while (settingMatcher.find()) {
@@ -308,7 +330,7 @@ public class Logger {
             settingMatcher.appendTail(settingSb);
             masked = settingSb.toString();
 
-            // mask unquoted student key-values: e.g. StudentName=Artem Sysoiev, EnglishGroup=...
+            // mask unquoted student key-values like StudentName=Jan Kowalski
             Matcher unquotedMatcher = UNQUOTED_NAME_KEY_PATTERN.matcher(masked);
             StringBuffer unquotedSb = new StringBuffer();
             while (unquotedMatcher.find()) {
@@ -377,24 +399,35 @@ public class Logger {
         }
     }
 
-    // append formatted log record to local file
-    private static synchronized void writeToFile(String level, String tag, String message) {
+    // queue file write on background logger thread so callers never block on disk io
+    private static void enqueueFileWrite(String level, String tag, String safeMsg) {
         if (logFile == null) return;
+        long timestampMillis = System.currentTimeMillis();
+        try {
+            LOG_EXECUTOR.execute(() -> writeToFileSync(timestampMillis, level, tag, safeMsg));
+        } catch (Throwable ignored) {
+        }
+    }
 
-        trimLogFileIfNeeded();
+    // append formatted log record to local file synchronously on logger thread
+    private static void writeToFileSync(long timestampMillis, String level, String tag, String safeMsg) {
+        File targetFile = logFile;
+        if (targetFile == null) return;
 
-        String safeMsg = sanitizeLogMessage(message);
-        String time = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss.SSS", Locale.getDefault())
-                .format(new Date());
-        String fullMessage = String.format("%s | [%s|%s]: %s\n", time, level, tag, safeMsg);
+        synchronized (FILE_LOCK) {
+            trimLogFileIfNeeded();
 
-        try (FileWriter writer = new FileWriter(logFile, true)) {
-            writer.write(fullMessage);
-        } catch (IOException e) {
-            try {
-                Log.e("Logger.writeToFile", "Error writing to file: " + e.toString());
-            } catch (Throwable ignored) {
-                System.err.println("Logger.writeToFile: Error writing to file: " + e.toString());
+            String time = LOG_DATE_FORMAT.format(new Date(timestampMillis));
+            String fullMessage = String.format("%s | [%s|%s]: %s\n", time, level, tag, safeMsg);
+
+            try (FileWriter writer = new FileWriter(targetFile, true)) {
+                writer.write(fullMessage);
+            } catch (IOException e) {
+                try {
+                    Log.e("Logger.writeToFile", "Error writing to file: " + e.toString());
+                } catch (Throwable ignored) {
+                    System.err.println("Logger.writeToFile: Error writing to file: " + e.toString());
+                }
             }
         }
     }
@@ -407,7 +440,7 @@ public class Logger {
         } catch (Throwable ignored) {
             System.out.println("[DEBUG|" + tag + "]: " + safe);
         }
-        writeToFile("DEBUG", tag, safe);
+        enqueueFileWrite("DEBUG", tag, safe);
     }
 
     // write informational log
@@ -418,7 +451,7 @@ public class Logger {
         } catch (Throwable ignored) {
             System.out.println("[INFO|" + tag + "]: " + safe);
         }
-        writeToFile("INFO", tag, safe);
+        enqueueFileWrite("INFO", tag, safe);
     }
 
     // write warning log
@@ -429,7 +462,7 @@ public class Logger {
         } catch (Throwable ignored) {
             System.out.println("[WARN|" + tag + "]: " + safe);
         }
-        writeToFile("WARN", tag, safe);
+        enqueueFileWrite("WARN", tag, safe);
     }
 
     // write warning log with exception details
@@ -446,7 +479,7 @@ public class Logger {
         } catch (Throwable ignored) {
             System.err.println("[ERROR|" + tag + "]: " + safe);
         }
-        writeToFile("ERROR", tag, safe);
+        enqueueFileWrite("ERROR", tag, safe);
     }
 
     // write error log with exception details
@@ -463,7 +496,7 @@ public class Logger {
         } catch (Throwable ignored) {
             System.out.println("[VERBOSE|" + tag + "]: " + safe);
         }
-        writeToFile("VERBOSE", tag, safe);
+        enqueueFileWrite("VERBOSE", tag, safe);
     }
 
     // write assert failure log
@@ -474,6 +507,6 @@ public class Logger {
         } catch (Throwable ignored) {
             System.err.println("[WTF|" + tag + "]: " + safe);
         }
-        writeToFile("WTF", tag, safe);
+        enqueueFileWrite("WTF", tag, safe);
     }
 }
