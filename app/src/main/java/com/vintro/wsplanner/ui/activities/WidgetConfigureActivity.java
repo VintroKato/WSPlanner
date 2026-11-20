@@ -8,7 +8,10 @@ import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.os.Build;
 import android.os.Bundle;
+import android.transition.AutoTransition;
+import android.transition.TransitionManager;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -19,6 +22,7 @@ import android.widget.RemoteViews;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
@@ -26,10 +30,11 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
+import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.ui.widgets.CurrentLessonWidget;
 import com.vintro.wsplanner.ui.widgets.DailyScheduleWidget;
@@ -40,9 +45,13 @@ import com.vintro.wsplanner.utils.Logger;
 public class WidgetConfigureActivity extends AppCompatActivity {
     public static final String EXTRA_PIN_SKIP_CONFIGURE = "pin_skip_configure";
 
-    private MaterialButtonToggleGroup widgetTypeToggleGroup;
+    private ViewGroup configureContentContainer;
+    private View widgetTypeCapsule;
+    private TextView tabSmallWidget;
+    private TextView tabDailyWidget;
+    private boolean isDailyTabSelected = false;
 
-    // Small widget preview views
+    // small widget preview views
     private LinearLayout containerSmallPreview;
     private FrameLayout previewContainer;
     private TextView previewStatusChip;
@@ -51,7 +60,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
     private TextView previewSubject;
     private TextView previewDetails;
 
-    // Daily schedule widget preview views
+    // daily schedule widget preview views
     private LinearLayout containerDailyPreview;
     private FrameLayout previewDailyRoot;
     private TextView previewDailyTitle;
@@ -70,19 +79,19 @@ public class WidgetConfigureActivity extends AppCompatActivity {
     private TextView previewCard2Subject;
     private TextView previewCard2Room;
 
-    // Preview Pin Hint
+    // preview pin hint
     private TextView previewPinHint;
 
-    // Sections
+    // sections
     private LinearLayout sectionSmallWidgetOptions;
     private LinearLayout sectionDailyWidgetOptions;
 
-    // Theme Options
-    private RadioGroup themeRadioGroup;
-    private RadioButton radioThemeDark;
-    private RadioButton radioThemeLight;
+    // theme tiles
+    private MaterialCardView cardThemeDark;
+    private MaterialCardView cardThemeLight;
+    private boolean isWidgetLightTheme = false;
 
-    // Small Widget Actions
+    // small widget actions
     private RadioGroup clickActionRadioGroup;
     private RadioButton radioClickDetails;
     private RadioButton radioClickToggle;
@@ -90,12 +99,12 @@ public class WidgetConfigureActivity extends AppCompatActivity {
     private RadioButton radioClickExcel;
     private RadioButton radioClickRefresh;
 
-    private TextView breakActionLabel;
+    private View breakActionContainer;
     private RadioGroup breakActionRadioGroup;
     private RadioButton radioBreakApp;
     private RadioButton radioBreakExcel;
 
-    // Daily Widget Options
+    // daily widget options
     private RadioGroup dailyClickActionRadioGroup;
     private RadioButton radioDailyClickDetails;
     private RadioButton radioDailyClickApp;
@@ -110,16 +119,17 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
+        EdgeToEdge.enable(this);
         UIHelper.setupSystemBars(this);
         setContentView(R.layout.activity_widget_configure);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
 
-        // Check if launched from system widget host
+        // check if launched from system widget host
         Intent intent = getIntent();
         Bundle extras = intent.getExtras();
         if (extras != null) {
@@ -130,7 +140,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         }
         Logger.d("WidgetConfigureActivity.onCreate", "Initializing widget configuration (widgetId=" + appWidgetId + ")");
 
-        // If placed as a widget, check if it was placed via settings pin request
+        // if placed as a widget, check if it was placed via settings pin request
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
             setResult(RESULT_CANCELED);
 
@@ -169,9 +179,12 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         ImageButton buttonBack = findViewById(R.id.button_back);
         buttonBack.setOnClickListener(v -> finish());
 
-        widgetTypeToggleGroup = findViewById(R.id.widget_type_toggle_group);
+        configureContentContainer = findViewById(R.id.configure_content_container);
+        widgetTypeCapsule = findViewById(R.id.widget_type_capsule);
+        tabSmallWidget = findViewById(R.id.tab_small_widget);
+        tabDailyWidget = findViewById(R.id.tab_daily_widget);
 
-        // Small Widget Preview
+        // small widget preview
         containerSmallPreview = findViewById(R.id.container_small_preview);
         previewContainer = findViewById(R.id.preview_container);
         previewStatusChip = findViewById(R.id.preview_status_chip);
@@ -180,7 +193,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         previewSubject = findViewById(R.id.preview_subject);
         previewDetails = findViewById(R.id.preview_details);
 
-        // Daily Widget Preview
+        // daily widget preview
         containerDailyPreview = findViewById(R.id.container_daily_preview);
         previewDailyRoot = findViewById(R.id.preview_daily_root);
         previewDailyTitle = findViewById(R.id.preview_daily_title);
@@ -199,16 +212,15 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         previewCard2Subject = findViewById(R.id.preview_card_2_subject);
         previewCard2Room = findViewById(R.id.preview_card_2_room);
 
-        // Sections
+        // sections
         sectionSmallWidgetOptions = findViewById(R.id.section_small_widget_options);
         sectionDailyWidgetOptions = findViewById(R.id.section_daily_widget_options);
 
-        // Themes
-        themeRadioGroup = findViewById(R.id.theme_radio_group);
-        radioThemeDark = findViewById(R.id.radio_theme_dark);
-        radioThemeLight = findViewById(R.id.radio_theme_light);
+        // theme tiles
+        cardThemeDark = findViewById(R.id.card_widget_theme_dark);
+        cardThemeLight = findViewById(R.id.card_widget_theme_light);
 
-        // Small Widget Actions
+        // small widget actions
         clickActionRadioGroup = findViewById(R.id.click_action_radio_group);
         radioClickDetails = findViewById(R.id.radio_click_details);
         radioClickToggle = findViewById(R.id.radio_click_toggle);
@@ -216,12 +228,12 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         radioClickExcel = findViewById(R.id.radio_click_excel);
         radioClickRefresh = findViewById(R.id.radio_click_refresh);
 
-        breakActionLabel = findViewById(R.id.break_action_label);
+        breakActionContainer = findViewById(R.id.break_action_container);
         breakActionRadioGroup = findViewById(R.id.break_action_radio_group);
         radioBreakApp = findViewById(R.id.radio_break_app);
         radioBreakExcel = findViewById(R.id.radio_break_excel);
 
-        // Daily Widget Options
+        // daily widget options
         dailyClickActionRadioGroup = findViewById(R.id.daily_click_action_radio_group);
         radioDailyClickDetails = findViewById(R.id.radio_daily_click_details);
         radioDailyClickApp = findViewById(R.id.radio_daily_click_app);
@@ -243,8 +255,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             boolean isDaily = (info != null && info.provider != null && DailyScheduleWidget.class.getName().equals(info.provider.getClassName()));
             Logger.d("WidgetConfigureActivity.determineInitialTab", "Configuring specific widget " + appWidgetId + " (isDaily=" + isDaily + ")");
 
-            // Hide the toggle group completely when opened for a specific widget
-            widgetTypeToggleGroup.setVisibility(View.GONE);
+            widgetTypeCapsule.setVisibility(View.GONE);
             if (previewPinHint != null) {
                 previewPinHint.setVisibility(View.GONE);
             }
@@ -264,14 +275,32 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         }
 
         Logger.d("WidgetConfigureActivity.determineInitialTab", "Opened from settings: showing general widget tabs");
-        // Opened from SettingsActivity: show tabs so user can choose
-        widgetTypeToggleGroup.setVisibility(View.VISIBLE);
+        widgetTypeCapsule.setVisibility(View.VISIBLE);
         setupPinAffordance();
         showSmallWidgetUI();
     }
 
+    private void updateCapsuleTabs(boolean isDaily) {
+        isDailyTabSelected = isDaily;
+        int activeTextColor = UIHelper.getThemeColor(this, R.attr.button_text);
+        int inactiveTextColor = UIHelper.getThemeColor(this, R.attr.text_secondary);
+
+        if (isDaily) {
+            tabSmallWidget.setBackgroundResource(android.R.color.transparent);
+            tabSmallWidget.setTextColor(inactiveTextColor);
+            tabDailyWidget.setBackgroundResource(R.drawable.bg_capsule_tab_active);
+            tabDailyWidget.setTextColor(activeTextColor);
+        } else {
+            tabSmallWidget.setBackgroundResource(R.drawable.bg_capsule_tab_active);
+            tabSmallWidget.setTextColor(activeTextColor);
+            tabDailyWidget.setBackgroundResource(android.R.color.transparent);
+            tabDailyWidget.setTextColor(inactiveTextColor);
+        }
+    }
+
     // display UI options for daily schedule widget
     private void showDailyWidgetUI() {
+        updateCapsuleTabs(true);
         containerSmallPreview.setVisibility(View.GONE);
         containerDailyPreview.setVisibility(View.VISIBLE);
         sectionSmallWidgetOptions.setVisibility(View.GONE);
@@ -280,6 +309,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
 
     // display UI options for small current lesson widget
     private void showSmallWidgetUI() {
+        updateCapsuleTabs(false);
         containerSmallPreview.setVisibility(View.VISIBLE);
         containerDailyPreview.setVisibility(View.GONE);
         sectionSmallWidgetOptions.setVisibility(View.VISIBLE);
@@ -288,15 +318,12 @@ public class WidgetConfigureActivity extends AppCompatActivity {
 
     // load existing preferences into UI controls
     private void loadSettings() {
-        // Theme (only Dark and Light)
         String theme = PreferencesManager.getWidgetTheme(this);
-        if (PreferencesManager.WIDGET_THEME_LIGHT.equals(theme)) {
-            radioThemeLight.setChecked(true);
-        } else {
-            radioThemeDark.setChecked(true);
-        }
+        isWidgetLightTheme = PreferencesManager.WIDGET_THEME_LIGHT.equals(theme);
+        UIHelper.setSelectableCardChecked(this, cardThemeDark, !isWidgetLightTheme);
+        UIHelper.setSelectableCardChecked(this, cardThemeLight, isWidgetLightTheme);
 
-        // Click Action
+        // click action
         String clickAction = PreferencesManager.getWidgetClickAction(this);
         if (PreferencesManager.WIDGET_CLICK_OPEN_DETAILS.equals(clickAction)) {
             radioClickDetails.setChecked(true);
@@ -310,7 +337,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             radioClickApp.setChecked(true);
         }
 
-        // Break Action
+        // break action
         String breakAction = PreferencesManager.getWidgetBreakAction(this);
         if (PreferencesManager.WIDGET_BREAK_OPEN_EXCEL.equals(breakAction)) {
             radioBreakExcel.setChecked(true);
@@ -320,12 +347,12 @@ public class WidgetConfigureActivity extends AppCompatActivity {
 
         updateBreakVisibility(radioClickToggle.isChecked() || radioClickDetails.isChecked());
 
-        // Big Widget Action Buttons Visibility
+        // daily widget action buttons visibility
         switchShowExcel.setChecked(PreferencesManager.isWidgetShowExcel(this));
         switchShowRefresh.setChecked(PreferencesManager.isWidgetShowRefresh(this));
         switchShowApp.setChecked(PreferencesManager.isWidgetShowApp(this));
 
-        // Daily Widget Lesson Click Action
+        // daily widget lesson click action
         String dailyAction = PreferencesManager.getDailyWidgetLessonAction(this);
         if (PreferencesManager.DAILY_WIDGET_CLICK_OPEN_APP.equals(dailyAction)) {
             radioDailyClickApp.setChecked(true);
@@ -337,20 +364,40 @@ public class WidgetConfigureActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
-        widgetTypeToggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked) return;
-            boolean isDaily = checkedId == R.id.tab_daily_widget;
-            if (isDaily) {
-                showDailyWidgetUI();
-            } else {
+        tabSmallWidget.setOnClickListener(v -> {
+            if (isDailyTabSelected) {
+                Logger.d("WidgetConfigureActivity", "Switched to small widget tab");
+                if (configureContentContainer != null) {
+                    AutoTransition transition = new AutoTransition();
+                    transition.setDuration(180);
+                    TransitionManager.beginDelayedTransition(configureContentContainer, transition);
+                }
                 showSmallWidgetUI();
             }
         });
 
-        themeRadioGroup.setOnCheckedChangeListener((group, checkedId) -> updatePreview());
+        tabDailyWidget.setOnClickListener(v -> {
+            if (!isDailyTabSelected) {
+                Logger.d("WidgetConfigureActivity", "Switched to daily widget tab");
+                if (configureContentContainer != null) {
+                    AutoTransition transition = new AutoTransition();
+                    transition.setDuration(180);
+                    TransitionManager.beginDelayedTransition(configureContentContainer, transition);
+                }
+                showDailyWidgetUI();
+            }
+        });
+
+        cardThemeDark.setOnClickListener(v -> selectWidgetTheme(false));
+        cardThemeLight.setOnClickListener(v -> selectWidgetTheme(true));
 
         clickActionRadioGroup.setOnCheckedChangeListener((group, checkedId) -> {
             boolean needsBreakOption = (checkedId == R.id.radio_click_toggle || checkedId == R.id.radio_click_details);
+            if (configureContentContainer != null) {
+                AutoTransition transition = new AutoTransition();
+                transition.setDuration(160);
+                TransitionManager.beginDelayedTransition(configureContentContainer, transition);
+            }
             updateBreakVisibility(needsBreakOption);
         });
 
@@ -365,17 +412,29 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         });
     }
 
+    private void selectWidgetTheme(boolean light) {
+        if (isWidgetLightTheme == light) {
+            return;
+        }
+        isWidgetLightTheme = light;
+        Logger.i("WidgetConfigureActivity.selectWidgetTheme", "Selected widget theme: " + (light ? "light" : "dark"));
+        AnimationHelper.animateCardSelection(this, cardThemeDark, !light);
+        AnimationHelper.animateCardSelection(this, cardThemeLight, light);
+        updatePreview();
+    }
+
     private void updateBreakVisibility(boolean showBreakOption) {
-        breakActionLabel.setVisibility(showBreakOption ? View.VISIBLE : View.GONE);
-        breakActionRadioGroup.setVisibility(showBreakOption ? View.VISIBLE : View.GONE);
+        if (breakActionContainer != null) {
+            breakActionContainer.setVisibility(showBreakOption ? View.VISIBLE : View.GONE);
+        }
     }
 
     // update on-screen visual preview of widgets based on selected theme and button options
     private void updatePreview() {
-        boolean isLight = radioThemeLight.isChecked();
+        boolean isLight = isWidgetLightTheme;
         Logger.d("WidgetConfigureActivity.updatePreview", "Updating widget preview (isLight=" + isLight + ")");
 
-        // Small Widget Preview update
+        // small widget preview update
         if (isLight) {
             previewContainer.setBackgroundResource(R.drawable.bg_widget_light);
             if (previewStatusChip != null) {
@@ -406,7 +465,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             previewDetails.setTextColor(ContextCompat.getColor(this, R.color.widget_text_dark_secondary));
         }
 
-        // Daily Widget Preview update
+        // daily widget preview update
         if (previewDailyRoot != null) {
             if (isLight) {
                 previewDailyRoot.setBackgroundResource(R.drawable.bg_widget_light);
@@ -535,8 +594,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         if (previewPinHint != null) {
             previewPinHint.setOnClickListener(v -> {
                 if (isPinSupported) {
-                    boolean isDaily = (widgetTypeToggleGroup != null && widgetTypeToggleGroup.getCheckedButtonId() == R.id.tab_daily_widget);
-                    requestPinWidget(isDaily);
+                    requestPinWidget(isDailyTabSelected);
                 } else {
                     showPinUnsupportedToast();
                 }
@@ -557,20 +615,20 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             return;
         }
 
-        // Persist currently selected options first so newly placed widget has latest configuration
+        // persist currently selected options first so newly placed widget has latest configuration
         savePreferences();
 
         Class<?> widgetClass = isDaily ? DailyScheduleWidget.class : CurrentLessonWidget.class;
         ComponentName provider = new ComponentName(this, widgetClass);
 
-        // Record pin request timestamp to skip redundant configuration activity when placed
+        // record pin request timestamp to skip redundant configuration activity when placed
         PreferencesManager.setPinWidgetRequested(this);
 
         Bundle pinOptions = new Bundle();
         pinOptions.putBoolean(EXTRA_PIN_SKIP_CONFIGURE, true);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            boolean isLight = radioThemeLight.isChecked();
+            boolean isLight = isWidgetLightTheme;
             RemoteViews preview = new RemoteViews(getPackageName(),
                     isDaily ? R.layout.widget_preview_daily_schedule : R.layout.widget_preview_current_lesson);
 
@@ -633,11 +691,9 @@ public class WidgetConfigureActivity extends AppCompatActivity {
 
     // persist current widget settings to preferences and broadcast update
     private void savePreferences() {
-        // Save Theme
-        String theme = radioThemeLight.isChecked() ? PreferencesManager.WIDGET_THEME_LIGHT : PreferencesManager.WIDGET_THEME_DARK;
+        String theme = isWidgetLightTheme ? PreferencesManager.WIDGET_THEME_LIGHT : PreferencesManager.WIDGET_THEME_DARK;
         PreferencesManager.setWidgetTheme(this, theme);
 
-        // Save Click Action
         String clickAction = PreferencesManager.WIDGET_CLICK_TOGGLE;
         if (radioClickDetails.isChecked()) clickAction = PreferencesManager.WIDGET_CLICK_OPEN_DETAILS;
         else if (radioClickApp.isChecked()) clickAction = PreferencesManager.WIDGET_CLICK_OPEN_APP;
@@ -645,22 +701,18 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         else if (radioClickRefresh.isChecked()) clickAction = PreferencesManager.WIDGET_CLICK_REFRESH;
         PreferencesManager.setWidgetClickAction(this, clickAction);
 
-        // Save Break Action
         String breakAction = radioBreakExcel.isChecked() ? PreferencesManager.WIDGET_BREAK_OPEN_EXCEL : PreferencesManager.WIDGET_BREAK_OPEN_APP;
         PreferencesManager.setWidgetBreakAction(this, breakAction);
 
-        // Save Big Widget Quick Action Buttons
         PreferencesManager.setWidgetShowExcel(this, switchShowExcel.isChecked());
         PreferencesManager.setWidgetShowRefresh(this, switchShowRefresh.isChecked());
         PreferencesManager.setWidgetShowApp(this, switchShowApp.isChecked());
 
-        // Save Daily Widget Lesson Click Action
         String dailyAction = radioDailyClickApp.isChecked() ? PreferencesManager.DAILY_WIDGET_CLICK_OPEN_APP : PreferencesManager.DAILY_WIDGET_CLICK_OPEN_DETAILS;
         PreferencesManager.setDailyWidgetLessonAction(this, dailyAction);
 
         Logger.i("WidgetConfigureActivity.savePreferences", "Saved widget settings: theme=" + theme + ", click=" + clickAction + ", break=" + breakAction + ", dailyAction=" + dailyAction);
 
-        // Update all widget instances immediately
         WidgetUpdateManager.updateAllWidgets(this);
     }
 
@@ -668,7 +720,6 @@ public class WidgetConfigureActivity extends AppCompatActivity {
     private void saveSettings() {
         savePreferences();
 
-        // If opened as configuration activity for widget placement
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
             Intent resultValue = new Intent();
             resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);

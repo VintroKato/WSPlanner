@@ -7,11 +7,17 @@ import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.enums.AppTheme;
 import com.vintro.wsplanner.enums.DegreeLevel;
 import com.vintro.wsplanner.enums.StudyMode;
+import com.vintro.wsplanner.models.Lesson;
 import com.vintro.wsplanner.utils.Logger;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.time.DayOfWeek;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 // preferences manager for app settings, user profiles, and secure credentials
 public class PreferencesManager {
@@ -36,6 +42,9 @@ public class PreferencesManager {
     private static final String key_language = "settings_language";
     private static final String key_onboarding_stage = "onboarding_stage";
     private static final String key_specialty_configured = "specialty_configured_";
+    private static final String key_moodle_token = "moodle_mobile_token";
+    private static final String key_moodle_private_token = "moodle_mobile_private_token";
+    private static final String key_moodle_user_id = "moodle_mobile_user_id";
 
     public static final String ONBOARDING_STAGE_LOGIN = "LOGIN";
     public static final String ONBOARDING_STAGE_COURSE = "COURSE";
@@ -332,6 +341,7 @@ public class PreferencesManager {
                 .remove(widgetId == GLOBAL_ID ? key_detected_student_surname : "")
                 .apply();
         if (widgetId == GLOBAL_ID) {
+            clearMoodleAuthTokens(context);
             getPreferences(context).edit()
                     .remove(key_detected_english)
                     .remove(key_detected_seminar)
@@ -340,6 +350,43 @@ public class PreferencesManager {
                     .apply();
             setOnboardingStage(context, ONBOARDING_STAGE_LOGIN);
         }
+    }
+
+    // store moodle mobile webservice tokens in encrypted preferences only
+    public static void saveMoodleTokens(Context context, String token, String privateToken) {
+        Logger.d("PreferencesManager.saveMoodleTokens", "Saving encrypted Moodle mobile tokens (hasToken=" + (token != null && !token.isEmpty()) + ", hasPrivateToken=" + (privateToken != null && !privateToken.isEmpty()) + ")");
+        getEncryptedPreferences(context).edit()
+                .putString(key_moodle_token, token)
+                .putString(key_moodle_private_token, privateToken)
+                .apply();
+    }
+
+    public static String getMoodleToken(Context context) {
+        return getEncryptedPreferences(context).getString(key_moodle_token, null);
+    }
+
+    public static String getMoodlePrivateToken(Context context) {
+        return getEncryptedPreferences(context).getString(key_moodle_private_token, null);
+    }
+
+    public static void setMoodleUserId(Context context, long userId) {
+        Logger.d("PreferencesManager.setMoodleUserId", "Saving encrypted Moodle userId (valid=" + (userId > 0) + ")");
+        getEncryptedPreferences(context).edit()
+                .putLong(key_moodle_user_id, userId)
+                .apply();
+    }
+
+    public static long getMoodleUserId(Context context) {
+        return getEncryptedPreferences(context).getLong(key_moodle_user_id, -1L);
+    }
+
+    public static void clearMoodleAuthTokens(Context context) {
+        Logger.i("PreferencesManager.clearMoodleAuthTokens", "Clearing encrypted Moodle mobile tokens and userId");
+        getEncryptedPreferences(context).edit()
+                .remove(key_moodle_token)
+                .remove(key_moodle_private_token)
+                .remove(key_moodle_user_id)
+                .apply();
     }
 
     public static Integer getDetectedEnglishGroup(Context context) {
@@ -596,5 +643,81 @@ public class PreferencesManager {
     // clear the widget pin request flag once handled
     public static void clearPinWidgetRequested(Context context) {
         getPreferences(context).edit().remove(KEY_PIN_WIDGET_REQUEST_TIMESTAMP).apply();
+    }
+
+    // visible weekdays preference for schedule day strip and pager
+    private static final String KEY_VISIBLE_WEEKDAYS = "visible_weekdays";
+
+    public static boolean hasVisibleWeekdaysPref(Context context) {
+        return getPreferences(context).contains(KEY_VISIBLE_WEEKDAYS);
+    }
+
+    public static Set<DayOfWeek> getVisibleWeekdaysPref(Context context) {
+        Set<String> saved = getPreferences(context).getStringSet(KEY_VISIBLE_WEEKDAYS, null);
+        EnumSet<DayOfWeek> result = EnumSet.noneOf(DayOfWeek.class);
+        if (saved != null) {
+            for (String name : saved) {
+                try {
+                    result.add(DayOfWeek.valueOf(name));
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        }
+        if (result.isEmpty()) {
+            return getFallbackVisibleWeekdays(getGlobalStudyModePref(context));
+        }
+        return result;
+    }
+
+    public static void setVisibleWeekdaysPref(Context context, Set<DayOfWeek> days) {
+        if (days == null || days.isEmpty()) {
+            return;
+        }
+        Set<String> raw = new HashSet<>();
+        for (DayOfWeek day : days) {
+            if (day != null) {
+                raw.add(day.name());
+            }
+        }
+        if (raw.isEmpty()) {
+            return;
+        }
+        getPreferences(context).edit().putStringSet(KEY_VISIBLE_WEEKDAYS, raw).apply();
+        Logger.i("PreferencesManager.setVisibleWeekdaysPref", "Saved visible weekdays: " + raw);
+    }
+
+    public static void initRecommendedVisibleDays(Context context, List<Lesson> lessons, StudyMode studyMode) {
+        if (hasVisibleWeekdaysPref(context)) {
+            return;
+        }
+        EnumSet<DayOfWeek> detected = EnumSet.noneOf(DayOfWeek.class);
+        if (lessons != null) {
+            for (Lesson lesson : lessons) {
+                if (lesson != null && lesson.getDate() != null) {
+                    detected.add(lesson.getDate().getDayOfWeek());
+                }
+            }
+        }
+        Set<DayOfWeek> target = detected.isEmpty() ? getFallbackVisibleWeekdays(studyMode) : detected;
+        setVisibleWeekdaysPref(context, target);
+        Logger.i("PreferencesManager.initRecommendedVisibleDays", "Initialized recommended visible weekdays (fromLessons=" + !detected.isEmpty() + ", mode=" + studyMode + "): " + target);
+    }
+
+    public static void clearVisibleWeekdaysPref(Context context) {
+        getPreferences(context).edit().remove(KEY_VISIBLE_WEEKDAYS).apply();
+        Logger.d("PreferencesManager.clearVisibleWeekdaysPref", "Cleared visible weekdays preference");
+    }
+
+    private static Set<DayOfWeek> getFallbackVisibleWeekdays(StudyMode studyMode) {
+        if (studyMode == StudyMode.PART_TIME || studyMode == StudyMode.PART_TIME_PUW) {
+            return EnumSet.of(DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY);
+        }
+        return EnumSet.of(
+                DayOfWeek.MONDAY,
+                DayOfWeek.TUESDAY,
+                DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY,
+                DayOfWeek.FRIDAY
+        );
     }
 }

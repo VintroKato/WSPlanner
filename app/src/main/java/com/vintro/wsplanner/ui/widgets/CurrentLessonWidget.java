@@ -389,7 +389,8 @@ public class CurrentLessonWidget extends AppWidgetProvider {
 
     private static PendingIntent createOpenAppPendingIntent(Context context, int widgetId) {
         Intent intent = new Intent(context, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.putExtra(MainActivity.EXTRA_TARGET_TAB, R.id.nav_schedule);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         return PendingIntent.getActivity(
                 context,
                 widgetId + 100,
@@ -400,7 +401,8 @@ public class CurrentLessonWidget extends AppWidgetProvider {
 
     private static void openMainActivity(Context context) {
         Intent intent = new Intent(context, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.putExtra(MainActivity.EXTRA_TARGET_TAB, R.id.nav_schedule);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         context.startActivity(intent);
     }
 

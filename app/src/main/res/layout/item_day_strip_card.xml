@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/day_strip_card"
+    android:layout_width="0dp"
+    android:layout_height="62dp"
+    android:layout_marginHorizontal="3dp"
+    android:layout_weight="1"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardBackgroundColor="?attr/card_bg"
+    app:cardCornerRadius="14dp"
+    app:cardElevation="0dp"
+    app:strokeColor="?attr/card_border"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingHorizontal="4dp"
+        android:paddingVertical="6dp">
+
+        <TextView
+            android:id="@+id/day_strip_weekday"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:includeFontPadding="false"
+            android:letterSpacing="0.03"
+            android:maxLines="1"
+            android:text="Пн"
+            android:textColor="?attr/text_secondary"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/day_strip_number"
+            android:layout_width="match_parent"
+            android:layout_height="20dp"
+            android:layout_marginTop="3dp"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="20.11"
+            android:textColor="?attr/app_text"
+            android:textStyle="bold"
+            app:autoSizeMaxTextSize="14sp"
+            app:autoSizeMinTextSize="9sp"
+            app:autoSizeStepGranularity="1sp"
+            app:autoSizeTextType="uniform" />
+
+        <LinearLayout
+            android:id="@+id/day_strip_dots_container"
+            android:layout_width="wrap_content"
+            android:layout_height="6dp"
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <View
+                android:id="@+id/day_strip_empty_dash"
+                android:layout_width="10dp"
+                android:layout_height="2dp"
+                android:background="@drawable/bg_day_strip_empty_dash"
+                android:visibility="gone" />
+
+            <View
+                android:id="@+id/day_strip_dot_1"
+                android:layout_width="4dp"
+                android:layout_height="4dp"
+                android:background="@drawable/bg_day_strip_dot"
+                android:visibility="gone" />
+
+            <View
+                android:id="@+id/day_strip_dot_2"
+                android:layout_width="4dp"
+                android:layout_height="4dp"
+                android:layout_marginStart="3dp"
+                android:background="@drawable/bg_day_strip_dot"
+                android:visibility="gone" />
+
+            <View
+                android:id="@+id/day_strip_dot_3"
+                android:layout_width="4dp"
+                android:layout_height="4dp"
+                android:layout_marginStart="3dp"
+                android:background="@drawable/bg_day_strip_dot"
+                android:visibility="gone" />
+
+            <View
+                android:id="@+id/day_strip_dot_4"
+                android:layout_width="4dp"
+                android:layout_height="4dp"
+                android:layout_marginStart="3dp"
+                android:background="@drawable/bg_day_strip_dot"
+                android:visibility="gone" />
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

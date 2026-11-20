@@ -3,6 +3,7 @@
     android:shape="rectangle">
     <solid android:color="?attr/input_bg_active" />
     <corners android:radius="@dimen/border_radius" />
-    <stroke android:color="?attr/input_border_error"
-            android:width="2dp" />
+    <stroke
+        android:width="1.5dp"
+        android:color="?attr/input_border_error" />
 </shape>

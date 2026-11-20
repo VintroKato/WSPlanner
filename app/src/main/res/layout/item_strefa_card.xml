@@ -2,66 +2,68 @@
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/strefa_card"
+    style="@style/WSPlanner.Card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginStart="16dp"
-    android:layout_marginTop="5dp"
+    android:layout_marginTop="4dp"
     android:layout_marginEnd="16dp"
-    android:layout_marginBottom="5dp"
+    android:layout_marginBottom="6dp"
     android:clickable="true"
     android:focusable="true"
-    app:cardBackgroundColor="?attr/card_bg"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="0dp"
-    app:strokeColor="?attr/card_border"
-    app:strokeWidth="1dp">
+    android:outlineAmbientShadowColor="?attr/card_shadow_color"
+    android:outlineSpotShadowColor="?attr/card_shadow_color"
+    app:cardElevation="3dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:padding="16dp">
+        android:orientation="horizontal"
+        android:padding="14dp">
 
         <ImageView
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
             android:background="@drawable/bg_badge_puw"
+            android:contentDescription="@null"
             android:padding="9dp"
             android:src="@drawable/ic_school"
-            app:tint="@color/badge_puw_text"
-            android:contentDescription="@null" />
+            app:tint="?attr/badge_puw_text" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
             android:layout_weight="1"
-            android:layout_marginStart="14dp"
             android:orientation="vertical">
 
             <TextView
                 android:id="@+id/text_strefa_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:text="@string/all_courses_strefa_title"
                 android:textColor="?attr/app_text"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/text_strefa_desc"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:alpha="0.75"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="2"
                 android:text="@string/all_courses_strefa_desc"
-                android:textColor="?attr/app_text"
+                android:textColor="?attr/text_secondary"
                 android:textSize="12sp" />
         </LinearLayout>
 
         <FrameLayout
-            android:layout_width="34dp"
-            android:layout_height="34dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:layout_marginStart="8dp">
 
             <ImageView
@@ -69,21 +71,20 @@
                 android:layout_width="18dp"
                 android:layout_height="18dp"
                 android:layout_gravity="center"
+                android:contentDescription="@null"
                 android:src="@drawable/ic_arrow_outward"
-                app:tint="?attr/app_text"
-                android:alpha="0.6"
-                android:contentDescription="@null" />
+                app:tint="?attr/text_muted" />
 
             <ProgressBar
                 android:id="@+id/strefa_loading_progress"
                 style="?android:attr/progressBarStyle"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
                 android:layout_gravity="center"
+                android:alpha="0"
                 android:indeterminate="true"
                 android:indeterminateTint="?attr/colorPrimary"
-                android:visibility="gone"
-                android:alpha="0" />
+                android:visibility="gone" />
         </FrameLayout>
 
     </LinearLayout>

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/course_card"
+    style="@style/WSPlanner.Card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginStart="16dp"
@@ -11,158 +11,191 @@
     android:layout_marginBottom="5dp"
     android:clickable="true"
     android:focusable="true"
-    app:cardBackgroundColor="?attr/card_bg"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="0dp"
-    app:strokeColor="?attr/card_border"
-    app:strokeWidth="1dp">
+    android:outlineAmbientShadowColor="?attr/card_shadow_color"
+    android:outlineSpotShadowColor="?attr/card_shadow_color"
+    app:cardElevation="3dp">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_height="wrap_content">
+
+        <!-- Left 4dp status stripe -->
+        <View
+            android:id="@+id/course_status_stripe"
+            android:layout_width="4dp"
+            android:layout_height="0dp"
+            android:background="?attr/stripe_active"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingStart="14dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="14dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/course_status_stripe"
+            app:layout_constraintTop_toTopOf="parent">
 
-            >
-
-
-            <com.vintro.wsplanner.ui.views.SegmentedProgressBar
-                android:id="@+id/segmented_progress_bar"
-                android:layout_width="0dp"
-                android:layout_height="6dp"
-                android:layout_weight=".5"
-                android:layout_marginEnd="8dp"
-                 />
-
+            <!-- Top row: course title + lesson type badge -->
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight=".5"
-                android:orientation="horizontal"
+                android:layout_marginBottom="10dp"
+                android:baselineAligned="false"
+                android:gravity="top"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/text_course_name"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:lineSpacingExtra="2dp"
+                    android:maxLines="2"
+                    android:text="Programowanie obiektowe"
+                    android:textColor="?attr/app_text"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/badge_lesson_type"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginTop="1dp"
+                    android:background="@drawable/bg_badge_type"
+                    android:includeFontPadding="false"
+                    android:letterSpacing="0.03"
+                    android:paddingStart="9dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="9dp"
+                    android:paddingBottom="4dp"
+                    android:text="LABORATORIUM"
+                    android:textColor="?attr/badge_type_text"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Middle zone: teacher & room + chevron -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:gravity="center_vertical"
-                >
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/row_teacher"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="5dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="15dp"
+                            android:layout_height="15dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_teacher"
+                            app:tint="?attr/text_muted" />
+
+                        <TextView
+                            android:id="@+id/text_teacher"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="dr inż. Marek Kowalczyk"
+                            android:textColor="?attr/text_secondary"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/row_location"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="15dp"
+                            android:layout_height="15dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_location_pin"
+                            app:tint="?attr/text_muted" />
+
+                        <TextView
+                            android:id="@+id/text_location"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="Sala 204"
+                            android:textColor="?attr/text_secondary"
+                            android:textSize="13sp" />
+
+                        <ImageView
+                            android:id="@+id/offsite_arrow_icon"
+                            android:layout_width="13dp"
+                            android:layout_height="13dp"
+                            android:layout_marginStart="4dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_arrow_outward"
+                            android:visibility="gone"
+                            app:tint="?attr/text_muted" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="?attr/text_muted" />
+            </LinearLayout>
+
+            <!-- Bottom row: full-width segmented progress bar + compact counter -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.vintro.wsplanner.ui.views.SegmentedProgressBar
+                    android:id="@+id/segmented_progress_bar"
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:layout_weight="1" />
 
                 <TextView
                     android:id="@+id/text_progress"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="16dp"
-                    android:alpha="0.8"
-                    android:text="-- / --"
-                    android:textColor="?attr/app_text"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:layout_alignParentStart="true"
-                    />
-
-                <View android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1" />
-                <!-- Lesson Type -->
-                <TextView
-                    android:id="@+id/badge_lesson_type"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:background="@drawable/bg_badge_lab"
-                    android:paddingStart="10dp"
-                    android:paddingTop="3dp"
-                    android:paddingEnd="10dp"
-                    android:paddingBottom="3dp"
-                    android:text="---------"
-                    android:textColor="@color/badge_lab_text"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    />
+                    android:layout_marginStart="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:text="4 / 10"
+                    android:textColor="?attr/text_secondary"
+                    android:textSize="12sp" />
             </LinearLayout>
+
         </LinearLayout>
-
-        <!-- Course Title -->
-        <TextView
-            android:id="@+id/text_course_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp"
-            android:ellipsize="end"
-            android:maxLines="2"
-            android:text="--------------------------------"
-            android:textColor="?attr/app_text"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            />
-
-        <!-- Row: Teacher -->
-        <LinearLayout
-            android:id="@+id/row_teacher"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_teacher"
-                app:tint="?attr/app_text"
-                android:alpha="0.7" />
-
-            <TextView
-                android:id="@+id/text_teacher"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:alpha="0.85"
-                android:text="------------------------"
-                android:textColor="?attr/app_text"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <!-- Row: Location -->
-        <LinearLayout
-            android:id="@+id/row_location"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_location_pin"
-                app:tint="?attr/app_text"
-                android:alpha="0.7" />
-
-            <TextView
-                android:id="@+id/text_location"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:alpha="0.85"
-                android:text="Sala ---"
-                android:textColor="?attr/app_text"
-                android:textSize="12sp" />
-
-            <ImageView
-                android:id="@+id/offsite_arrow_icon"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:layout_marginStart="4dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_arrow_outward"
-                app:tint="?attr/app_text"
-                android:visibility="gone" />
-        </LinearLayout>
-
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

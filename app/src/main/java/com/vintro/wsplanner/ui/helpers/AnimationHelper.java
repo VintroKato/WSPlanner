@@ -7,30 +7,38 @@ import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.ColorStateList;
-import android.content.res.Configuration;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.core.view.WindowCompat;
-import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.enums.InputState;
-import com.vintro.wsplanner.utils.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class AnimationHelper {
+
+    public static final String ROLE_TEXT_PRIMARY = "text_primary";
+    public static final String ROLE_TEXT_SECONDARY = "text_secondary";
+    public static final String ROLE_TEXT_MUTED = "text_muted";
+    public static final String ROLE_PRIMARY = "primary";
+    public static final String ROLE_DIVIDER = "divider";
+    public static final String ROLE_SURFACE_RECESSED = "surface_recessed";
+    public static final String ROLE_APP_BG = "app_bg";
+    public static final String ROLE_BOTTOM_NAV_BAR = "bottom_nav_bar";
+    public static final String ROLE_BOTTOM_NAV_PILL_ACTIVE = "bottom_nav_pill_active";
+    public static final String ROLE_CARD_INPUT = "card_input";
+    public static final String ROLE_SKIP = "skip_theme_anim";
 
     private static final int animation_duration = 500;
     private static final List<ValueAnimator> activeThemeAnimators = new ArrayList<>();
@@ -51,15 +59,23 @@ public class AnimationHelper {
     }
 
     public static void animateInputState(Context context, EditText input, InputState state, InputState oldState) {
-        GradientDrawable drawable = (GradientDrawable) input.getBackground().mutate();
-
+        Drawable background = input.getBackground();
+        if (!(background instanceof GradientDrawable)) {
+            return;
+        }
+        GradientDrawable drawable = (GradientDrawable) background.mutate();
+        if (drawable.getColor() == null) {
+            return;
+        }
 
         int startBgColor = drawable.getColor().getDefaultColor();
         int startBorderColor = getInputBorderColor(context, oldState, startBgColor);
 
-        int endBgColor = input.isFocused() ?
-                UIHelper.getThemeColor(context, R.attr.input_bg_active) :
-                UIHelper.getThemeColor(context, R.attr.input_bg);
+        boolean isCardInput = ROLE_CARD_INPUT.equals(getRoleTag(input));
+        int unfocusedBgAttr = isCardInput ? R.attr.surface_recessed : R.attr.input_bg;
+        int endBgColor = input.isFocused()
+                ? UIHelper.getThemeColor(context, R.attr.input_bg_active)
+                : UIHelper.getThemeColor(context, unfocusedBgAttr);
 
         int endBorderColor = getEndBorderColor(context, state, input.isFocused());
 
@@ -67,26 +83,27 @@ public class AnimationHelper {
             return;
         }
 
-        animateInputColors(context, drawable, startBgColor, endBgColor, startBorderColor, endBorderColor);
+        float strokeDp = input.isFocused() ? 1.5f : 1.0f;
+        animateInputColors(context, drawable, startBgColor, endBgColor, startBorderColor, endBorderColor, strokeDp);
     }
 
     public static void animateCardSelection(Context context, MaterialCardView card, boolean checked) {
         if (card.isChecked() == checked) {
             return;
         }
-        int startBorderColor = checked ?
-                UIHelper.getThemeColor(context, R.attr.card_border) :
-                UIHelper.getThemeColor(context, R.attr.card_checked_border);
-        int startBgColor = checked ?
-                 UIHelper.getThemeColor(context, R.attr.card_bg) :
-                 UIHelper.getThemeColor(context, R.attr.card_checked_bg);
+        int startBorderColor = checked
+                ? UIHelper.getThemeColor(context, R.attr.card_border)
+                : UIHelper.getThemeColor(context, R.attr.card_checked_border);
+        int startBgColor = checked
+                ? UIHelper.getThemeColor(context, R.attr.card_bg)
+                : UIHelper.getThemeColor(context, R.attr.card_checked_bg);
 
-        int endBorderColor = checked ?
-                UIHelper.getThemeColor(context, R.attr.card_checked_border) :
-                UIHelper.getThemeColor(context, R.attr.card_border);
-        int endBgColor = checked ?
-                UIHelper.getThemeColor(context, R.attr.card_checked_bg) :
-                UIHelper.getThemeColor(context, R.attr.card_bg);
+        int endBorderColor = checked
+                ? UIHelper.getThemeColor(context, R.attr.card_checked_border)
+                : UIHelper.getThemeColor(context, R.attr.card_border);
+        int endBgColor = checked
+                ? UIHelper.getThemeColor(context, R.attr.card_checked_bg)
+                : UIHelper.getThemeColor(context, R.attr.card_bg);
 
         if (startBorderColor == endBorderColor && startBgColor == endBgColor) {
             card.setChecked(checked);
@@ -129,9 +146,18 @@ public class AnimationHelper {
 
         if (masterAnimator != null && onComplete != null) {
             masterAnimator.addListener(new AnimatorListenerAdapter() {
+                private boolean cancelled = false;
+
+                @Override
+                public void onAnimationCancel(Animator animation) {
+                    cancelled = true;
+                }
+
                 @Override
                 public void onAnimationEnd(Animator animation) {
-                    onComplete.run();
+                    if (!cancelled) {
+                        onComplete.run();
+                    }
                 }
             });
         } else if (onComplete != null) {
@@ -139,8 +165,88 @@ public class AnimationHelper {
         }
     }
 
+    private static String getRoleTag(View view) {
+        Object tag = view.getTag();
+        return tag instanceof String ? (String) tag : null;
+    }
+
+    private static int resolveRoleColorAttr(String role) {
+        if (ROLE_TEXT_SECONDARY.equals(role)) {
+            return R.attr.text_secondary;
+        }
+        if (ROLE_TEXT_MUTED.equals(role)) {
+            return R.attr.text_muted;
+        }
+        if (ROLE_PRIMARY.equals(role)) {
+            return androidx.appcompat.R.attr.colorPrimary;
+        }
+        return R.attr.app_text;
+    }
+
     private static void animateViewHierarchy(Context oldContext, Context newContext, View view, MaterialCardView newlySelectedCard) {
         if (view == null) return;
+
+        String role = getRoleTag(view);
+        if (ROLE_SKIP.equals(role)) {
+            return;
+        }
+
+        // skip hidden fragment roots inside fragment_container to avoid animating offscreen views
+        if (view.getVisibility() == View.GONE && view.getParent() instanceof View) {
+            View parent = (View) view.getParent();
+            if (parent.getId() == R.id.fragment_container) {
+                return;
+            }
+        }
+
+        if (ROLE_APP_BG.equals(role)) {
+            animateSolidBgChange(oldContext, newContext, view, R.attr.app_bg);
+            if (view instanceof ViewGroup) {
+                ViewGroup group = (ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    animateViewHierarchy(oldContext, newContext, group.getChildAt(i), newlySelectedCard);
+                }
+            }
+            return;
+        }
+
+        if (ROLE_DIVIDER.equals(role)) {
+            animateSolidBgChange(oldContext, newContext, view, R.attr.divider_color);
+            return;
+        }
+
+        if (ROLE_BOTTOM_NAV_BAR.equals(role)) {
+            animateSolidBgChange(oldContext, newContext, view, R.attr.bottom_nav_bg);
+            if (view instanceof ViewGroup) {
+                ViewGroup group = (ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    animateViewHierarchy(oldContext, newContext, group.getChildAt(i), newlySelectedCard);
+                }
+            }
+            return;
+        }
+
+        if (ROLE_BOTTOM_NAV_PILL_ACTIVE.equals(role)) {
+            animateSurfaceBackgroundChange(oldContext, newContext, view, R.attr.bottom_nav_indicator);
+            if (view instanceof ViewGroup) {
+                ViewGroup group = (ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    animateViewHierarchy(oldContext, newContext, group.getChildAt(i), newlySelectedCard);
+                }
+            }
+            return;
+        }
+
+        if (ROLE_SURFACE_RECESSED.equals(role)) {
+            animateSurfaceBackgroundChange(oldContext, newContext, view, R.attr.surface_recessed);
+            if (view instanceof ViewGroup) {
+                ViewGroup group = (ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    animateViewHierarchy(oldContext, newContext, group.getChildAt(i), newlySelectedCard);
+                }
+            }
+            return;
+        }
 
         if (view instanceof MaterialCardView) {
             MaterialCardView card = (MaterialCardView) view;
@@ -172,7 +278,7 @@ public class AnimationHelper {
         if (view instanceof MaterialButton) {
             MaterialButton mb = (MaterialButton) view;
             if (mb.getStrokeWidth() > 0) {
-                animateSecondaryButtonThemeChange(oldContext, newContext, mb);
+                animateSecondaryButtonThemeChange(oldContext, newContext, mb, role);
             } else {
                 animateButtonThemeChange(oldContext, newContext, mb);
             }
@@ -185,12 +291,12 @@ public class AnimationHelper {
         }
 
         if (view instanceof TextView) {
-            animateTextThemeChange(oldContext, newContext, (TextView) view);
+            animateTextThemeChange(oldContext, newContext, (TextView) view, role);
             return;
         }
 
         if (view instanceof ImageView) {
-            animateImageViewTintThemeChange(oldContext, newContext, (ImageView) view);
+            animateImageViewTintThemeChange(oldContext, newContext, (ImageView) view, role);
             return;
         }
 
@@ -202,10 +308,35 @@ public class AnimationHelper {
         }
     }
 
-    private static void animateImageViewTintThemeChange(Context oldContext, Context newContext, ImageView iv) {
-        if (iv.getId() == R.id.widget_card_arrow || iv.getImageTintList() != null) {
-            int startColor = UIHelper.getThemeColor(oldContext, R.attr.app_text);
-            int endColor = UIHelper.getThemeColor(newContext, R.attr.app_text);
+    private static void animateSolidBgChange(Context oldContext, Context newContext, View view, int attr) {
+        int startColor = UIHelper.getThemeColor(oldContext, attr);
+        int endColor = UIHelper.getThemeColor(newContext, attr);
+        ValueAnimator animator = createColorAnimator(startColor, endColor, view::setBackgroundColor);
+        trackThemeAnimator(animator);
+        animator.start();
+    }
+
+    private static void animateSurfaceBackgroundChange(Context oldContext, Context newContext, View view, int attr) {
+        int startColor = UIHelper.getThemeColor(oldContext, attr);
+        int endColor = UIHelper.getThemeColor(newContext, attr);
+        Drawable bg = view.getBackground();
+        if (bg instanceof GradientDrawable) {
+            GradientDrawable mutable = (GradientDrawable) bg.mutate();
+            ValueAnimator animator = createColorAnimator(startColor, endColor, mutable::setColor);
+            trackThemeAnimator(animator);
+            animator.start();
+        } else {
+            ValueAnimator animator = createColorAnimator(startColor, endColor, view::setBackgroundColor);
+            trackThemeAnimator(animator);
+            animator.start();
+        }
+    }
+
+    private static void animateImageViewTintThemeChange(Context oldContext, Context newContext, ImageView iv, String role) {
+        if (role != null || iv.getImageTintList() != null) {
+            int attr = resolveRoleColorAttr(role);
+            int startColor = UIHelper.getThemeColor(oldContext, attr);
+            int endColor = UIHelper.getThemeColor(newContext, attr);
             ValueAnimator animator = createColorAnimator(startColor, endColor, color -> iv.setImageTintList(ColorStateList.valueOf(color)));
             trackThemeAnimator(animator);
             animator.start();
@@ -224,29 +355,28 @@ public class AnimationHelper {
     }
 
     private static void animateCardThemeChange(Context oldContext, Context newContext, MaterialCardView card) {
-        int startBgColor = card.isChecked() ?
-                UIHelper.getThemeColor(oldContext, R.attr.card_checked_bg) :
-                UIHelper.getThemeColor(oldContext, R.attr.card_bg);
-        int startBorderColor = card.isChecked() ?
-                UIHelper.getThemeColor(oldContext, R.attr.card_checked_border) :
-                UIHelper.getThemeColor(oldContext, R.attr.card_border);
+        boolean isChecked = card.isCheckable() && card.isChecked();
+        int startBgColor = isChecked
+                ? UIHelper.getThemeColor(oldContext, R.attr.card_checked_bg)
+                : UIHelper.getThemeColor(oldContext, R.attr.card_bg);
+        int startBorderColor = isChecked
+                ? UIHelper.getThemeColor(oldContext, R.attr.card_checked_border)
+                : UIHelper.getThemeColor(oldContext, R.attr.card_border);
 
-        int endBorderColor = card.isChecked() ?
-                UIHelper.getThemeColor(newContext, R.attr.card_checked_border) :
-                UIHelper.getThemeColor(newContext, R.attr.card_border);
-        int endBgColor = card.isChecked() ?
-                UIHelper.getThemeColor(newContext, R.attr.card_checked_bg) :
-                UIHelper.getThemeColor(newContext, R.attr.card_bg);
+        int endBorderColor = isChecked
+                ? UIHelper.getThemeColor(newContext, R.attr.card_checked_border)
+                : UIHelper.getThemeColor(newContext, R.attr.card_border);
+        int endBgColor = isChecked
+                ? UIHelper.getThemeColor(newContext, R.attr.card_checked_bg)
+                : UIHelper.getThemeColor(newContext, R.attr.card_bg);
 
-        animateCardColors(card, startBorderColor, endBorderColor, startBgColor, endBgColor, card.isChecked());
-        if (card.getChildCount() > 0 && card.getChildAt(0) instanceof TextView) {
-            animateTextThemeChange(oldContext, newContext, (TextView) card.getChildAt(0));
-        }
+        animateCardColors(card, startBorderColor, endBorderColor, startBgColor, endBgColor, isChecked);
     }
 
-    private static void animateTextThemeChange(Context oldContext, Context newContext, TextView text) {
-        int startColor = UIHelper.getThemeColor(oldContext, R.attr.app_text);
-        int endColor = UIHelper.getThemeColor(newContext, R.attr.app_text);
+    private static void animateTextThemeChange(Context oldContext, Context newContext, TextView text, String role) {
+        int attr = resolveRoleColorAttr(role);
+        int startColor = UIHelper.getThemeColor(oldContext, attr);
+        int endColor = UIHelper.getThemeColor(newContext, attr);
 
         ValueAnimator animator = createColorAnimator(startColor, endColor, text::setTextColor);
         trackThemeAnimator(animator);
@@ -263,13 +393,14 @@ public class AnimationHelper {
         animateButtonColors(button, startBgColor, endBgColor, startTextColor, endTextColor);
     }
 
-    private static void animateSecondaryButtonThemeChange(Context oldContext, Context newContext, MaterialButton button) {
+    private static void animateSecondaryButtonThemeChange(Context oldContext, Context newContext, MaterialButton button, String role) {
+        int textAttr = resolveRoleColorAttr(role);
         int startBg = UIHelper.getThemeColor(oldContext, R.attr.card_bg);
         int endBg = UIHelper.getThemeColor(newContext, R.attr.card_bg);
         int startStroke = UIHelper.getThemeColor(oldContext, R.attr.card_border);
         int endStroke = UIHelper.getThemeColor(newContext, R.attr.card_border);
-        int startText = UIHelper.getThemeColor(oldContext, R.attr.app_text);
-        int endText = UIHelper.getThemeColor(newContext, R.attr.app_text);
+        int startText = UIHelper.getThemeColor(oldContext, textAttr);
+        int endText = UIHelper.getThemeColor(newContext, textAttr);
 
         ValueAnimator bgAnim = createColorAnimator(startBg, endBg, color -> button.setBackgroundTintList(ColorStateList.valueOf(color)));
         ValueAnimator strokeAnim = createColorAnimator(startStroke, endStroke, color -> button.setStrokeColor(ColorStateList.valueOf(color)));
@@ -290,9 +421,9 @@ public class AnimationHelper {
     private static int getInputBorderColor(Context context, InputState state, int bgColor) {
         switch (state) {
             case NORMAL:
-                return bgColor == UIHelper.getThemeColor(context, R.attr.input_bg_active) ?
-                        UIHelper.getThemeColor(context, R.attr.input_border_active) :
-                        UIHelper.getThemeColor(context, R.attr.input_border);
+                return bgColor == UIHelper.getThemeColor(context, R.attr.input_bg_active)
+                        ? UIHelper.getThemeColor(context, R.attr.input_border_active)
+                        : UIHelper.getThemeColor(context, R.attr.input_border);
             case OK:
                 return UIHelper.getThemeColor(context, R.attr.input_border_ok);
             case ERROR:
@@ -305,9 +436,9 @@ public class AnimationHelper {
     private static int getEndBorderColor(Context context, InputState state, boolean isFocused) {
         switch (state) {
             case NORMAL:
-                return isFocused ?
-                        UIHelper.getThemeColor(context, R.attr.input_border_active) :
-                        UIHelper.getThemeColor(context, R.attr.input_border);
+                return isFocused
+                        ? UIHelper.getThemeColor(context, R.attr.input_border_active)
+                        : UIHelper.getThemeColor(context, R.attr.input_border);
             case OK:
                 return UIHelper.getThemeColor(context, R.attr.input_border_ok);
             case ERROR:
@@ -318,11 +449,10 @@ public class AnimationHelper {
     }
 
     private static void animateInputColors(Context context, GradientDrawable drawable, int startBg, int endBg,
-                                           int startBorder, int endBorder) {
-        ValueAnimator bgAnimator = createColorAnimator(startBg, endBg,
-                drawable::setColor);
+                                           int startBorder, int endBorder, float strokeDp) {
+        ValueAnimator bgAnimator = createColorAnimator(startBg, endBg, drawable::setColor);
 
-        int borderWidth = (int) (2 * context.getResources().getDisplayMetrics().density);
+        int borderWidth = Math.max(1, Math.round(strokeDp * context.getResources().getDisplayMetrics().density));
         ValueAnimator borderAnimator = createColorAnimator(startBorder, endBorder,
                 color -> drawable.setStroke(borderWidth, color));
 
@@ -334,24 +464,44 @@ public class AnimationHelper {
                                           int startBg, int endBg, boolean checked) {
         card.setStrokeColor(startBorder);
         card.setCardBackgroundColor(startBg);
-        card.setChecked(checked);
+        if (card.isCheckable()) {
+            card.setChecked(checked);
+            float density = card.getResources().getDisplayMetrics().density;
+            int strokePx = Math.max(1, Math.round((checked ? 1.5f : 1.0f) * density));
+            card.setStrokeWidth(strokePx);
+        }
 
-        ValueAnimator borderAnimator = createColorAnimator(startBorder, endBorder,
-                card::setStrokeColor);
-
-        ValueAnimator bgAnimator = createColorAnimator(startBg, endBg,
-                card::setCardBackgroundColor);
+        ValueAnimator borderAnimator = createColorAnimator(startBorder, endBorder, card::setStrokeColor);
+        ValueAnimator bgAnimator = createColorAnimator(startBg, endBg, card::setCardBackgroundColor);
 
         borderAnimator.addListener(new AnimatorListenerAdapter() {
+            private boolean cancelled = false;
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                cancelled = true;
+            }
+
             @Override
             public void onAnimationEnd(Animator animation) {
-                card.setStrokeColor(endBorder);
+                if (!cancelled) {
+                    card.setStrokeColor(endBorder);
+                }
             }
         });
         bgAnimator.addListener(new AnimatorListenerAdapter() {
+            private boolean cancelled = false;
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                cancelled = true;
+            }
+
             @Override
             public void onAnimationEnd(Animator animation) {
-                card.setCardBackgroundColor(endBg);
+                if (!cancelled) {
+                    card.setCardBackgroundColor(endBg);
+                }
             }
         });
 
@@ -371,8 +521,7 @@ public class AnimationHelper {
             }
         });
 
-        ValueAnimator textAnimator = createColorAnimator(startText, endText,
-                button::setTextColor);
+        ValueAnimator textAnimator = createColorAnimator(startText, endText, button::setTextColor);
 
         trackThemeAnimator(bgAnimator);
         trackThemeAnimator(textAnimator);

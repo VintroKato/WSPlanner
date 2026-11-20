@@ -7,9 +7,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 // semester details and lessons for a subject
 public class SubjectDetails implements Serializable {
@@ -127,6 +129,20 @@ public class SubjectDetails implements Serializable {
 
     public Location getDominantLocation() {
         return dominantLocation;
+    }
+
+    // collect every location type across all scheduled meetings of this course
+    public Set<LocationType> getAllLocationTypes() {
+        EnumSet<LocationType> types = EnumSet.noneOf(LocationType.class);
+        for (Lesson lesson : semesterLessons) {
+            if (lesson != null && lesson.getLocation() != null && lesson.getLocation().getType() != null) {
+                types.add(lesson.getLocation().getType());
+            }
+        }
+        if (types.isEmpty() && dominantLocation != null && dominantLocation.getType() != null) {
+            types.add(dominantLocation.getType());
+        }
+        return types;
     }
 
     public List<Lesson> getSemesterLessons() {

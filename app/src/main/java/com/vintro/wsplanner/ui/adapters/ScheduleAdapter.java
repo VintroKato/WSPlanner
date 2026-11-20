@@ -2,7 +2,6 @@ package com.vintro.wsplanner.ui.adapters;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,9 +11,10 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.enums.LocationType;
@@ -24,44 +24,70 @@ import com.vintro.wsplanner.models.Location;
 import com.vintro.wsplanner.ui.activities.SubjectDetailsActivity;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
-// adapter for day schedule
+// adapter for day schedule items
 public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+
+    public interface OnEmptyActionListener {
+        void onJumpToNextClassDay(LocalDate nextClassDate);
+        void onRetryLoad();
+    }
+
     private final Context context;
     private final List<ScheduleItem> items = new ArrayList<>();
     private final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-    private final int activeStrokeWidthPx;
     private final int defaultStrokeWidthPx;
-    private final int activeLessonBorderColor;
-    private final int nextLessonBorderColor;
+    private final int defaultCardBgColor;
+    private final int nowCardBgColor;
     private final int defaultCardBorderColor;
+    private final int stripeActiveColor;
+    private final int stripePastColor;
+    private final int bannerNowBgColor;
+    private final int bannerNextBgColor;
+    private final int textPrimaryColor;
+    private final int textSecondaryColor;
+    private final int textMutedColor;
     private final int badgeNowTextColor;
     private final int badgeNextTextColor;
     private final int badgePuwTextColor;
     private final int badgeFieldTextColor;
     private final int badgeWspaTextColor;
+
     private DaySchedule currentDaySchedule;
+    @Nullable
+    private OnEmptyActionListener emptyActionListener;
 
     public ScheduleAdapter(Context context) {
         this.context = context;
         float density = context.getResources().getDisplayMetrics().density;
-        this.activeStrokeWidthPx = (int) (1.5f * density);
-        this.defaultStrokeWidthPx = (int) (1.0f * density);
-        this.activeLessonBorderColor = ContextCompat.getColor(context, R.color.active_lesson_border);
-        this.nextLessonBorderColor = ContextCompat.getColor(context, R.color.next_lesson_border);
+        this.defaultStrokeWidthPx = Math.max(1, Math.round(1.0f * density));
+        this.defaultCardBgColor = UIHelper.getThemeColor(context, R.attr.card_bg);
+        this.nowCardBgColor = UIHelper.getThemeColor(context, R.attr.card_now_bg);
         this.defaultCardBorderColor = UIHelper.getThemeColor(context, R.attr.card_border);
-        this.badgeNowTextColor = ContextCompat.getColor(context, R.color.badge_now_text);
-        this.badgeNextTextColor = ContextCompat.getColor(context, R.color.badge_next_text);
-        this.badgePuwTextColor = ContextCompat.getColor(context, R.color.badge_puw_text);
-        this.badgeFieldTextColor = ContextCompat.getColor(context, R.color.badge_field_text);
-        this.badgeWspaTextColor = ContextCompat.getColor(context, R.color.badge_wspa_text);
+        this.stripeActiveColor = UIHelper.getThemeColor(context, R.attr.stripe_active);
+        this.stripePastColor = UIHelper.getThemeColor(context, R.attr.stripe_past);
+        this.bannerNowBgColor = UIHelper.getThemeColor(context, R.attr.banner_now_bg);
+        this.bannerNextBgColor = UIHelper.getThemeColor(context, R.attr.banner_next_bg);
+        this.textPrimaryColor = UIHelper.getThemeColor(context, R.attr.app_text);
+        this.textSecondaryColor = UIHelper.getThemeColor(context, R.attr.text_secondary);
+        this.textMutedColor = UIHelper.getThemeColor(context, R.attr.text_muted);
+        this.badgeNowTextColor = UIHelper.getThemeColor(context, R.attr.badge_now_text);
+        this.badgeNextTextColor = UIHelper.getThemeColor(context, R.attr.badge_next_text);
+        this.badgePuwTextColor = UIHelper.getThemeColor(context, R.attr.badge_puw_text);
+        this.badgeFieldTextColor = UIHelper.getThemeColor(context, R.attr.badge_field_text);
+        this.badgeWspaTextColor = UIHelper.getThemeColor(context, R.attr.badge_wspa_text);
     }
 
-    // clear items
+    public void setEmptyActionListener(@Nullable OnEmptyActionListener listener) {
+        this.emptyActionListener = listener;
+    }
+
     public void clear() {
         items.clear();
         currentDaySchedule = null;
@@ -78,12 +104,11 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         notifyDataSetChanged();
     }
 
-    // load day schedule and insert breaks
-    public void submitDaySchedule(DaySchedule daySchedule) {
+    public void submitDaySchedule(DaySchedule daySchedule, @Nullable LocalDate nextClassDate) {
         this.currentDaySchedule = daySchedule;
         items.clear();
         if (daySchedule == null || daySchedule.isEmpty()) {
-            items.add(ScheduleItem.createEmpty());
+            items.add(ScheduleItem.createEmpty(nextClassDate));
             notifyDataSetChanged();
             return;
         }
@@ -96,7 +121,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             if (i < lessons.size() - 1) {
                 Lesson next = lessons.get(i + 1);
                 long gapMinutes = DaySchedule.getGapBetweenMinutes(current, next);
-                if (gapMinutes >= 45) {
+                if (gapMinutes >= 20) {
                     items.add(ScheduleItem.createBreakGap(gapMinutes));
                 }
             }
@@ -155,15 +180,14 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
     }
 
-    // view holders
-
     class LessonViewHolder extends RecyclerView.ViewHolder {
         private final MaterialCardView cardView;
+        private final View statusStripe;
+        private final View bannerStatusContainer;
         private final LinearLayout bannerNowLayout;
         private final TextView badgeNow;
         private final TextView timeLeftText;
         private final TextView lessonTimeRange;
-        private final TextView badgeCompleted;
         private final TextView badgeLocation;
         private final TextView subjectName;
         private final View rowLessonType;
@@ -175,12 +199,13 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
         LessonViewHolder(@NonNull View itemView) {
             super(itemView);
-            cardView = (MaterialCardView) itemView.findViewById(R.id.lesson_card);
+            cardView = itemView.findViewById(R.id.lesson_card);
+            statusStripe = itemView.findViewById(R.id.lesson_status_stripe);
+            bannerStatusContainer = itemView.findViewById(R.id.banner_status_container);
             bannerNowLayout = itemView.findViewById(R.id.banner_now_layout);
             badgeNow = itemView.findViewById(R.id.badge_now);
             timeLeftText = itemView.findViewById(R.id.time_left_text);
             lessonTimeRange = itemView.findViewById(R.id.lesson_time_range);
-            badgeCompleted = itemView.findViewById(R.id.badge_completed);
             badgeLocation = itemView.findViewById(R.id.badge_location);
             subjectName = itemView.findViewById(R.id.subject_name);
             rowLessonType = itemView.findViewById(R.id.row_lesson_type);
@@ -195,37 +220,31 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             if (lesson == null) return;
             LocalDateTime now = LocalDateTime.now();
 
-            // time range
             String start = lesson.getStartTime() != null ? lesson.getStartTime().format(timeFormatter) : "--:--";
             String end = lesson.getEndTime() != null ? lesson.getEndTime().format(timeFormatter) : "--:--";
             lessonTimeRange.setText(start + " – " + end);
 
-            // subject and teacher info
             subjectName.setText(lesson.getSubjectName());
             String rawType = lesson.getLessonType();
             if (rawType != null && !rawType.trim().isEmpty()) {
-                if (rowLessonType != null) rowLessonType.setVisibility(View.VISIBLE);
-                String formatted = rawType.substring(0, 1).toUpperCase(java.util.Locale.getDefault()) + rawType.substring(1);
+                rowLessonType.setVisibility(View.VISIBLE);
+                String formatted = rawType.substring(0, 1).toUpperCase(Locale.getDefault()) + rawType.substring(1);
                 lessonTypeText.setText(formatted);
             } else {
-                if (rowLessonType != null) rowLessonType.setVisibility(View.GONE);
+                rowLessonType.setVisibility(View.GONE);
             }
 
             if (lesson.hasTeacher()) {
-                if (rowTeacher != null) rowTeacher.setVisibility(View.VISIBLE);
+                rowTeacher.setVisibility(View.VISIBLE);
                 teacherText.setText(lesson.getTeacherName().trim());
             } else {
-                if (rowTeacher != null) rowTeacher.setVisibility(View.GONE);
+                rowTeacher.setVisibility(View.GONE);
             }
 
-            // location
             Location loc = lesson.getLocation();
             locationText.setText(loc != null ? loc.getDisplayText() : "—");
-
-            // location badge
             setupLocationBadge(loc != null ? loc.getType() : LocationType.UCZELNIA);
 
-            // open in maps if link available
             if (loc != null && loc.hasMapLink()) {
                 offsiteArrowIcon.setVisibility(View.VISIBLE);
                 View.OnClickListener mapClick = v -> {
@@ -234,7 +253,8 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                         try {
                             Intent mapIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(query));
                             context.startActivity(mapIntent);
-                        } catch (Exception ignored) {}
+                        } catch (Exception ignored) {
+                        }
                     }
                 };
                 locationText.setOnClickListener(mapClick);
@@ -245,7 +265,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 offsiteArrowIcon.setOnClickListener(null);
             }
 
-            // card state: current, next, past, or upcoming
+            // isPast dimming applies only to completed lessons on today's date
             boolean isToday = lesson.getDate() != null && lesson.getDate().equals(now.toLocalDate());
             boolean isPast = isToday && lesson.isPast(now);
             boolean isCurrent = isToday && lesson.isCurrent(now);
@@ -254,13 +274,16 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             Lesson nextLesson = (currentDaySchedule != null && isToday && activeLesson == null) ? currentDaySchedule.getNextLesson(now) : null;
             boolean isNext = isToday && activeLesson == null && nextLesson != null && lesson.equals(nextLesson);
 
+            // uniform 1dp neutral border avoids visual conflict with left status stripe
+            cardView.setStrokeWidth(defaultStrokeWidthPx);
+            cardView.setStrokeColor(defaultCardBorderColor);
+
             if (isCurrent) {
-                // current lesson
-                cardView.setAlpha(1.0f);
-                cardView.setStrokeWidth(activeStrokeWidthPx);
-                cardView.setStrokeColor(activeLessonBorderColor);
-                bannerNowLayout.setVisibility(View.VISIBLE);
-                if (badgeCompleted != null) badgeCompleted.setVisibility(View.GONE);
+                statusStripe.setBackgroundColor(stripeActiveColor);
+                cardView.setCardBackgroundColor(nowCardBgColor);
+
+                bannerStatusContainer.setVisibility(View.VISIBLE);
+                bannerNowLayout.setBackgroundColor(bannerNowBgColor);
 
                 badgeNow.setBackgroundTintList(null);
                 badgeNow.setText(context.getString(R.string.schedule_badge_now));
@@ -271,13 +294,14 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 String formattedDuration = formatDurationHoursMinutes(context, minutesLeft);
                 timeLeftText.setText(context.getString(R.string.schedule_time_left, formattedDuration));
                 timeLeftText.setTextColor(badgeNowTextColor);
+
+                applyTextColors(false);
             } else if (isNext) {
-                // next lesson
-                cardView.setAlpha(1.0f);
-                cardView.setStrokeWidth(activeStrokeWidthPx);
-                cardView.setStrokeColor(nextLessonBorderColor);
-                bannerNowLayout.setVisibility(View.VISIBLE);
-                if (badgeCompleted != null) badgeCompleted.setVisibility(View.GONE);
+                statusStripe.setBackgroundColor(stripeActiveColor);
+                cardView.setCardBackgroundColor(defaultCardBgColor);
+
+                bannerStatusContainer.setVisibility(View.VISIBLE);
+                bannerNowLayout.setBackgroundColor(bannerNextBgColor);
 
                 badgeNow.setBackgroundTintList(null);
                 badgeNow.setText(context.getString(R.string.schedule_badge_next));
@@ -288,23 +312,20 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 String formattedDuration = formatDurationHoursMinutes(context, minutesUntilStart);
                 timeLeftText.setText(context.getString(R.string.schedule_time_until, formattedDuration));
                 timeLeftText.setTextColor(badgeNextTextColor);
+
+                applyTextColors(false);
             } else if (isPast) {
-                // past lesson today: gentle dimming, preserve clean border and show completed badge
-                cardView.setAlpha(0.82f);
-                cardView.setStrokeWidth(defaultStrokeWidthPx);
-                cardView.setStrokeColor(defaultCardBorderColor);
-                bannerNowLayout.setVisibility(View.GONE);
-                if (badgeCompleted != null) badgeCompleted.setVisibility(View.VISIBLE);
+                statusStripe.setBackgroundColor(stripePastColor);
+                cardView.setCardBackgroundColor(defaultCardBgColor);
+                bannerStatusContainer.setVisibility(View.GONE);
+                applyTextColors(true);
             } else {
-                // default card state
-                cardView.setAlpha(1.0f);
-                cardView.setStrokeWidth(defaultStrokeWidthPx);
-                cardView.setStrokeColor(defaultCardBorderColor);
-                bannerNowLayout.setVisibility(View.GONE);
-                if (badgeCompleted != null) badgeCompleted.setVisibility(View.GONE);
+                statusStripe.setBackgroundColor(stripeActiveColor);
+                cardView.setCardBackgroundColor(defaultCardBgColor);
+                bannerStatusContainer.setVisibility(View.GONE);
+                applyTextColors(false);
             }
 
-            // open subject details on click
             cardView.setOnClickListener(v -> {
                 Intent intent = new Intent(context, SubjectDetailsActivity.class);
                 intent.putExtra(SubjectDetailsActivity.EXTRA_SUBJECT_NAME, lesson.getSubjectName());
@@ -314,8 +335,18 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             });
         }
 
+        private void applyTextColors(boolean isPastToday) {
+            int titleColor = isPastToday ? textSecondaryColor : textPrimaryColor;
+            int metaColor = isPastToday ? textMutedColor : textSecondaryColor;
+            lessonTimeRange.setTextColor(titleColor);
+            subjectName.setTextColor(titleColor);
+            lessonTypeText.setTextColor(metaColor);
+            teacherText.setTextColor(metaColor);
+            locationText.setTextColor(metaColor);
+        }
+
         private void setupLocationBadge(LocationType type) {
-            badgeLocation.setText(context.getString(type.getStringResId()).toUpperCase(java.util.Locale.getDefault()));
+            badgeLocation.setText(context.getString(type.getStringResId()).toUpperCase(Locale.getDefault()));
             badgeLocation.setBackgroundTintList(null);
             switch (type) {
                 case ONLINE:
@@ -344,31 +375,33 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
 
         void bind(long minutes) {
-            long hours = minutes / 60;
-            long remMinutes = minutes % 60;
-            String timeDurationStr;
-            if (hours > 0 && remMinutes > 0) {
-                timeDurationStr = context.getString(R.string.hours_and_minutes_short, hours, remMinutes);
-            } else if (hours > 0) {
-                timeDurationStr = context.getString(R.string.hours_short, hours);
-            } else {
-                timeDurationStr = context.getString(R.string.minutes_short, remMinutes);
-            }
-            gapText.setText(context.getString(R.string.schedule_gap_format, timeDurationStr));
+            String durationStr = formatDurationHoursMinutes(context, minutes);
+            String label = context.getString(R.string.schedule_break_gap) + " · " + durationStr;
+            gapText.setText(label);
         }
     }
 
-    static class EmptyViewHolder extends RecyclerView.ViewHolder {
+    class EmptyViewHolder extends RecyclerView.ViewHolder {
+        private final ImageView emptyIcon;
         private final TextView emptyTitle;
         private final TextView emptySubtitle;
+        private final MaterialButton actionButton;
 
         EmptyViewHolder(@NonNull View itemView) {
             super(itemView);
+            emptyIcon = itemView.findViewById(R.id.empty_icon);
             emptyTitle = itemView.findViewById(R.id.empty_title);
             emptySubtitle = itemView.findViewById(R.id.empty_subtitle);
+            actionButton = itemView.findViewById(R.id.empty_action_button);
         }
 
         void bind(ScheduleItem item) {
+            boolean isNoInternet = item != null && item.isNoInternet();
+
+            if (emptyIcon != null) {
+                emptyIcon.setImageResource(isNoInternet ? R.drawable.ic_wifi_off : R.drawable.ic_empty_schedule);
+            }
+
             if (emptyTitle != null) {
                 if (item != null && item.getEmptyTitle() != null) {
                     emptyTitle.setText(item.getEmptyTitle());
@@ -376,12 +409,41 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                     emptyTitle.setText(R.string.schedule_empty_title);
                 }
             }
+
             if (emptySubtitle != null) {
                 if (item != null && item.getEmptySubtitle() != null) {
                     emptySubtitle.setText(item.getEmptySubtitle());
                 } else {
                     emptySubtitle.setText(R.string.schedule_empty_subtitle);
                 }
+            }
+
+            if (actionButton == null) return;
+
+            if (isNoInternet) {
+                actionButton.setVisibility(View.VISIBLE);
+                actionButton.setText(R.string.common_retry);
+                actionButton.setIconResource(R.drawable.ic_refresh);
+                actionButton.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
+                actionButton.setOnClickListener(v -> {
+                    if (emptyActionListener != null) {
+                        emptyActionListener.onRetryLoad();
+                    }
+                });
+            } else if (item != null && item.getNextClassDate() != null) {
+                LocalDate targetDate = item.getNextClassDate();
+                actionButton.setVisibility(View.VISIBLE);
+                actionButton.setText(R.string.schedule_jump_next_day);
+                actionButton.setIconResource(R.drawable.ic_arrow_forward);
+                actionButton.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_END);
+                actionButton.setOnClickListener(v -> {
+                    if (emptyActionListener != null) {
+                        emptyActionListener.onJumpToNextClassDay(targetDate);
+                    }
+                });
+            } else {
+                actionButton.setVisibility(View.GONE);
+                actionButton.setOnClickListener(null);
             }
         }
     }

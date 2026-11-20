@@ -1,96 +1,98 @@
 package com.vintro.wsplanner.ui.activities;
 
-import android.app.DatePickerDialog;
-import android.content.ActivityNotFoundException;
+import android.animation.ArgbEvaluator;
+import android.animation.ValueAnimator;
+import android.app.Activity;
 import android.content.Intent;
-import android.content.Context;
+import android.content.res.ColorStateList;
+import android.content.res.Configuration;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
-import android.net.Uri;
+import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.view.Gravity;
-import android.view.MenuItem;
 import android.view.View;
-import android.widget.ImageButton;
-import android.widget.ProgressBar;
+import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
+import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.view.ContextThemeWrapper;
-import androidx.appcompat.widget.PopupMenu;
-import androidx.core.content.ContextCompat;
-import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
-import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-import androidx.viewpager2.widget.ViewPager2;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.DegreeLevel;
-import com.vintro.wsplanner.enums.Language;
-import com.vintro.wsplanner.models.DaySchedule;
-import com.vintro.wsplanner.ui.adapters.DayPagerAdapter;
+import com.vintro.wsplanner.services.UpdateManager;
+import com.vintro.wsplanner.ui.fragments.AllCoursesFragment;
+import com.vintro.wsplanner.ui.fragments.ScheduleFragment;
+import com.vintro.wsplanner.ui.fragments.SettingsFragment;
+import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
-import com.vintro.wsplanner.ui.widgets.WidgetUpdateManager;
 import com.vintro.wsplanner.utils.Logger;
-import com.vintro.wsplanner.utils.NetworkUtils;
-import com.vintro.wsplanner.utils.ScheduleFileOpener;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 
-import com.vintro.wsplanner.services.UpdateManager;
-
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements SettingsFragment.SettingsHost {
     private static final String TAG = "MainActivity";
+    public static final String EXTRA_TARGET_TAB = "extra_target_tab";
 
-    private View buttonOpenFile;
-    private ProgressBar progressOpenFile;
-    private ImageButton buttonMenu;
-    private ImageButton buttonUpdateAlert;
-    private ImageButton buttonPrevDay;
-    private ImageButton buttonToday;
-    private ImageButton buttonNextDay;
-    private ImageButton buttonCalendarPicker;
-    private TextView selectedDateText;
-    private TextView lastSyncText;
-    private SwipeRefreshLayout swipeRefreshLayout;
-    private ViewPager2 scheduleViewPager;
+    private static final String STATE_ACTIVE_TAB = "state_active_tab";
+    private static final String TAG_SCHEDULE = "tab_schedule";
+    private static final String TAG_COURSES = "tab_courses";
+    private static final String TAG_SETTINGS = "tab_settings";
 
-    private DayPagerAdapter dayPagerAdapter;
-    private ScheduleRepository scheduleRepository;
+    private View mainRoot;
+    private View fragmentContainer;
+    private View bottomNavDivider;
+    private View bottomNavigationBar;
 
-    private LocalDate selectedDate = LocalDate.now();
+    private View tabCourses;
+    private ImageView iconCourses;
+    private TextView labelCourses;
 
-    // timer handler for minute updates
-    private final Handler tickerHandler = new Handler(Looper.getMainLooper());
-    private Runnable tickerRunnable;
+    private View tabSchedule;
+    private ImageView iconSchedule;
+    private TextView labelSchedule;
 
-    private final DateTimeFormatter syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-    private final DateTimeFormatter syncDateFormatter = DateTimeFormatter.ofPattern("dd.MM, HH:mm");
-    private Language currentLanguage;
-    private String activeConfigSignature;
+    private View tabSettings;
+    private ImageView iconSettings;
+    private TextView labelSettings;
+    private View badgeSettingsDot;
+
+    private ScheduleFragment scheduleFragment;
+    private AllCoursesFragment allCoursesFragment;
+    private SettingsFragment settingsFragment;
+    private Fragment activeFragment;
+
+    private int activeTabId = R.id.nav_schedule;
+    private boolean currentNightMode;
+    private boolean isThemeAnimationRunning = false;
+    private boolean pendingRecreateHiddenFragments = false;
+    private ValueAnimator animTabCourses;
+    private ValueAnimator animTabSchedule;
+    private ValueAnimator animTabSettings;
+
+    private OnBackPressedCallback backPressedCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        currentLanguage = PreferencesManager.getLanguagePref(this);
-        Logger.d("MainActivity.onCreate", "MainActivity created");
+        Logger.d(TAG + ".onCreate", "MainActivity created");
 
-        scheduleRepository = ScheduleRepository.getInstance(this);
+        ScheduleRepository scheduleRepository = ScheduleRepository.getInstance(this);
 
         // check keystore availability
         if (!PreferencesManager.checkKeystoreHealth(this)) {
-            Logger.e("MainActivity.onCreate", "Keystore health check failed");
+            Logger.e(TAG + ".onCreate", "Keystore health check failed");
             showKeystoreErrorDialog();
             return;
         }
@@ -101,10 +103,10 @@ public class MainActivity extends AppCompatActivity {
         String stage = PreferencesManager.getOnboardingStage(this);
         boolean isSpecialtyDone = PreferencesManager.isGlobalSpecialtyConfigured(this);
 
-        Logger.d("MainActivity.onCreate", "Onboarding state: stage=" + stage + ", login=" + (login != null) + ", major=" + major + ", specialtyConfigured=" + isSpecialtyDone);
+        Logger.d(TAG + ".onCreate", "Onboarding state: stage=" + stage + ", login=" + (login != null) + ", major=" + major + ", specialtyConfigured=" + isSpecialtyDone);
 
         if (login == null || PreferencesManager.ONBOARDING_STAGE_LOGIN.equals(stage)) {
-            Logger.d("MainActivity.onCreate", "Redirecting to LoginActivity");
+            Logger.d(TAG + ".onCreate", "Redirecting to LoginActivity");
             startActivity(new Intent(this, LoginActivity.class));
             finish();
             return;
@@ -113,7 +115,7 @@ public class MainActivity extends AppCompatActivity {
         if (major == null || PreferencesManager.ONBOARDING_STAGE_COURSE.equals(stage)
                 || PreferencesManager.getGlobalDegreeLevelPref(this) == null
                 || PreferencesManager.getGlobalStudyModePref(this) == null) {
-            Logger.d("MainActivity.onCreate", "Redirecting to SetupCourseActivity");
+            Logger.d(TAG + ".onCreate", "Redirecting to SetupCourseActivity");
             startActivity(new Intent(this, SetupCourseActivity.class));
             finish();
             return;
@@ -121,13 +123,13 @@ public class MainActivity extends AppCompatActivity {
 
         if (!isSpecialtyDone || PreferencesManager.ONBOARDING_STAGE_SPECIALTY.equals(stage)) {
             if (PreferencesManager.getGlobalDegreeLevelPref(this) == DegreeLevel.ZERO_YEAR || PreferencesManager.getGlobalYearPref(this) == 1) {
-                Logger.d("MainActivity.onCreate", "Year 1 or Rok Zerowy student skipping specialty setup, advancing to SetupAdditionalActivity");
+                Logger.d(TAG + ".onCreate", "Year 1 or Rok Zerowy student skipping specialty setup, advancing to SetupAdditionalActivity");
                 PreferencesManager.setGlobalSpecialtyPref(this, null);
                 PreferencesManager.setGlobalSpecialtyConfigured(this, true);
                 PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_ADDITIONAL);
                 startActivity(new Intent(this, SetupAdditionalActivity.class));
             } else {
-                Logger.d("MainActivity.onCreate", "Redirecting to SetupSpecialtyActivity");
+                Logger.d(TAG + ".onCreate", "Redirecting to SetupSpecialtyActivity");
                 startActivity(new Intent(this, SetupSpecialtyActivity.class));
             }
             finish();
@@ -135,14 +137,14 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (PreferencesManager.ONBOARDING_STAGE_ADDITIONAL.equals(stage)) {
-            Logger.d("MainActivity.onCreate", "Redirecting to SetupAdditionalActivity");
+            Logger.d(TAG + ".onCreate", "Redirecting to SetupAdditionalActivity");
             startActivity(new Intent(this, SetupAdditionalActivity.class));
             finish();
             return;
         }
 
         if (!PreferencesManager.isOnboardingCompleted(this) || !scheduleRepository.isConfigurationComplete()) {
-            Logger.d("MainActivity.onCreate", "Onboarding incomplete, redirecting to LoginActivity");
+            Logger.d(TAG + ".onCreate", "Onboarding incomplete, redirecting to LoginActivity");
             startActivity(new Intent(this, LoginActivity.class));
             finish();
             return;
@@ -150,368 +152,358 @@ public class MainActivity extends AppCompatActivity {
 
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
+        EdgeToEdge.enable(this);
+        currentNightMode = UIHelper.isNightMode(this);
+        UIHelper.setupSystemBars(this, currentNightMode);
         setContentView(R.layout.activity_main);
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main_coordinator), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
+        mainRoot = findViewById(R.id.main_root);
+        fragmentContainer = findViewById(R.id.fragment_container);
+        bottomNavDivider = findViewById(R.id.bottom_nav_divider);
+        bottomNavigationBar = findViewById(R.id.bottom_navigation);
 
-        scheduleRepository = ScheduleRepository.getInstance(this);
-        activeConfigSignature = scheduleRepository.buildConfigSignature();
+        tabCourses = findViewById(R.id.nav_courses);
+        iconCourses = findViewById(R.id.nav_courses_icon);
+        labelCourses = findViewById(R.id.nav_courses_label);
 
-        initViews();
-        setupViewPager();
-        setupListeners();
-        boolean isOutdated = scheduleRepository != null && scheduleRepository.isScheduleOutdated();
-        loadSchedule(isOutdated);
+        tabSchedule = findViewById(R.id.nav_schedule);
+        iconSchedule = findViewById(R.id.nav_schedule_icon);
+        labelSchedule = findViewById(R.id.nav_schedule_label);
+
+        tabSettings = findViewById(R.id.nav_settings);
+        iconSettings = findViewById(R.id.nav_settings_icon);
+        labelSettings = findViewById(R.id.nav_settings_label);
+        badgeSettingsDot = findViewById(R.id.nav_settings_update_dot);
+
+        setupEdgeToEdgeInsets();
+        setupBackNavigation();
+        restoreOrInitFragments(savedInstanceState);
+        setupBottomNavigation();
+        updateSettingsUpdateBadge();
         checkAppUpdates();
     }
 
-    private void initViews() {
-        buttonOpenFile = findViewById(R.id.button_open_file);
-        progressOpenFile = findViewById(R.id.progress_open_file);
-        buttonMenu = findViewById(R.id.button_menu);
-        buttonUpdateAlert = findViewById(R.id.button_update_alert);
-        buttonPrevDay = findViewById(R.id.button_prev_day);
-        buttonToday = findViewById(R.id.button_today);
-        buttonNextDay = findViewById(R.id.button_next_day);
-        buttonCalendarPicker = findViewById(R.id.button_calendar_picker);
-        selectedDateText = findViewById(R.id.selected_date_text);
-        lastSyncText = findViewById(R.id.last_sync_text);
-        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
-        scheduleViewPager = findViewById(R.id.schedule_view_pager);
+    private void setupEdgeToEdgeInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(fragmentContainer, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            v.setPadding(bars.left, bars.top, bars.right, 0);
+            return insets;
+        });
 
-        setupSwipeRefreshColors();
-    }
+        final float density = getResources().getDisplayMetrics().density;
+        final int basePadH = Math.round(12 * density);
+        final int basePadV = Math.round(6 * density);
 
-    private void setupSwipeRefreshColors() {
-        if (swipeRefreshLayout == null) return;
-        boolean isNight = UIHelper.isNightMode(this);
-        int progressBgColor = ContextCompat.getColor(this, isNight ? R.color.card_bg_dark : R.color.card_bg_light);
-        swipeRefreshLayout.setProgressBackgroundColorSchemeColor(progressBgColor);
-
-        if (isNight) {
-            swipeRefreshLayout.setColorSchemeColors(
-                    ContextCompat.getColor(this, R.color.active_lesson_border),
-                    ContextCompat.getColor(this, R.color.next_lesson_border)
-            );
-        } else {
-            swipeRefreshLayout.setColorSchemeColors(
-                    ContextCompat.getColor(this, R.color.btn_bg),
-                    ContextCompat.getColor(this, R.color.active_lesson_border)
-            );
-        }
-    }
-
-    private void setupViewPager() {
-        dayPagerAdapter = new DayPagerAdapter(this, scheduleRepository);
-        scheduleViewPager.setAdapter(dayPagerAdapter);
-        // keep at least 1 adjacent day pre-rendered on both sides for instant swiping
-        scheduleViewPager.setOffscreenPageLimit(1);
-        int initialPos = dayPagerAdapter.getPositionForDate(selectedDate);
-        scheduleViewPager.setCurrentItem(initialPos, false);
-
-        scheduleViewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
-            @Override
-            public void onPageSelected(int position) {
-                LocalDate pageDate = dayPagerAdapter.getDateForPosition(position);
-                if (!pageDate.isEqual(selectedDate)) {
-                    selectedDate = pageDate;
-                    Logger.d("MainActivity.onPageSelected", "Selected date changed by pager to: " + selectedDate);
-                    updateDateUI();
-                }
-            }
-
-            @Override
-            public void onPageScrollStateChanged(int state) {
-                if (swipeRefreshLayout != null && !swipeRefreshLayout.isRefreshing()) {
-                    swipeRefreshLayout.setEnabled(state == ViewPager2.SCROLL_STATE_IDLE);
-                }
-            }
+        ViewCompat.setOnApplyWindowInsetsListener(bottomNavigationBar, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(basePadH + bars.left, basePadV, basePadH + bars.right, basePadV + bars.bottom);
+            return insets;
         });
     }
 
-    private void navigateToDate(LocalDate targetDate) {
-        if (dayPagerAdapter == null || scheduleViewPager == null || targetDate == null) return;
-        int currentPos = scheduleViewPager.getCurrentItem();
-        int targetPos = dayPagerAdapter.getPositionForDate(targetDate);
-        LocalDate clampedDate = dayPagerAdapter.getDateForPosition(targetPos);
-        selectedDate = clampedDate;
-        updateDateUI();
-
-        if (targetPos == currentPos) {
-            return;
-        }
-
-        int distance = Math.abs(targetPos - currentPos);
-        if (distance == 1) {
-            // smooth horizontal transition for adjacent days
-            Logger.d("MainActivity.navigateToDate", "Smooth scrolling to adjacent date: " + clampedDate);
-            scheduleViewPager.setCurrentItem(targetPos, true);
-        } else {
-            // instant switch with card slide-up animation for multi-day jumps
-            Logger.d("MainActivity.navigateToDate", "Jumping to date: " + clampedDate + " with card entrance animation");
-            dayPagerAdapter.triggerCardAnimationForPosition(targetPos);
-            scheduleViewPager.setCurrentItem(targetPos, false);
-        }
-    }
-
-    private void setupListeners() {
-        // open excel file button
-        buttonOpenFile.setOnClickListener(v -> openScheduleFile());
-
-        // popup menu
-        buttonMenu.setOnClickListener(this::showPopupMenu);
-
-        // update alert button
-        if (buttonUpdateAlert != null) {
-            buttonUpdateAlert.setOnClickListener(v -> {
-                Logger.i("MainActivity", "User tapped update alert bell icon in top toolbar");
-                String newVersion = UpdateManager.getSavedLatestVersion(this);
-                String releaseUrl = UpdateManager.getSavedReleaseUrl(this);
-                UpdateManager.showUpdateDialog(this, newVersion, releaseUrl);
-            });
-        }
-
-        // day navigation buttons
-        buttonPrevDay.setOnClickListener(v -> navigateToDate(selectedDate.minusDays(1)));
-
-        buttonNextDay.setOnClickListener(v -> navigateToDate(selectedDate.plusDays(1)));
-
-        buttonToday.setOnClickListener(v -> navigateToDate(LocalDate.now()));
-
-        // calendar picker dialog
-        buttonCalendarPicker.setOnClickListener(v -> openCalendarPicker());
-        selectedDateText.setOnClickListener(v -> openCalendarPicker());
-
-        // swipe to refresh
-        swipeRefreshLayout.setOnRefreshListener(() -> handleManualRefresh(true));
-    }
-
-    private void updateDateUI() {
-        LocalDate today = LocalDate.now();
-        buttonToday.setVisibility(selectedDate.isEqual(today) ? View.INVISIBLE : View.VISIBLE);
-
-        // format day of week and date
-        String dayOfWeek = selectedDate.getDayOfWeek().getDisplayName(
-                java.time.format.TextStyle.FULL,
-                Locale.getDefault()
-        );
-        if (!dayOfWeek.isEmpty()) {
-            dayOfWeek = dayOfWeek.substring(0, 1).toUpperCase(Locale.getDefault()) + dayOfWeek.substring(1);
-        }
-        String formatted = dayOfWeek + ", " + selectedDate.format(DateTimeFormatter.ofPattern("dd.MM"));
-        selectedDateText.setText(formatted);
-    }
-
-    private void updateLastSyncUI() {
-        LocalDateTime syncTime = scheduleRepository.getLastSyncTime();
-        if (syncTime == null) {
-            lastSyncText.setVisibility(View.GONE);
-            return;
-        }
-
-        lastSyncText.setVisibility(View.VISIBLE);
-        LocalDate syncDate = syncTime.toLocalDate();
-        LocalDate today = LocalDate.now();
-        String timeStr = syncTime.format(syncTimeFormatter);
-
-        String text;
-        if (syncDate.isEqual(today)) {
-            text = getString(R.string.schedule_updated_prefix, getString(R.string.schedule_updated_today, timeStr));
-        } else if (syncDate.isEqual(today.minusDays(1))) {
-            text = getString(R.string.schedule_updated_prefix, getString(R.string.schedule_updated_yesterday, timeStr));
-        } else {
-            text = getString(R.string.schedule_updated_prefix, syncTime.format(syncDateFormatter));
-        }
-        lastSyncText.setText(text);
-    }
-
-    private void loadSchedule(boolean forceRefresh) {
-        if (scheduleRepository == null || !scheduleRepository.isConfigurationComplete()) {
-            Logger.d("MainActivity.loadSchedule", "Student configuration incomplete, skipping schedule load");
-            return;
-        }
-        Logger.d("MainActivity.loadSchedule", "Loading schedule for date: " + selectedDate + " (forceRefresh=" + forceRefresh + ")");
-        swipeRefreshLayout.setRefreshing(true);
-        updateDateUI();
-
-        scheduleRepository.getScheduleForDate(selectedDate, forceRefresh, new ScheduleRepository.ScheduleCallback<DaySchedule>() {
+    private void setupBackNavigation() {
+        backPressedCallback = new OnBackPressedCallback(false) {
             @Override
-            public void onSuccess(DaySchedule result) {
-                Logger.i("MainActivity.loadSchedule", "Schedule loaded successfully. Day items count: " + (result != null ? result.getLessons().size() : 0));
-                runOnUiThread(() -> {
-                    swipeRefreshLayout.setRefreshing(false);
-                    if (dayPagerAdapter != null && scheduleViewPager != null) {
-                        dayPagerAdapter.onScheduleLoaded(scheduleViewPager.getCurrentItem());
-                    }
-                    updateLastSyncUI();
-                    if (forceRefresh && result != null && result.isFromCacheFallback()) {
-                        Logger.i("MainActivity.loadSchedule", "Displaying schedule from offline cache fallback");
-                        Toast.makeText(MainActivity.this, R.string.schedule_offline_cached_toast, Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-
-            @Override
-            public void onError(Exception e) {
-                Logger.e("MainActivity.loadSchedule", "Failed to load schedule: " + Logger.formatException(e), e);
-                runOnUiThread(() -> {
-                    swipeRefreshLayout.setRefreshing(false);
-                    updateLastSyncUI();
-                    if (dayPagerAdapter != null) {
-                        dayPagerAdapter.showNoInternetState();
-                    }
-                });
-            }
-        });
-    }
-
-    private void handleManualRefresh(boolean fromSwipe) {
-        long cooldownLeft = scheduleRepository.getCooldownRemainingSeconds();
-        if (cooldownLeft > 0) {
-            Logger.d("MainActivity.handleManualRefresh", "Refresh blocked by cooldown: " + cooldownLeft + " seconds remaining");
-            if (fromSwipe) swipeRefreshLayout.setRefreshing(false);
-            Toast.makeText(this, getString(R.string.schedule_cooldown_message, cooldownLeft), Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        if (!NetworkUtils.isNetworkAvailable(this)) {
-            Logger.w("MainActivity.handleManualRefresh", "Device is offline during manual refresh, attempting local cache fallback");
-        }
-        Logger.i("MainActivity.handleManualRefresh", "Triggering manual force-refresh (fromSwipe=" + fromSwipe + ")");
-        loadSchedule(true);
-    }
-
-    // open excel schedule file with external viewer and smooth surrounding spinner
-    private void openScheduleFile() {
-        Logger.d("MainActivity.openScheduleFile", "User requested to open schedule Excel file");
-        Toast.makeText(this, getString(R.string.schedule_opening_file), Toast.LENGTH_SHORT).show();
-
-        if (progressOpenFile != null) {
-            progressOpenFile.setVisibility(View.VISIBLE);
-            progressOpenFile.animate().alpha(0.6f).setDuration(100).start();
-        }
-        if (buttonOpenFile != null) {
-            buttonOpenFile.setEnabled(false);
-        }
-
-        tickerHandler.postDelayed(() -> {
-            try {
-                ScheduleFileOpener.openExcelSchedule(MainActivity.this);
-            } finally {
-                if (progressOpenFile != null) {
-                    progressOpenFile.animate().alpha(0f).setDuration(250).withEndAction(() -> {
-                        if (progressOpenFile != null) progressOpenFile.setVisibility(View.GONE);
-                    }).start();
+            public void handleOnBackPressed() {
+                if (activeTabId != R.id.nav_schedule) {
+                    Logger.d(TAG, "System back pressed on tab " + activeTabId + ", switching to schedule tab");
+                    selectTab(R.id.nav_schedule, true);
                 }
-                if (buttonOpenFile != null) {
-                    buttonOpenFile.setEnabled(true);
-                }
-            }
-        }, 150);
-    }
-
-    private void openCalendarPicker() {
-        DatePickerDialog picker = new DatePickerDialog(
-                this,
-                (view, year, month, dayOfMonth) -> {
-                    LocalDate pickedDate = LocalDate.of(year, month + 1, dayOfMonth);
-                    navigateToDate(pickedDate);
-                },
-                selectedDate.getYear(),
-                selectedDate.getMonthValue() - 1,
-                selectedDate.getDayOfMonth()
-        );
-        if (dayPagerAdapter != null) {
-            long minMillis = dayPagerAdapter.getMinDate()
-                    .atStartOfDay(ZoneId.systemDefault())
-                    .toInstant()
-                    .toEpochMilli();
-            long maxMillis = dayPagerAdapter.getMaxDate()
-                    .atTime(23, 59, 59)
-                    .atZone(ZoneId.systemDefault())
-                    .toInstant()
-                    .toEpochMilli();
-            picker.getDatePicker().setMinDate(minMillis);
-            picker.getDatePicker().setMaxDate(maxMillis);
-        }
-        picker.show();
-    }
-
-    private void showPopupMenu(View anchor) {
-        Context wrapper = new ContextThemeWrapper(this, R.style.CustomPopupMenuTheme);
-        PopupMenu popup = new PopupMenu(wrapper, anchor, Gravity.END);
-        popup.setForceShowIcon(true);
-        popup.getMenuInflater().inflate(R.menu.main_menu, popup.getMenu());
-
-        int iconColor = UIHelper.getThemeColor(this, R.attr.app_text);
-        for (int i = 0; i < popup.getMenu().size(); i++) {
-            MenuItem item = popup.getMenu().getItem(i);
-            Drawable icon = item.getIcon();
-            if (icon != null) {
-                Drawable wrapped = DrawableCompat.wrap(icon.mutate());
-                DrawableCompat.setTint(wrapped, iconColor);
-                item.setIcon(wrapped);
-            }
-        }
-
-        popup.setOnMenuItemClickListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.action_refresh) {
-                handleManualRefresh(false);
-                return true;
-            } else if (id == R.id.action_all_courses) {
-                Intent coursesIntent = new Intent(this, AllCoursesActivity.class);
-                startActivity(coursesIntent);
-                return true;
-            } else if (id == R.id.action_change_group) {
-                Intent studentPanelIntent = new Intent(this, StudentPanelActivity.class);
-                startActivity(studentPanelIntent);
-                return true;
-            } else if (id == R.id.action_settings) {
-                Intent settingsIntent = new Intent(this, SettingsActivity.class);
-                startActivity(settingsIntent);
-                return true;
-            }
-            return false;
-        });
-
-        popup.show();
-    }
-
-    // tick every minute on the clock minute boundary
-    private void startMinuteTicker() {
-        stopMinuteTicker();
-
-        long nowMillis = System.currentTimeMillis();
-        long delayToNextMinute = 60000 - (nowMillis % 60000);
-
-        tickerRunnable = new Runnable() {
-            @Override
-            public void run() {
-                onMinuteTick();
-                tickerHandler.postDelayed(this, 60000);
             }
         };
-
-        tickerHandler.postDelayed(tickerRunnable, delayToNextMinute);
+        getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
     }
 
-    private void stopMinuteTicker() {
-        if (tickerRunnable != null) {
-            tickerHandler.removeCallbacks(tickerRunnable);
-            tickerRunnable = null;
+    private void restoreOrInitFragments(Bundle savedInstanceState) {
+        FragmentManager fm = getSupportFragmentManager();
+        Fragment restoredSchedule = fm.findFragmentByTag(TAG_SCHEDULE);
+        Fragment restoredCourses = fm.findFragmentByTag(TAG_COURSES);
+        Fragment restoredSettings = fm.findFragmentByTag(TAG_SETTINGS);
+
+        if (restoredSchedule instanceof ScheduleFragment) {
+            scheduleFragment = (ScheduleFragment) restoredSchedule;
+        }
+        if (restoredCourses instanceof AllCoursesFragment) {
+            allCoursesFragment = (AllCoursesFragment) restoredCourses;
+        }
+        if (restoredSettings instanceof SettingsFragment) {
+            settingsFragment = (SettingsFragment) restoredSettings;
+        }
+
+        if (savedInstanceState != null) {
+            activeTabId = savedInstanceState.getInt(STATE_ACTIVE_TAB, R.id.nav_schedule);
+        } else if (getIntent() != null && getIntent().hasExtra(EXTRA_TARGET_TAB)) {
+            activeTabId = getIntent().getIntExtra(EXTRA_TARGET_TAB, R.id.nav_schedule);
+        } else {
+            activeTabId = R.id.nav_schedule;
+        }
+
+        switchToTab(activeTabId, false);
+    }
+
+    private void setupBottomNavigation() {
+        applyBottomNavTabStates(false);
+
+        tabCourses.setOnClickListener(v -> onBottomTabClicked(R.id.nav_courses));
+        tabSchedule.setOnClickListener(v -> onBottomTabClicked(R.id.nav_schedule));
+        tabSettings.setOnClickListener(v -> onBottomTabClicked(R.id.nav_settings));
+    }
+
+    private void onBottomTabClicked(int tabId) {
+        if (tabId == activeTabId) {
+            if (tabId == R.id.nav_schedule && scheduleFragment != null) {
+                scheduleFragment.onTabReselected();
+            } else if (tabId == R.id.nav_courses && allCoursesFragment != null) {
+                allCoursesFragment.onTabReselected();
+            }
+            return;
+        }
+        selectTab(tabId, true);
+    }
+
+    private void selectTab(int tabId, boolean animate) {
+        int previousTabId = activeTabId;
+        switchToTab(tabId, animate);
+        if (animate && previousTabId != activeTabId) {
+            animateBottomNavTransition(previousTabId, activeTabId);
+        } else {
+            applyBottomNavTabStates(false);
         }
     }
 
-    private void onMinuteTick() {
-        if (dayPagerAdapter != null) {
-            // refresh today page items for active lesson timer updates
-            dayPagerAdapter.refreshDate(LocalDate.now());
+    private void applyBottomNavTabStates(boolean animate) {
+        cancelBottomNavAnimators();
+        int activeBg = UIHelper.getThemeColor(this, R.attr.bottom_nav_indicator);
+        int activeColor = UIHelper.getThemeColor(this, androidx.appcompat.R.attr.colorPrimary);
+        int inactiveColor = UIHelper.getThemeColor(this, R.attr.text_muted);
+
+        applySingleTabState(tabCourses, iconCourses, labelCourses, activeTabId == R.id.nav_courses, activeBg, activeColor, inactiveColor);
+        applySingleTabState(tabSchedule, iconSchedule, labelSchedule, activeTabId == R.id.nav_schedule, activeBg, activeColor, inactiveColor);
+        applySingleTabState(tabSettings, iconSettings, labelSettings, activeTabId == R.id.nav_settings, activeBg, activeColor, inactiveColor);
+    }
+
+    private void cancelBottomNavAnimators() {
+        if (animTabCourses != null) {
+            animTabCourses.cancel();
+            animTabCourses = null;
         }
+        if (animTabSchedule != null) {
+            animTabSchedule.cancel();
+            animTabSchedule = null;
+        }
+        if (animTabSettings != null) {
+            animTabSettings.cancel();
+            animTabSettings = null;
+        }
+    }
+
+    private void cancelTabAnimator(int tabId) {
+        if (tabId == R.id.nav_courses && animTabCourses != null) {
+            animTabCourses.cancel();
+            animTabCourses = null;
+        } else if (tabId == R.id.nav_settings && animTabSettings != null) {
+            animTabSettings.cancel();
+            animTabSettings = null;
+        } else if (tabId == R.id.nav_schedule && animTabSchedule != null) {
+            animTabSchedule.cancel();
+            animTabSchedule = null;
+        }
+    }
+
+    private void storeTabAnimator(int tabId, ValueAnimator animator) {
+        if (tabId == R.id.nav_courses) {
+            animTabCourses = animator;
+        } else if (tabId == R.id.nav_settings) {
+            animTabSettings = animator;
+        } else {
+            animTabSchedule = animator;
+        }
+    }
+
+    private void applySingleTabState(View pill, ImageView icon, TextView label, boolean selected,
+                                     int activeBg, int activeColor, int inactiveColor) {
+        if (pill == null || icon == null || label == null) return;
+        Drawable bg = pill.getBackground();
+        if (bg instanceof GradientDrawable) {
+            GradientDrawable mutable = (GradientDrawable) bg.mutate();
+            mutable.setColor(selected ? activeBg : Color.TRANSPARENT);
+            pill.setBackground(mutable);
+        }
+        pill.setTag(selected ? AnimationHelper.ROLE_BOTTOM_NAV_PILL_ACTIVE : null);
+
+        int tint = selected ? activeColor : inactiveColor;
+        String role = selected ? AnimationHelper.ROLE_PRIMARY : AnimationHelper.ROLE_TEXT_MUTED;
+        icon.setImageTintList(ColorStateList.valueOf(tint));
+        icon.setTag(role);
+        label.setTextColor(tint);
+        label.setTag(role);
+        label.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
+    }
+
+    private void animateBottomNavTransition(int oldTabId, int newTabId) {
+        int activeBg = UIHelper.getThemeColor(this, R.attr.bottom_nav_indicator);
+        int activeColor = UIHelper.getThemeColor(this, androidx.appcompat.R.attr.colorPrimary);
+        int inactiveColor = UIHelper.getThemeColor(this, R.attr.text_muted);
+
+        View oldPill = getTabView(oldTabId);
+        ImageView oldIcon = getTabIcon(oldTabId);
+        TextView oldLabel = getTabLabel(oldTabId);
+
+        View newPill = getTabView(newTabId);
+        ImageView newIcon = getTabIcon(newTabId);
+        TextView newLabel = getTabLabel(newTabId);
+
+        if (oldPill != null && oldIcon != null && oldLabel != null) {
+            cancelTabAnimator(oldTabId);
+            oldPill.setTag(null);
+            oldIcon.setTag(AnimationHelper.ROLE_TEXT_MUTED);
+            oldLabel.setTag(AnimationHelper.ROLE_TEXT_MUTED);
+            oldLabel.setTypeface(null, Typeface.NORMAL);
+            ValueAnimator outAnim = animateSingleTabPill(oldPill, oldIcon, oldLabel, activeBg, Color.TRANSPARENT, activeColor, inactiveColor);
+            storeTabAnimator(oldTabId, outAnim);
+        }
+
+        if (newPill != null && newIcon != null && newLabel != null) {
+            cancelTabAnimator(newTabId);
+            newPill.setTag(AnimationHelper.ROLE_BOTTOM_NAV_PILL_ACTIVE);
+            newIcon.setTag(AnimationHelper.ROLE_PRIMARY);
+            newLabel.setTag(AnimationHelper.ROLE_PRIMARY);
+            newLabel.setTypeface(null, Typeface.BOLD);
+            ValueAnimator inAnim = animateSingleTabPill(newPill, newIcon, newLabel, Color.TRANSPARENT, activeBg, inactiveColor, activeColor);
+            storeTabAnimator(newTabId, inAnim);
+
+            newPill.setScaleX(0.95f);
+            newPill.setScaleY(0.95f);
+            newPill.animate().scaleX(1f).scaleY(1f).setDuration(180).start();
+        }
+    }
+
+    private ValueAnimator animateSingleTabPill(View pill, ImageView icon, TextView label,
+                                               int startBg, int endBg, int startTint, int endTint) {
+        GradientDrawable drawable = null;
+        if (pill.getBackground() instanceof GradientDrawable) {
+            drawable = (GradientDrawable) pill.getBackground().mutate();
+            pill.setBackground(drawable);
+        }
+        final GradientDrawable targetDrawable = drawable;
+        ArgbEvaluator evaluator = new ArgbEvaluator();
+        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+        animator.setDuration(190);
+        animator.addUpdateListener(anim -> {
+            float fraction = (float) anim.getAnimatedValue();
+            int bgColor = (int) evaluator.evaluate(fraction, startBg, endBg);
+            int fgColor = (int) evaluator.evaluate(fraction, startTint, endTint);
+            if (targetDrawable != null) {
+                targetDrawable.setColor(bgColor);
+            }
+            icon.setImageTintList(ColorStateList.valueOf(fgColor));
+            label.setTextColor(fgColor);
+        });
+        animator.start();
+        return animator;
+    }
+
+    private View getTabView(int tabId) {
+        if (tabId == R.id.nav_courses) return tabCourses;
+        if (tabId == R.id.nav_settings) return tabSettings;
+        return tabSchedule;
+    }
+
+    private ImageView getTabIcon(int tabId) {
+        if (tabId == R.id.nav_courses) return iconCourses;
+        if (tabId == R.id.nav_settings) return iconSettings;
+        return iconSchedule;
+    }
+
+    private TextView getTabLabel(int tabId) {
+        if (tabId == R.id.nav_courses) return labelCourses;
+        if (tabId == R.id.nav_settings) return labelSettings;
+        return labelSchedule;
+    }
+
+    private void switchToTab(int tabId, boolean animate) {
+        FragmentManager fm = getSupportFragmentManager();
+        if (fm.isStateSaved()) {
+            return;
+        }
+
+        Fragment target = getOrCreateFragmentForTab(tabId);
+        String targetTag = getTagForTab(tabId);
+        FragmentTransaction tx = fm.beginTransaction();
+
+        if (animate) {
+            tx.setCustomAnimations(R.anim.fragment_fade_in, R.anim.fragment_fade_out);
+        }
+
+        // hide all other added fragments to keep only one visible
+        if (scheduleFragment != null && scheduleFragment != target && scheduleFragment.isAdded()) {
+            tx.hide(scheduleFragment);
+        }
+        if (allCoursesFragment != null && allCoursesFragment != target && allCoursesFragment.isAdded()) {
+            tx.hide(allCoursesFragment);
+        }
+        if (settingsFragment != null && settingsFragment != target && settingsFragment.isAdded()) {
+            tx.hide(settingsFragment);
+        }
+
+        if (!target.isAdded()) {
+            tx.add(R.id.fragment_container, target, targetTag);
+        } else {
+            tx.show(target);
+        }
+
+        tx.commit();
+        activeFragment = target;
+        activeTabId = tabId;
+
+        if (backPressedCallback != null) {
+            backPressedCallback.setEnabled(activeTabId != R.id.nav_schedule);
+        }
+        Logger.d(TAG + ".switchToTab", "Switched active tab to " + targetTag);
+    }
+
+    private Fragment getOrCreateFragmentForTab(int tabId) {
+        if (tabId == R.id.nav_courses) {
+            if (allCoursesFragment == null) {
+                allCoursesFragment = AllCoursesFragment.newInstance(null);
+            }
+            return allCoursesFragment;
+        } else if (tabId == R.id.nav_settings) {
+            if (settingsFragment == null) {
+                settingsFragment = SettingsFragment.newInstance(false);
+            }
+            return settingsFragment;
+        } else {
+            if (scheduleFragment == null) {
+                scheduleFragment = ScheduleFragment.newInstance(null);
+            }
+            return scheduleFragment;
+        }
+    }
+
+    private String getTagForTab(int tabId) {
+        if (tabId == R.id.nav_courses) return TAG_COURSES;
+        if (tabId == R.id.nav_settings) return TAG_SETTINGS;
+        return TAG_SCHEDULE;
+    }
+
+    @Override
+    protected void onNewIntent(@NonNull Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        int requestedTab = intent.getIntExtra(EXTRA_TARGET_TAB, R.id.nav_schedule);
+        Logger.d(TAG + ".onNewIntent", "Received new intent targeting tab=" + requestedTab);
+        if (requestedTab != activeTabId) {
+            selectTab(requestedTab, true);
+        } else if (requestedTab == R.id.nav_schedule && scheduleFragment != null) {
+            scheduleFragment.onActivatedFromWidget();
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(STATE_ACTIVE_TAB, activeTabId);
     }
 
     @Override
@@ -519,115 +511,179 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         if (isFinishing()) return;
 
-        Language savedLang = PreferencesManager.getLanguagePref(this);
-        if (currentLanguage != null && currentLanguage != savedLang) {
-            currentLanguage = savedLang;
-            UIHelper.setSelectedLanguage(this);
-            recreate();
+        if (pendingRecreateHiddenFragments) {
+            pendingRecreateHiddenFragments = false;
+            recreateHiddenFragments();
+        }
+
+        updateSettingsUpdateBadge();
+    }
+
+    @Override
+    public View getThemeAnimationRoot() {
+        return mainRoot;
+    }
+
+    @Override
+    public void onThemeAnimationStarted(boolean isNewNight) {
+        cancelBottomNavAnimators();
+        isThemeAnimationRunning = true;
+        currentNightMode = isNewNight;
+    }
+
+    @Override
+    public void onThemeChangedCompleted(boolean isNewNight) {
+        currentNightMode = isNewNight;
+        UIHelper.setSelectedTheme(this);
+        UIHelper.applyNightModeWithoutRecreate(this, isNewNight);
+        isThemeAnimationRunning = false;
+        applyBottomNavThemeColors();
+        updateSettingsUpdateBadge();
+        recreateHiddenFragments();
+    }
+
+    private void applyBottomNavThemeColors() {
+        if (mainRoot != null) {
+            mainRoot.setBackgroundColor(UIHelper.getThemeColor(this, R.attr.app_bg));
+        }
+        if (bottomNavDivider != null) {
+            bottomNavDivider.setBackgroundColor(UIHelper.getThemeColor(this, R.attr.divider_color));
+        }
+        if (bottomNavigationBar != null) {
+            bottomNavigationBar.setBackgroundColor(UIHelper.getThemeColor(this, R.attr.bottom_nav_bg));
+        }
+        applyBottomNavTabStates(false);
+    }
+
+    private void recreateHiddenFragments() {
+        if (isFinishing() || isDestroyed()) return;
+        FragmentManager fm = getSupportFragmentManager();
+        if (fm.isStateSaved()) {
+            pendingRecreateHiddenFragments = true;
             return;
         }
 
-        LocalDate today = LocalDate.now();
-        boolean rangeUpdated = dayPagerAdapter != null && dayPagerAdapter.updateAnchorDateIfNeeded(today);
-        // if app was minimized yesterday and reopened today without user navigating away
-        if (selectedDate.isBefore(today)) {
-            selectedDate = today;
-        }
-        if (dayPagerAdapter != null && scheduleViewPager != null) {
-            int expectedPos = dayPagerAdapter.getPositionForDate(selectedDate);
-            if (rangeUpdated || scheduleViewPager.getCurrentItem() != expectedPos) {
-                scheduleViewPager.setCurrentItem(expectedPos, false);
-            }
+        boolean hadSchedule = scheduleFragment != null && scheduleFragment != activeFragment && scheduleFragment.isAdded();
+        boolean hadCourses = allCoursesFragment != null && allCoursesFragment != activeFragment && allCoursesFragment.isAdded();
+        if (!hadSchedule && !hadCourses) {
+            return;
         }
 
-        updateDateUI();
-        updateLastSyncUI();
-        setupSwipeRefreshColors();
-        startMinuteTicker();
+        LocalDate savedDate = hadSchedule ? scheduleFragment.getSelectedDate() : null;
+        Bundle savedCoursesState = hadCourses ? allCoursesFragment.exportFilterState() : null;
 
-        String currentSig = scheduleRepository != null ? scheduleRepository.buildConfigSignature() : null;
-        boolean configChanged = currentSig != null && !currentSig.equals(activeConfigSignature);
-        if (configChanged) {
-            Logger.i("MainActivity.onResume", "Student configuration changed, reloading schedule");
-            activeConfigSignature = currentSig;
-            if (dayPagerAdapter != null) {
-                dayPagerAdapter.clearAll();
-            }
-            loadSchedule(false);
-        } else if (scheduleRepository != null && scheduleRepository.isMemoryCacheLoaded()) {
-            // immediately update timeline states on resume so active lesson badges match real current time
-            if (dayPagerAdapter != null) {
-                dayPagerAdapter.refreshDate(today);
-            }
+        FragmentTransaction tx = fm.beginTransaction();
+        if (hadSchedule) {
+            tx.remove(scheduleFragment);
+            scheduleFragment = ScheduleFragment.newInstance(savedDate);
+            tx.add(R.id.fragment_container, scheduleFragment, TAG_SCHEDULE);
+            tx.hide(scheduleFragment);
+        }
+        if (hadCourses) {
+            tx.remove(allCoursesFragment);
+            allCoursesFragment = AllCoursesFragment.newInstance(savedCoursesState);
+            tx.add(R.id.fragment_container, allCoursesFragment, TAG_COURSES);
+            tx.hide(allCoursesFragment);
+        }
+        tx.commitAllowingStateLoss();
+        Logger.d(TAG + ".recreateHiddenFragments", "Silently recreated hidden fragments in updated theme (schedule=" + hadSchedule + ", courses=" + hadCourses + ")");
+    }
+
+    @Override
+    public void onLanguageChanged() {
+        Logger.i(TAG + ".onLanguageChanged", "Recreating MainActivity without animation to apply new locale on settings tab");
+        UIHelper.setSelectedLanguage(this);
+        if (isFinishing() || isDestroyed()) return;
+
+        Intent restartIntent = new Intent(this, MainActivity.class);
+        restartIntent.putExtra(EXTRA_TARGET_TAB, R.id.nav_settings);
+        restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        startActivity(restartIntent);
+        finish();
+        if (Build.VERSION.SDK_INT >= 34) {
+            overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, 0, 0);
+            overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, 0, 0);
         } else {
-            loadSchedule(false);
-        }
-
-        // Auto-refresh schedule if older than 6 hours
-        checkScheduleFreshnessAndAutoUpdate();
-
-        if (scheduleRepository != null && scheduleRepository.isConfigurationComplete()) {
-            WidgetUpdateManager.updateAllWidgets(this);
-            WidgetUpdateManager.scheduleNextAlarm(this);
-        }
-
-        updateUpdateAlertVisibility();
-    }
-
-    private void updateUpdateAlertVisibility() {
-        if (buttonUpdateAlert != null) {
-            boolean hasUpdate = UpdateManager.hasPendingUpdate(this);
-            buttonUpdateAlert.setVisibility(hasUpdate ? View.VISIBLE : View.GONE);
-        }
-    }
-
-    private void checkAppUpdates() {
-        Logger.d("MainActivity", "checkAppUpdates() initiated");
-        UpdateManager.checkAutoUpdate(this, new UpdateManager.UpdateCheckCallback() {
-            @Override
-            public void onUpdateAvailable(String newVersion, String releaseUrl) {
-                Logger.i("MainActivity", "Auto update check: update available (" + newVersion + "), showing update bell icon");
-                if (buttonUpdateAlert != null) {
-                    buttonUpdateAlert.setVisibility(View.VISIBLE);
-                }
-            }
-
-            @Override
-            public void onUpToDate(String currentVersion) {
-                Logger.d("MainActivity", "Auto update check: app is up to date (" + currentVersion + ")");
-                if (buttonUpdateAlert != null) {
-                    buttonUpdateAlert.setVisibility(View.GONE);
-                }
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                Logger.w("MainActivity", "Auto update check error: " + errorMessage);
-                updateUpdateAlertVisibility();
-            }
-        });
-    }
-
-    private void checkScheduleFreshnessAndAutoUpdate() {
-        if (scheduleRepository == null || !scheduleRepository.isConfigurationComplete()) {
-            return;
-        }
-        if (swipeRefreshLayout != null && swipeRefreshLayout.isRefreshing()) {
-            return;
-        }
-
-        if (scheduleRepository.isScheduleOutdated()
-                && scheduleRepository.getCooldownRemainingSeconds() == 0
-                && NetworkUtils.isNetworkAvailable(this)) {
-            Logger.i("MainActivity.onResume", "Schedule is outdated (>= 6 hours old). Triggering auto-update.");
-            loadSchedule(true);
+            overridePendingTransition(0, 0);
         }
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        stopMinuteTicker();
+    public void onUpdateStatusChanged() {
+        updateSettingsUpdateBadge();
+    }
+
+    @Override
+    public void onVisibleWeekdaysChanged() {
+        if (scheduleFragment != null && scheduleFragment.isAdded()) {
+            scheduleFragment.onVisibleWeekdaysChanged();
+        }
+    }
+
+    private void updateSettingsUpdateBadge() {
+        if (badgeSettingsDot == null) return;
+        boolean hasUpdate = UpdateManager.hasPendingUpdate(this);
+        if (hasUpdate) {
+            badgeSettingsDot.setBackgroundResource(R.drawable.bg_update_dot);
+            badgeSettingsDot.setVisibility(View.VISIBLE);
+        } else {
+            badgeSettingsDot.setVisibility(View.GONE);
+        }
+    }
+
+    private void checkAppUpdates() {
+        Logger.d(TAG, "checkAppUpdates() initiated");
+        UpdateManager.checkAutoUpdate(this, new UpdateManager.UpdateCheckCallback() {
+            @Override
+            public void onUpdateAvailable(String newVersion, String releaseUrl) {
+                Logger.i(TAG, "Auto update check: update available (" + newVersion + ")");
+                runOnUiThread(() -> {
+                    updateSettingsUpdateBadge();
+                    if (settingsFragment != null && settingsFragment.isAdded()) {
+                        settingsFragment.refreshUpdateUI();
+                    }
+                });
+            }
+
+            @Override
+            public void onUpToDate(String currentVersion) {
+                Logger.d(TAG, "Auto update check: app is up to date (" + currentVersion + ")");
+                runOnUiThread(() -> {
+                    updateSettingsUpdateBadge();
+                    if (settingsFragment != null && settingsFragment.isAdded()) {
+                        settingsFragment.refreshUpdateUI();
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                Logger.w(TAG, "Auto update check error: " + errorMessage);
+                runOnUiThread(MainActivity.this::updateSettingsUpdateBadge);
+            }
+        });
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (isThemeAnimationRunning) {
+            return;
+        }
+        boolean newNight = UIHelper.isNightMode(this);
+        if (newNight != currentNightMode) {
+            Logger.d(TAG + ".onConfigurationChanged", "System uiMode changed externally, syncing theme (isNight=" + newNight + ")");
+            currentNightMode = newNight;
+            UIHelper.applyNightModeWithoutRecreate(this, newNight);
+            recreate();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        cancelBottomNavAnimators();
+        AnimationHelper.cancelActiveThemeAnimators();
     }
 
     private void showKeystoreErrorDialog() {

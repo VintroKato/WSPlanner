@@ -247,6 +247,45 @@ public class ScheduleRepository {
         }
     }
 
+    // get cached lesson count for a specific date without disk or network access
+    public int getLessonCountForDateFromMemory(LocalDate date) {
+        if (date == null) return 0;
+        synchronized (cacheLock) {
+            if (cachedLessonsByDate == null || cachedLessonsByDate.isEmpty()) {
+                return 0;
+            }
+            List<Lesson> lessons = cachedLessonsByDate.get(date);
+            return lessons != null ? lessons.size() : 0;
+        }
+    }
+
+    // check if cached schedule contains any lessons for a specific date
+    public boolean hasLessonsOnDateFromMemory(LocalDate date) {
+        return getLessonCountForDateFromMemory(date) > 0;
+    }
+
+    // find the earliest cached date strictly after afterDate that has at least one lesson
+    @Nullable
+    public LocalDate findNextClassDayAfterFromMemory(LocalDate afterDate) {
+        if (afterDate == null) return null;
+        synchronized (cacheLock) {
+            if (cachedLessonsByDate == null || cachedLessonsByDate.isEmpty()) {
+                return null;
+            }
+            LocalDate earliest = null;
+            for (Map.Entry<LocalDate, List<Lesson>> entry : cachedLessonsByDate.entrySet()) {
+                LocalDate date = entry.getKey();
+                List<Lesson> lessons = entry.getValue();
+                if (date != null && lessons != null && !lessons.isEmpty() && date.isAfter(afterDate)) {
+                    if (earliest == null || date.isBefore(earliest)) {
+                        earliest = date;
+                    }
+                }
+            }
+            return earliest;
+        }
+    }
+
     // load schedule from disk cache if in-memory cache is missing or invalidated, without any network operations
     public void ensureLocalCacheLoadedOnly() {
         String currentConfig = buildConfigSignature();
@@ -647,6 +686,7 @@ public class ScheduleRepository {
 
         try (InputStream in = new FileInputStream(file)) {
             Schedule schedule = parser.parse(in, major, semester, surname, specialty, langGroup, seminarTeacher);
+            List<Lesson> parsedSnapshot;
             synchronized (cacheLock) {
                 if (schedule != null && schedule.getLessons() != null) {
                     cachedAllLessons = new ArrayList<>(schedule.getLessons());
@@ -657,6 +697,10 @@ public class ScheduleRepository {
                     cachedLessonsByDate = Collections.emptyMap();
                     Logger.w("ScheduleRepository.parseFile", "Parser returned null or empty lessons list");
                 }
+                parsedSnapshot = cachedAllLessons;
+            }
+            if (!PreferencesManager.hasVisibleWeekdaysPref(appContext)) {
+                PreferencesManager.initRecommendedVisibleDays(appContext, parsedSnapshot, mode);
             }
         } catch (Exception e) {
             Logger.e("ScheduleRepository.parseFile", "Error parsing schedule file: " + Logger.formatException(e), e);

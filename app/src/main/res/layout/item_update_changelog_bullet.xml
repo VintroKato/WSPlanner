@@ -13,7 +13,7 @@
         android:layout_marginEnd="8dp"
         android:includeFontPadding="false"
         android:text="•"
-        android:textColor="?attr/update_badge_new_text"
+        android:textColor="?attr/colorPrimary"
         android:textSize="15sp"
         android:textStyle="bold" />
 
@@ -22,7 +22,6 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:alpha="0.92"
         android:includeFontPadding="false"
         android:lineSpacingExtra="2.5dp"
         android:text="Changelog detail item"

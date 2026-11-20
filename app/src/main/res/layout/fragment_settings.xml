@@ -1,0 +1,883 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/settings_scroll"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:id="@+id/settings_content_root"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="24dp">
+
+        <!-- Header -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:paddingHorizontal="16dp">
+
+            <ImageButton
+                android:id="@+id/button_back"
+                style="@style/WSPlanner.HeaderIconButton"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:contentDescription="@string/button_back"
+                android:src="@drawable/ic_arrow_back"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/settings_title_label"
+                style="@style/WSPlanner.TopBarTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:text="@string/settings_title" />
+        </RelativeLayout>
+
+        <!-- Student profile card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_student_profile"
+            style="@style/WSPlanner.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="14dp">
+
+                <FrameLayout
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_recessed_chip"
+                    android:tag="surface_recessed">
+
+                    <ImageView
+                        android:id="@+id/icon_student_profile"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_school"
+                        android:tag="primary"
+                        app:tint="?attr/colorPrimary" />
+                </FrameLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tv_profile_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_profile_label"
+                        android:textColor="?attr/app_text"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_profile_major"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:ellipsize="end"
+                        android:fontFamily="sans-serif-medium"
+                        android:maxLines="1"
+                        android:tag="text_secondary"
+                        android:textColor="?attr/text_secondary"
+                        android:textSize="14sp"
+                        tools:text="Informatyka" />
+
+                    <TextView
+                        android:id="@+id/tv_profile_subtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:tag="text_muted"
+                        android:textColor="?attr/text_muted"
+                        android:textSize="12.5sp"
+                        tools:text="I stopień · Stacjonarne · Rok 2" />
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/icon_profile_arrow"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tag="text_muted"
+                    app:tint="?attr/text_muted" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Appearance section -->
+        <TextView
+            android:id="@+id/appearance_section_header"
+            style="@style/WSPlanner.SectionHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="20dp"
+            android:tag="text_muted"
+            android:text="@string/settings_section_appearance" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_appearance_group"
+            style="@style/WSPlanner.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Theme row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_marginEnd="10dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_palette"
+                            android:tag="text_secondary"
+                            app:tint="?attr/text_secondary" />
+
+                        <TextView
+                            android:id="@+id/theme_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="@string/settings_theme_label"
+                            android:textColor="?attr/app_text"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/theme_tiles_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_auto_theme"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1"
+                            android:minHeight="42dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center"
+                                android:gravity="center"
+                                android:minHeight="42dp"
+                                android:orientation="horizontal"
+                                android:paddingHorizontal="6dp"
+                                android:paddingVertical="8dp">
+
+                                <ImageView
+                                    android:layout_width="15dp"
+                                    android:layout_height="15dp"
+                                    android:layout_marginEnd="4dp"
+                                    android:contentDescription="@null"
+                                    android:src="@drawable/ic_theme_auto"
+                                    app:tint="?attr/app_text" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:ellipsize="end"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:maxLines="1"
+                                    android:text="@string/settings_theme_option_auto"
+                                    android:textColor="?attr/app_text"
+                                    android:textSize="13sp" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_dark_theme"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="3dp"
+                            android:layout_weight="1"
+                            android:minHeight="42dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center"
+                                android:gravity="center"
+                                android:minHeight="42dp"
+                                android:orientation="horizontal"
+                                android:paddingHorizontal="6dp"
+                                android:paddingVertical="8dp">
+
+                                <ImageView
+                                    android:layout_width="15dp"
+                                    android:layout_height="15dp"
+                                    android:layout_marginEnd="4dp"
+                                    android:contentDescription="@null"
+                                    android:src="@drawable/ic_dark_mode"
+                                    app:tint="?attr/app_text" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:ellipsize="end"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:maxLines="1"
+                                    android:text="@string/settings_theme_option_dark"
+                                    android:textColor="?attr/app_text"
+                                    android:textSize="13sp" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_light_theme"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            android:minHeight="42dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center"
+                                android:gravity="center"
+                                android:minHeight="42dp"
+                                android:orientation="horizontal"
+                                android:paddingHorizontal="6dp"
+                                android:paddingVertical="8dp">
+
+                                <ImageView
+                                    android:layout_width="15dp"
+                                    android:layout_height="15dp"
+                                    android:layout_marginEnd="4dp"
+                                    android:contentDescription="@null"
+                                    android:src="@drawable/ic_light_mode"
+                                    app:tint="?attr/app_text" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:ellipsize="end"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:maxLines="1"
+                                    android:text="@string/settings_theme_option_light"
+                                    android:textColor="?attr/app_text"
+                                    android:textSize="13sp" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/divider_color"
+                    android:tag="divider" />
+
+                <!-- Language row: header with icon + 4 full-width equal tiles -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_marginEnd="10dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_language"
+                            android:tag="text_secondary"
+                            app:tint="?attr/text_secondary" />
+
+                        <TextView
+                            android:id="@+id/language_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="@string/settings_language_label"
+                            android:textColor="?attr/app_text"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/language_chips_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_polish"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="38dp"
+                            android:layout_weight="1"
+                            app:cardCornerRadius="12dp">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:text="PL"
+                                android:textColor="?attr/app_text"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_english"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="38dp"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            app:cardCornerRadius="12dp">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:text="EN"
+                                android:textColor="?attr/app_text"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_russian"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="38dp"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            app:cardCornerRadius="12dp">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:text="RU"
+                                android:textColor="?attr/app_text"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_ukrainian"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="38dp"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            app:cardCornerRadius="12dp">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:text="UA"
+                                android:textColor="?attr/app_text"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                        </com.google.android.material.card.MaterialCardView>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/divider_visible_days"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/divider_color"
+                    android:tag="divider" />
+
+                <!-- Schedule visible days row -->
+                <LinearLayout
+                    android:id="@+id/layout_visible_days_section"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_marginEnd="10dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_calendar"
+                            android:tag="text_secondary"
+                            app:tint="?attr/text_secondary" />
+
+                        <TextView
+                            android:id="@+id/visible_days_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="@string/settings_visible_days_label"
+                            android:textColor="?attr/app_text"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/visible_days_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_day_mon"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_weight="1"
+                            app:cardCornerRadius="10dp">
+
+                            <androidx.appcompat.widget.AppCompatTextView
+                                android:id="@+id/tv_day_mon"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:maxLines="1"
+                                android:paddingHorizontal="2dp"
+                                android:textColor="?attr/app_text"
+                                android:textStyle="bold"
+                                app:autoSizeMaxTextSize="12sp"
+                                app:autoSizeMinTextSize="9sp"
+                                app:autoSizeStepGranularity="1sp"
+                                app:autoSizeTextType="uniform"
+                                tools:text="Пн" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_day_tue"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_weight="1"
+                            app:cardCornerRadius="10dp">
+
+                            <androidx.appcompat.widget.AppCompatTextView
+                                android:id="@+id/tv_day_tue"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:maxLines="1"
+                                android:paddingHorizontal="2dp"
+                                android:textColor="?attr/app_text"
+                                android:textStyle="bold"
+                                app:autoSizeMaxTextSize="12sp"
+                                app:autoSizeMinTextSize="9sp"
+                                app:autoSizeStepGranularity="1sp"
+                                app:autoSizeTextType="uniform"
+                                tools:text="Вт" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_day_wed"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_weight="1"
+                            app:cardCornerRadius="10dp">
+
+                            <androidx.appcompat.widget.AppCompatTextView
+                                android:id="@+id/tv_day_wed"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:maxLines="1"
+                                android:paddingHorizontal="2dp"
+                                android:textColor="?attr/app_text"
+                                android:textStyle="bold"
+                                app:autoSizeMaxTextSize="12sp"
+                                app:autoSizeMinTextSize="9sp"
+                                app:autoSizeStepGranularity="1sp"
+                                app:autoSizeTextType="uniform"
+                                tools:text="Ср" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_day_thu"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_weight="1"
+                            app:cardCornerRadius="10dp">
+
+                            <androidx.appcompat.widget.AppCompatTextView
+                                android:id="@+id/tv_day_thu"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:maxLines="1"
+                                android:paddingHorizontal="2dp"
+                                android:textColor="?attr/app_text"
+                                android:textStyle="bold"
+                                app:autoSizeMaxTextSize="12sp"
+                                app:autoSizeMinTextSize="9sp"
+                                app:autoSizeStepGranularity="1sp"
+                                app:autoSizeTextType="uniform"
+                                tools:text="Чт" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_day_fri"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_weight="1"
+                            app:cardCornerRadius="10dp">
+
+                            <androidx.appcompat.widget.AppCompatTextView
+                                android:id="@+id/tv_day_fri"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:maxLines="1"
+                                android:paddingHorizontal="2dp"
+                                android:textColor="?attr/app_text"
+                                android:textStyle="bold"
+                                app:autoSizeMaxTextSize="12sp"
+                                app:autoSizeMinTextSize="9sp"
+                                app:autoSizeStepGranularity="1sp"
+                                app:autoSizeTextType="uniform"
+                                tools:text="Пт" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_day_sat"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_weight="1"
+                            app:cardCornerRadius="10dp">
+
+                            <androidx.appcompat.widget.AppCompatTextView
+                                android:id="@+id/tv_day_sat"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:maxLines="1"
+                                android:paddingHorizontal="2dp"
+                                android:textColor="?attr/app_text"
+                                android:textStyle="bold"
+                                app:autoSizeMaxTextSize="12sp"
+                                app:autoSizeMinTextSize="9sp"
+                                app:autoSizeStepGranularity="1sp"
+                                app:autoSizeTextType="uniform"
+                                tools:text="Сб" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_day_sun"
+                            style="@style/WSPlanner.SelectableCard"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_weight="1"
+                            app:cardCornerRadius="10dp">
+
+                            <androidx.appcompat.widget.AppCompatTextView
+                                android:id="@+id/tv_day_sun"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:maxLines="1"
+                                android:paddingHorizontal="2dp"
+                                android:textColor="?attr/app_text"
+                                android:textStyle="bold"
+                                app:autoSizeMaxTextSize="12sp"
+                                app:autoSizeMinTextSize="9sp"
+                                app:autoSizeStepGranularity="1sp"
+                                app:autoSizeTextType="uniform"
+                                tools:text="Вс" />
+                        </com.google.android.material.card.MaterialCardView>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/divider_widgets"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/divider_color"
+                    android:tag="divider" />
+
+                <!-- Widgets navigation row -->
+                <LinearLayout
+                    android:id="@+id/row_widget_settings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="50dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="12dp">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_widgets"
+                        android:tag="text_secondary"
+                        app:tint="?attr/text_secondary" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="@string/settings_widgets_row"
+                        android:textColor="?attr/app_text"
+                        android:textSize="15sp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tag="text_muted"
+                        app:tint="?attr/text_muted" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- App and support section -->
+        <TextView
+            android:id="@+id/app_section_header"
+            style="@style/WSPlanner.SectionHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="20dp"
+            android:tag="text_muted"
+            android:text="@string/settings_section_app" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_app_group"
+            style="@style/WSPlanner.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Check for updates row (no chevron) -->
+                <LinearLayout
+                    android:id="@+id/row_check_update"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="50dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="12dp">
+
+                    <ImageView
+                        android:id="@+id/icon_check_update"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_refresh"
+                        android:tag="text_secondary"
+                        app:tint="?attr/text_secondary" />
+
+                    <TextView
+                        android:id="@+id/tv_check_update_title"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="@string/settings_check_updates"
+                        android:textColor="?attr/app_text"
+                        android:textSize="15sp" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <View
+                            android:id="@+id/view_update_dot"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:layout_marginEnd="6dp"
+                            android:background="@drawable/bg_update_dot"
+                            android:tag="skip_theme_anim"
+                            android:visibility="gone"
+                            tools:visibility="visible" />
+
+                        <TextView
+                            android:id="@+id/tv_app_version"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:tag="text_muted"
+                            android:textColor="?attr/text_muted"
+                            android:textSize="13sp"
+                            tools:text="v1.3.1" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/divider_color"
+                    android:tag="divider" />
+
+                <!-- Share logs row (no chevron) -->
+                <LinearLayout
+                    android:id="@+id/row_share_logs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="50dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="12dp">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_share"
+                        android:tag="text_secondary"
+                        app:tint="?attr/text_secondary" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="@string/settings_share_logs"
+                        android:textColor="?attr/app_text"
+                        android:textSize="15sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- External link buttons -->
+        <LinearLayout
+            android:id="@+id/layout_link_buttons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_open_github"
+                style="@style/WSPlanner.SecondaryButton"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:text="@string/settings_update_github_button"
+                app:icon="@drawable/ic_github"
+                app:iconGravity="textStart"
+                app:iconSize="18dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_contact_dev"
+                style="@style/WSPlanner.SecondaryButton"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:text="@string/settings_telegram_button"
+                app:icon="@drawable/ic_telegram"
+                app:iconGravity="textStart"
+                app:iconSize="18dp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

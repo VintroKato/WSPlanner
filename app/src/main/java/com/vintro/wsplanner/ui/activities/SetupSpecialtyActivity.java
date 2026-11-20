@@ -1,11 +1,13 @@
 package com.vintro.wsplanner.ui.activities;
 
 import android.content.Intent;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.transition.AutoTransition;
 import android.transition.TransitionManager;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,15 +17,17 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
+import com.vintro.wsplanner.enums.InputState;
 import com.vintro.wsplanner.services.CourseSetupService;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
@@ -39,7 +43,7 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
     private LinearLayout contentLayout;
     private LinearLayout specialtiesContainer;
     private View noSpecialtiesCard;
-    private SwitchMaterial manualSpecialtySwitch;
+    private MaterialSwitch manualSpecialtySwitch;
     private EditText manualSpecialtyInput;
     private Button confirmButton;
     private Button skipButton;
@@ -56,13 +60,18 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
         Logger.d("SetupSpecialtyActivity.onCreate", "SetupSpecialtyActivity created");
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
+        EdgeToEdge.enable(this);
+        UIHelper.setupSystemBars(this);
         setContentView(R.layout.activity_setup_specialty);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, Math.max(systemBars.bottom, ime.bottom));
             return insets;
         });
+
+        UIHelper.bindOnboardingSteps(this, 3);
 
         backButton = findViewById(R.id.back_button);
         loadingLayout = findViewById(R.id.loading_layout);
@@ -85,6 +94,9 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
             }
             updateButtonsState();
         });
+
+        manualSpecialtyInput.setOnFocusChangeListener((v, hasFocus) ->
+                AnimationHelper.animateInputState(this, manualSpecialtyInput, InputState.NORMAL, InputState.NORMAL));
 
         manualSpecialtyInput.addTextChangedListener(new TextWatcher() {
             @Override
@@ -113,17 +125,17 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
         boolean isChosen = isManual || isCard;
 
         if (isChosen) {
-            // specialty selected or entered: show only Confirm/Next
+            // specialty selected or entered: show only next
             confirmButton.setVisibility(View.VISIBLE);
             confirmButton.setEnabled(true);
             confirmButton.setAlpha(1.0f);
             skipButton.setVisibility(View.GONE);
         } else if (!hasItems) {
-            // no options available and nothing entered manually: show only Skip
+            // no options available and nothing entered manually: show only skip
             confirmButton.setVisibility(View.GONE);
             skipButton.setVisibility(View.VISIBLE);
         } else {
-            // options available but not selected: show both, but Confirm is disabled
+            // options available but not selected: show both, next disabled
             confirmButton.setVisibility(View.VISIBLE);
             confirmButton.setEnabled(false);
             confirmButton.setAlpha(0.5f);
@@ -141,6 +153,7 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
             public void onSuccess(List<String> specialties) {
                 Logger.i("SetupSpecialtyActivity.fetchSpecialties", "Specialties loaded successfully (" + (specialties != null ? specialties.size() : 0) + " options)");
                 runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
                     TransitionManager.beginDelayedTransition((ViewGroup) findViewById(R.id.main), new AutoTransition());
                     loadingLayout.setVisibility(View.GONE);
                     contentLayout.setVisibility(View.VISIBLE);
@@ -152,6 +165,7 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
             public void onError(Exception e) {
                 Logger.e("SetupSpecialtyActivity.fetchSpecialties", "loadSpecialties error: " + Logger.formatException(e));
                 runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
                     TransitionManager.beginDelayedTransition((ViewGroup) findViewById(R.id.main), new AutoTransition());
                     loadingLayout.setVisibility(View.GONE);
                     contentLayout.setVisibility(View.VISIBLE);
@@ -203,30 +217,33 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                (int) (52 * density)
+                ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        int marginVertical = (int) (4 * density);
-        int marginHorizontal = (int) (8 * density);
-        params.setMargins(marginHorizontal, marginVertical, marginHorizontal, marginVertical);
+        int marginVertical = Math.round(4 * density);
+        params.setMargins(0, marginVertical, 0, marginVertical);
         card.setLayoutParams(params);
+        card.setMinimumHeight(Math.round(52 * density));
 
         card.setCheckable(true);
         card.setCheckedIcon(null);
         card.setCardBackgroundColor(UIHelper.getThemeColor(this, R.attr.card_bg));
         card.setStrokeColor(UIHelper.getThemeColor(this, R.attr.card_border));
-        card.setStrokeWidth((int) (2 * density));
-        card.setRadius(16 * density);
-        card.setCardElevation(2 * density);
+        card.setStrokeWidth(Math.max(1, Math.round(1.0f * density)));
+        card.setRadius(14 * density);
+        card.setCardElevation(0);
 
         TextView textView = new TextView(this);
         textView.setText(text);
         textView.setTextColor(UIHelper.getThemeColor(this, R.attr.app_text));
-        textView.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 16);
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        textView.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         textView.setGravity(Gravity.CENTER);
-        textView.setPadding((int) (16 * density), 0, (int) (16 * density), 0);
+        int padH = Math.round(16 * density);
+        int padV = Math.round(14 * density);
+        textView.setPadding(padH, padV, padH, padV);
         textView.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
+                ViewGroup.LayoutParams.WRAP_CONTENT
         ));
 
         card.addView(textView);

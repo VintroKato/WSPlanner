@@ -21,11 +21,13 @@
         app:strokeWidth="1dp">
 
         <ImageView
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:id="@+id/empty_icon"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
             android:layout_gravity="center"
             android:contentDescription="@null"
-            android:src="@drawable/ic_empty_schedule" />
+            android:src="@drawable/ic_empty_schedule"
+            app:tint="?attr/text_muted" />
     </com.google.android.material.card.MaterialCardView>
 
     <TextView
@@ -42,10 +44,24 @@
         android:id="@+id/empty_subtitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:alpha="0.6"
+        android:layout_marginTop="6dp"
         android:text="@string/schedule_empty_subtitle"
         android:textAlignment="center"
-        android:textColor="?attr/app_text"
-        android:textSize="12sp" />
+        android:textColor="?attr/text_secondary"
+        android:textSize="13sp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/empty_action_button"
+        style="@style/WSPlanner.SecondaryButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:minHeight="44dp"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
+        android:text="@string/schedule_jump_next_day"
+        android:visibility="gone"
+        app:icon="@drawable/ic_arrow_forward"
+        app:iconGravity="textEnd"
+        app:iconSize="16dp" />
 </LinearLayout>

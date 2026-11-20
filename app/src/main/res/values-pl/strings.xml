@@ -241,4 +241,34 @@
     <string name="widget_preview_sample_type_lecture">Wykład</string>
     <string name="widget_preview_sample_type_lab">Laboratorium</string>
     <string name="widget_preview_sample_date">Poniedziałek, 15 maja</string>
+
+    <!-- Redesign strings -->
+    <string name="nav_schedule">Plan</string>
+    <string name="nav_courses">Kursy</string>
+    <string name="nav_settings">Ustawienia</string>
+    <string name="schedule_back_to_today">Wróć do dzisiaj</string>
+    <string name="schedule_jump_next_day">Do następnych zajęć</string>
+    <string name="courses_filters_location">Miejsce</string>
+    <string name="courses_filters_type">Typ zajęć</string>
+    <string name="courses_filters_status">Status</string>
+    <string name="courses_status_active">Aktywne</string>
+    <string name="courses_status_completed">Zakończone</string>
+    <string name="courses_filters_reset">Resetuj</string>
+    <string name="courses_filters_reset_all">Resetuj filtry</string>
+    <string name="settings_profile_label">Profil studenta</string>
+    <string name="settings_section_appearance">Wygląd</string>
+    <string name="settings_section_app">Aplikacja i wsparcie</string>
+    <string name="settings_visible_days_label">Dni w planie</string>
+    <string name="settings_visible_days_min_one">Zostaw co najmniej jeden dzień</string>
+    <string name="subject_open_puw_short">PUW</string>
+    <string name="subject_notes_saving">Zapisywanie…</string>
+    <string name="onboarding_login_info_title">Dlaczego wymagane jest logowanie PUW?</string>
+    <string name="onboarding_login_info_desc">Służy wyłącznie do pobierania planu i kursów. Dane są szyfrowane lokalnie na urządzeniu.</string>
+    <string name="common_retry">Ponów</string>
+    <string name="common_close">Zamknij</string>
+    <string name="settings_widgets_row">Widżety</string>
+    <string name="settings_check_updates">Sprawdź aktualizacje</string>
+    <string name="settings_share_logs">Udostępnij logi</string>
+    <string name="schedule_open_puw_desc">Otwórz PUW</string>
+    <string name="schedule_opening_puw">Otwieranie PUW…</string>
 </resources>

@@ -1,51 +1,119 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
     <style name="Base.Theme.WSPlanner" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowBackground">@color/bg_light</item>
         <item name="android:colorBackground">@color/bg_light</item>
         <item name="android:textColor">@color/text_light</item>
         <item name="android:autofilledHighlight">@drawable/shape_input_autofilled</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
 
+        <!-- Base surfaces and typography -->
         <item name="app_bg">@color/bg_light</item>
         <item name="app_text">@color/text_light</item>
+        <item name="text_secondary">@color/text_secondary_light</item>
+        <item name="text_muted">@color/text_muted_light</item>
+        <item name="card_bg">@color/card_bg_light</item>
+        <item name="card_border">@color/card_border_light</item>
+        <item name="card_checked_bg">@color/card_checked_bg_light</item>
+        <item name="card_checked_border">@color/card_checked_border_light</item>
+        <item name="surface_recessed">@color/surface_recessed_light</item>
+        <item name="divider_color">@color/divider_light</item>
+        <item name="dialog_bg">@color/dialog_bg_light</item>
+        <item name="dialog_border">@color/dialog_border_light</item>
+        <item name="bottom_nav_bg">@color/bottom_nav_bg_light</item>
+        <item name="bottom_nav_indicator">@color/bottom_nav_indicator_light</item>
+
+        <!-- Inputs and buttons -->
         <item name="input_bg">@color/input_bg_light</item>
         <item name="input_bg_active">@color/input_bg_active_light</item>
+        <item name="input_bg_autofilled">@color/input_bg_autofilled</item>
         <item name="input_border">@color/input_border_light</item>
         <item name="input_border_active">@color/input_border_active_light</item>
         <item name="input_hint">@color/input_hint_light</item>
         <item name="input_border_ok">@color/input_border_ok_light</item>
         <item name="input_border_error">@color/input_border_error_light</item>
-
         <item name="button_bg">@color/btn_bg</item>
-        <item name="button_text">@color/bg_light</item>
-        <item name="input_bg_autofilled">@color/input_bg_autofilled</item>
+        <item name="button_text">@color/btn_text_light</item>
 
-        <item name="card_checked_bg">@color/card_checked_bg_light</item>
-        <item name="card_bg">@color/card_bg_light</item>
-        <item name="card_border">@color/card_border_light</item>
-        <item name="card_checked_border">@color/card_checked_border_light</item>
+        <!-- Lesson stripes and status banners -->
+        <item name="stripe_active">@color/stripe_active_light</item>
+        <item name="stripe_past">@color/stripe_past_light</item>
+        <item name="card_now_bg">@color/card_now_bg_light</item>
+        <item name="email_link_text">@color/email_link_light</item>
+        <item name="wspa_logo_grey">@color/wspa_logo_grey_light</item>
+        <item name="wspa_logo_red">@color/wspa_logo_red_light</item>
+        <item name="card_shadow_color">@color/card_shadow_light</item>
+        <item name="elevationOverlayEnabled">false</item>
+        <item name="banner_now_bg">@color/banner_now_bg_light</item>
+        <item name="banner_next_bg">@color/banner_next_bg_light</item>
+        <item name="progress_track_now">@color/progress_track_now_light</item>
+        <item name="active_lesson_border">@color/active_lesson_border_light</item>
+        <item name="next_lesson_border">@color/next_lesson_border_light</item>
 
-        <item name="popup_bg">@color/popup_bg_light</item>
-        <item name="popup_border">@color/popup_border_light</item>
+        <!-- Adaptive badges -->
+        <item name="badge_wspa_bg">@color/badge_wspa_bg_light</item>
+        <item name="badge_wspa_border">@color/badge_wspa_border_light</item>
+        <item name="badge_wspa_text">@color/badge_wspa_text_light</item>
+        <item name="badge_puw_bg">@color/badge_puw_bg_light</item>
+        <item name="badge_puw_border">@color/badge_puw_border_light</item>
+        <item name="badge_puw_text">@color/badge_puw_text_light</item>
+        <item name="badge_field_bg">@color/badge_field_bg_light</item>
+        <item name="badge_field_border">@color/badge_field_border_light</item>
+        <item name="badge_field_text">@color/badge_field_text_light</item>
+        <item name="badge_now_bg">@color/badge_now_bg_light</item>
+        <item name="badge_now_border">@color/badge_now_border_light</item>
+        <item name="badge_now_text">@color/badge_now_text_light</item>
+        <item name="badge_next_bg">@color/badge_next_bg_light</item>
+        <item name="badge_next_border">@color/badge_next_border_light</item>
+        <item name="badge_next_text">@color/badge_next_text_light</item>
+        <item name="badge_type_bg">@color/badge_type_bg_light</item>
+        <item name="badge_type_border">@color/badge_type_border_light</item>
+        <item name="badge_type_text">@color/badge_type_text_light</item>
+        <item name="update_alert_tint">@color/update_alert_tint_light</item>
 
-        <item name="popupMenuStyle">@style/CustomPopupMenu</item>
-        <item name="android:popupMenuStyle">@style/CustomPopupMenu</item>
-        <item name="actionOverflowMenuStyle">@style/CustomPopupMenu</item>
+        <!-- Material 3 color tokens -->
+        <item name="colorPrimary">@color/color_primary_light</item>
+        <item name="colorOnPrimary">@color/btn_text_light</item>
+        <item name="colorPrimaryContainer">@color/card_checked_bg_light</item>
+        <item name="colorOnPrimaryContainer">@color/color_primary_light</item>
+        <item name="colorSecondary">@color/color_primary_light</item>
+        <item name="colorOnSecondary">@color/btn_text_light</item>
+        <item name="colorSecondaryContainer">@color/bottom_nav_indicator_light</item>
+        <item name="colorOnSecondaryContainer">@color/color_primary_light</item>
+        <item name="colorSurface">@color/card_bg_light</item>
+        <item name="colorSurfaceVariant">@color/surface_recessed_light</item>
+        <item name="colorSurfaceContainerLowest">@color/card_bg_light</item>
+        <item name="colorSurfaceContainerLow">@color/bg_light</item>
+        <item name="colorSurfaceContainer">@color/bottom_nav_bg_light</item>
+        <item name="colorSurfaceContainerHigh">@color/card_bg_light</item>
+        <item name="colorSurfaceContainerHighest">@color/card_checked_bg_light</item>
+        <item name="colorOnSurface">@color/text_light</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary_light</item>
+        <item name="colorOutline">@color/card_border_light</item>
+        <item name="colorOutlineVariant">@color/divider_light</item>
+        <item name="colorControlActivated">@color/color_primary_light</item>
+        <item name="colorControlHighlight">@color/bottom_nav_indicator_light</item>
 
-        <item name="colorPrimary">#3050FF</item>
-        <item name="colorControlActivated">#3050FF</item>
-        <item name="colorSecondary">#3050FF</item>
-
+        <!-- Switches and update badge -->
         <item name="switch_thumb_tint">@color/switch_thumb_light</item>
         <item name="switch_track_tint">@color/switch_track_light</item>
         <item name="update_badge_new_bg">@color/update_badge_new_bg_light</item>
         <item name="update_badge_new_text">@color/update_badge_new_text_light</item>
 
         <item name="materialSwitchStyle">@style/CustomSwitchStyle</item>
-        <item name="switchStyle">@style/CustomSwitchMaterialStyle</item>
 
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
     </style>
 
+    <style name="ThemeOverlay.WSPlanner.DatePicker" parent="ThemeOverlay.Material3.MaterialCalendar">
+        <item name="colorPrimary">@color/color_primary_light</item>
+        <item name="colorOnPrimary">@color/btn_text_light</item>
+        <item name="colorSurface">@color/dialog_bg_light</item>
+        <item name="colorSurfaceContainerHigh">@color/dialog_bg_light</item>
+        <item name="colorOnSurface">@color/text_light</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary_light</item>
+        <item name="colorOutline">@color/dialog_border_light</item>
+        <item name="colorOutlineVariant">@color/divider_light</item>
+    </style>
 </resources>

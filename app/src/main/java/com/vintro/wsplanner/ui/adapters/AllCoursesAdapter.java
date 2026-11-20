@@ -7,10 +7,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.card.MaterialCardView;
@@ -19,6 +19,7 @@ import com.vintro.wsplanner.enums.LessonType;
 import com.vintro.wsplanner.models.Location;
 import com.vintro.wsplanner.models.SubjectDetails;
 import com.vintro.wsplanner.ui.activities.SubjectDetailsActivity;
+import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.ui.views.SegmentedProgressBar;
 
 import java.time.LocalDateTime;
@@ -36,16 +37,22 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
     private final Context context;
     private final List<SubjectDetails> courses = new ArrayList<>();
+    private final int stripeActiveColor;
+    private final int stripePastColor;
+    private final int badgeTypeTextColor;
+    private final OnStrefaClickListener onStrefaClickListener;
+
     private boolean showStrefa = true;
     private String majorName = "";
-    private OnStrefaClickListener onStrefaClickListener;
+    private boolean isStrefaLoading = false;
 
     public AllCoursesAdapter(Context context, OnStrefaClickListener listener) {
         this.context = context;
         this.onStrefaClickListener = listener;
+        this.stripeActiveColor = UIHelper.getThemeColor(context, R.attr.stripe_active);
+        this.stripePastColor = UIHelper.getThemeColor(context, R.attr.stripe_past);
+        this.badgeTypeTextColor = UIHelper.getThemeColor(context, R.attr.badge_type_text);
     }
-
-    private boolean isStrefaLoading = false;
 
     public void setStrefaLoading(boolean loading) {
         if (this.isStrefaLoading == loading) return;
@@ -108,7 +115,7 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         private final TextView textStrefaTitle;
         private final TextView textStrefaDesc;
         private final ImageView strefaArrowIcon;
-        private final android.widget.ProgressBar strefaLoadingProgress;
+        private final ProgressBar strefaLoadingProgress;
 
         StrefaViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -122,7 +129,7 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         void bind(String major, boolean isLoading, OnStrefaClickListener listener) {
             Context ctx = itemView.getContext();
             String title;
-            if (major != null && major.toLowerCase().contains("rok zerowy")) {
+            if (major != null && major.toLowerCase(Locale.ROOT).contains("rok zerowy")) {
                 title = ctx.getString(R.string.all_courses_strefa_zero_year_title);
             } else {
                 title = ctx.getString(R.string.all_courses_strefa_title);
@@ -133,12 +140,15 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
             textStrefaTitle.setText(title);
             textStrefaDesc.setText(R.string.all_courses_strefa_desc);
 
+            if (strefaArrowIcon != null) {
+                strefaArrowIcon.setVisibility(isLoading ? View.INVISIBLE : View.VISIBLE);
+            }
             if (strefaLoadingProgress != null) {
                 if (isLoading) {
                     strefaLoadingProgress.setVisibility(View.VISIBLE);
-                    strefaLoadingProgress.animate().alpha(0.6f).setDuration(150).start();
+                    strefaLoadingProgress.animate().alpha(1f).setDuration(150).start();
                 } else {
-                    strefaLoadingProgress.animate().alpha(0f).setDuration(250).withEndAction(() -> {
+                    strefaLoadingProgress.animate().alpha(0f).setDuration(180).withEndAction(() -> {
                         strefaLoadingProgress.setVisibility(View.GONE);
                     }).start();
                 }
@@ -155,6 +165,7 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
     class CourseViewHolder extends RecyclerView.ViewHolder {
         private final MaterialCardView cardView;
+        private final View statusStripe;
         private final SegmentedProgressBar segmentedProgressBar;
         private final TextView textProgress;
         private final TextView badgeLessonType;
@@ -167,6 +178,7 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         CourseViewHolder(@NonNull View itemView) {
             super(itemView);
             cardView = itemView.findViewById(R.id.course_card);
+            statusStripe = itemView.findViewById(R.id.course_status_stripe);
             segmentedProgressBar = itemView.findViewById(R.id.segmented_progress_bar);
             textProgress = itemView.findViewById(R.id.text_progress);
             badgeLessonType = itemView.findViewById(R.id.badge_lesson_type);
@@ -181,13 +193,14 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
             if (details == null) return;
             LocalDateTime now = LocalDateTime.now();
 
-            // Progress bar and text
             int completed = details.getCompletedCount(now);
             int total = details.getTotalCount();
-            segmentedProgressBar.setProgress(completed, total);
-            textProgress.setText(context.getString(R.string.all_courses_progress_format, completed, total));
+            boolean isCompleted = total > 0 && completed >= total;
 
-            // Badge lesson type (in top-right corner)
+            statusStripe.setBackgroundColor(isCompleted ? stripePastColor : stripeActiveColor);
+            segmentedProgressBar.setProgress(completed, total);
+            textProgress.setText(completed + " / " + total);
+
             String rawType = details.getRawLessonType();
             LessonType resolvedType = details.getLessonType();
             String displayType = (rawType != null && !rawType.trim().isEmpty())
@@ -197,24 +210,21 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
             if (displayType != null && !displayType.trim().isEmpty()) {
                 badgeLessonType.setVisibility(View.VISIBLE);
                 badgeLessonType.setText(displayType.toUpperCase(Locale.getDefault()));
-                badgeLessonType.setBackgroundResource(R.drawable.bg_badge_lab);
-                badgeLessonType.setTextColor(ContextCompat.getColor(context, R.color.badge_lab_text));
+                badgeLessonType.setBackgroundResource(R.drawable.bg_badge_type);
+                badgeLessonType.setTextColor(badgeTypeTextColor);
             } else {
                 badgeLessonType.setVisibility(View.GONE);
             }
 
-            // Subject name
             textCourseName.setText(details.getSubjectName());
 
-            // Teacher
             if (details.hasTeacher()) {
-                if (rowTeacher != null) rowTeacher.setVisibility(View.VISIBLE);
+                rowTeacher.setVisibility(View.VISIBLE);
                 textTeacher.setText(details.getTeacherName().trim());
             } else {
-                if (rowTeacher != null) rowTeacher.setVisibility(View.GONE);
+                rowTeacher.setVisibility(View.GONE);
             }
 
-            // Location
             Location loc = details.getDominantLocation();
             textLocation.setText(loc != null ? loc.getDisplayText() : "—");
 
@@ -226,7 +236,8 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
                         try {
                             Intent mapIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(query));
                             context.startActivity(mapIntent);
-                        } catch (Exception ignored) {}
+                        } catch (Exception ignored) {
+                        }
                     }
                 };
                 textLocation.setOnClickListener(mapClick);
@@ -237,7 +248,6 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
                 offsiteArrowIcon.setOnClickListener(null);
             }
 
-            // Click to open SubjectDetailsActivity
             cardView.setOnClickListener(v -> {
                 Intent intent = new Intent(context, SubjectDetailsActivity.class);
                 intent.putExtra(SubjectDetailsActivity.EXTRA_SUBJECT_NAME, details.getSubjectName());

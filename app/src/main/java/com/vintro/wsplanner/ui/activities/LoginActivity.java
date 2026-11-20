@@ -1,10 +1,10 @@
 package com.vintro.wsplanner.ui.activities;
 
 import android.content.Intent;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.graphics.Typeface;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.method.HideReturnsTransformationMethod;
@@ -20,10 +20,9 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -31,10 +30,11 @@ import androidx.core.view.WindowInsetsCompat;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
-import com.vintro.wsplanner.network.PUW;
 import com.vintro.wsplanner.enums.AppTheme;
 import com.vintro.wsplanner.enums.InputState;
 import com.vintro.wsplanner.enums.Language;
+import com.vintro.wsplanner.network.MoodleAutologinManager;
+import com.vintro.wsplanner.network.PUW;
 import com.vintro.wsplanner.services.CourseSetupService;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
@@ -68,13 +68,18 @@ public class LoginActivity extends AppCompatActivity {
         Logger.d("LoginActivity.onCreate", "LoginActivity created");
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
+        EdgeToEdge.enable(this);
+        UIHelper.setupSystemBars(this);
         setContentView(R.layout.activity_login);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, Math.max(systemBars.bottom, ime.bottom));
             return insets;
         });
+
+        UIHelper.bindOnboardingSteps(this, 1);
 
         isFromStudentPanel = getIntent().getBooleanExtra(EXTRA_FROM_STUDENT_PANEL, false);
 
@@ -120,7 +125,7 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         confirmButton.setEnabled(false);
-        AnimationHelper.animateAlpha(confirmButton, 0.7f);
+        confirmButton.setAlpha(0.5f);
 
         confirmButton.setOnClickListener(this::handleBtnClick);
 
@@ -184,10 +189,12 @@ public class LoginActivity extends AppCompatActivity {
         Logger.i("LoginActivity.handleBtnClick", "Saving global login credentials for user: " + Logger.maskSensitiveData(login) + ", advancing to SetupCourseActivity");
         CourseSetupService.getInstance().clearCache();
         ScheduleRepository.getInstance(this).invalidateCache();
+        PreferencesManager.clearVisibleWeekdaysPref(this);
         PreferencesManager.deleteGlobalPrefs(this);
         PreferencesManager.saveGlobalPrefs(this, login, password, null, null, null, 1, null, null);
         PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_COURSE);
-        
+        MoodleAutologinManager.prefetchAuthTokensAsync(getApplicationContext());
+
         Intent intent = new Intent(this, SetupCourseActivity.class);
         if (isFromStudentPanel) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -209,8 +216,10 @@ public class LoginActivity extends AppCompatActivity {
                     handler.postDelayed(LoginActivity.this::checkData, 800);
                 }
             }
+
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {}
         };
@@ -239,13 +248,14 @@ public class LoginActivity extends AppCompatActivity {
         progressBar.setVisibility(View.VISIBLE);
         errorLabel.setVisibility(View.VISIBLE);
         errorLabel.setText(R.string.configure_status_checking);
-        errorLabel.setTextColor(UIHelper.getThemeColor(this, R.attr.app_text));
+        errorLabel.setTextColor(UIHelper.getThemeColor(this, R.attr.text_secondary));
 
         new Thread(() -> {
             int result = PUW.checkLogin(login, password);
             Logger.d("LoginActivity.checkData", "Checking data in thread, result: " + result);
 
             runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
                 Logger.d("LoginActivity.checkData", "Checking data in UI thread, result: " + result);
 
                 if (result == -1) {
@@ -290,7 +300,6 @@ public class LoginActivity extends AppCompatActivity {
             }
             confirmButton.requestFocus();
             currentFocus.clearFocus();
-            
         }
     }
 
@@ -344,8 +353,8 @@ public class LoginActivity extends AppCompatActivity {
             buttonTogglePassword.setContentDescription(getString(R.string.show_password));
         }
 
-        int textColor = UIHelper.getThemeColor(this, R.attr.app_text);
-        buttonTogglePassword.setColorFilter(textColor);
+        int iconColor = UIHelper.getThemeColor(this, R.attr.text_secondary);
+        buttonTogglePassword.setColorFilter(iconColor);
 
         if (typeface != null) {
             passwordInput.setTypeface(typeface);

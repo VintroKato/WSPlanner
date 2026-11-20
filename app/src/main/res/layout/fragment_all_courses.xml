@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/all_courses_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/app_bg"
+    android:orientation="vertical">
+
+    <!-- Top app bar -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp">
+
+        <TextView
+            android:id="@+id/text_screen_title"
+            style="@style/WSPlanner.TopBarTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="@string/all_courses_title" />
+
+        <TextView
+            android:id="@+id/text_courses_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:fontFamily="sans-serif-medium"
+            android:textColor="?attr/text_secondary"
+            android:textSize="13sp"
+            android:visibility="gone" />
+    </RelativeLayout>
+
+    <!-- Search input + filter button row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="10dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/layout_search_box"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/bg_search_input"
+            android:gravity="center_vertical"
+            android:minHeight="46dp"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="8dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_search"
+                app:tint="?attr/text_muted" />
+
+            <EditText
+                android:id="@+id/edit_search"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@null"
+                android:hint="@string/all_courses_search_hint"
+                android:imeOptions="actionSearch"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:minHeight="44dp"
+                android:singleLine="true"
+                android:textColor="?attr/app_text"
+                android:textColorHint="?attr/input_hint"
+                android:textSize="15sp" />
+
+            <ImageButton
+                android:id="@+id/button_clear_search"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@null"
+                android:padding="7dp"
+                android:src="@drawable/ic_close"
+                android:visibility="gone"
+                app:tint="?attr/text_muted" />
+        </LinearLayout>
+
+        <!-- Filter toggle button with active count badge -->
+        <FrameLayout
+            android:id="@+id/button_toggle_filters"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_filter_btn"
+            android:clickable="true"
+            android:contentDescription="@string/courses_filters_type"
+            android:focusable="true">
+
+            <ImageView
+                android:id="@+id/icon_filter"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_filter"
+                app:tint="?attr/app_text" />
+
+            <TextView
+                android:id="@+id/badge_filter_count"
+                android:layout_width="wrap_content"
+                android:layout_height="19dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="3dp"
+                android:layout_marginEnd="3dp"
+                android:background="@drawable/bg_filter_badge"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:minWidth="19dp"
+                android:paddingHorizontal="4dp"
+                android:text="1"
+                android:textColor="?attr/button_text"
+                android:textSize="10.5sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- Collapsible filter panel (hidden by default) -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_filters_panel"
+        style="@style/WSPlanner.Card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="10dp"
+        android:visibility="gone">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="14dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Location filters -->
+                <LinearLayout
+                    android:id="@+id/section_filter_location"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/WSPlanner.SectionHeader"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="72dp"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/courses_filters_location" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chip_group_location"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:chipSpacingHorizontal="6dp"
+                        app:chipSpacingVertical="6dp"
+                        app:singleLine="false" />
+                </LinearLayout>
+
+                <!-- Lesson type filters -->
+                <LinearLayout
+                    android:id="@+id/section_filter_type"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/WSPlanner.SectionHeader"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="72dp"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/courses_filters_type" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chip_group_type"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:chipSpacingHorizontal="6dp"
+                        app:chipSpacingVertical="6dp"
+                        app:singleLine="false" />
+                </LinearLayout>
+
+                <!-- Course status filters -->
+                <LinearLayout
+                    android:id="@+id/section_filter_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/WSPlanner.SectionHeader"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/courses_filters_status" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chip_group_status"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:chipSpacingHorizontal="6dp"
+                        app:chipSpacingVertical="6dp"
+                        app:singleLine="false" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/button_reset_filters"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|end"
+                android:background="@drawable/bg_sync_status_ripple"
+                android:clickable="true"
+                android:focusable="true"
+                android:fontFamily="sans-serif-medium"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="@string/courses_filters_reset"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </FrameLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Main content frame -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_all_courses"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:paddingTop="2dp"
+            android:paddingBottom="24dp" />
+
+        <ProgressBar
+            android:id="@+id/progress_loading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/layout_empty_state"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_search"
+                app:tint="?attr/text_muted" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/all_courses_empty_title"
+                android:textColor="?attr/app_text"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:text="@string/all_courses_empty_desc"
+                android:textColor="?attr/text_secondary"
+                android:textSize="13sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_reset_all_filters"
+                style="@style/WSPlanner.SecondaryButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:minHeight="44dp"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:text="@string/courses_filters_reset_all"
+                android:visibility="gone" />
+        </LinearLayout>
+
+    </FrameLayout>
+</LinearLayout>

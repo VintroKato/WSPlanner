@@ -9,9 +9,9 @@ import android.util.AttributeSet;
 import android.view.View;
 
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 
 import com.vintro.wsplanner.R;
+import com.vintro.wsplanner.ui.helpers.UIHelper;
 
 // horizontal segmented progress bar with rounded external corners and thin gaps
 public class SegmentedProgressBar extends View {
@@ -48,8 +48,8 @@ public class SegmentedProgressBar extends View {
         gapPx = 2f * density;
         cornerRadiusPx = 3f * density;
 
-        activeColor = ContextCompat.getColor(context, R.color.active_lesson_border);
-        inactiveColor = ContextCompat.getColor(context, R.color.timeline_line_upcoming);
+        activeColor = UIHelper.getThemeColor(context, R.attr.stripe_active);
+        inactiveColor = UIHelper.getThemeColor(context, R.attr.card_border);
     }
 
     // update progress with completed vs total count

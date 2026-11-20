@@ -1,9 +1,16 @@
 <resources>
-    <style name="button" parent="Widget.Material3.Button.ElevatedButton">
-        <item name="android:backgroundTint">@color/btn_bg</item>
+    <style name="button" parent="Widget.Material3.Button">
+        <item name="backgroundTint">?attr/button_bg</item>
         <item name="android:textColor">?attr/button_text</item>
-        <item name="android:textSize">20sp</item>
-        <item name="elevation">4dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:minHeight">52dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="cornerRadius">14dp</item>
+        <item name="elevation">0dp</item>
+        <item name="android:stateListAnimator">@null</item>
     </style>
 
     <style name="options_button" parent="Widget.AppCompat.ImageButton">
@@ -11,45 +18,51 @@
         <item name="android:layout_width">44dp</item>
         <item name="android:layout_height">44dp</item>
         <item name="android:scaleType">center</item>
-        <item name="tint">@color/text_dark</item>
+        <item name="tint">?attr/button_text</item>
     </style>
 
     <style name="input" parent="Widget.AppCompat.EditText">
         <item name="android:background">@drawable/shape_input_default</item>
-        <item name="android:textSize">20sp</item>
-        <item name="android:gravity">center</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:minHeight">50dp</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">12dp</item>
+        <item name="android:gravity">center_vertical|start</item>
         <item name="android:maxLength">50</item>
         <item name="android:textColor">?attr/app_text</item>
         <item name="android:textColorHint">?attr/input_hint</item>
         <item name="android:layout_marginHorizontal">16dp</item>
-        <item name="android:elevation">2dp</item>
+        <item name="android:elevation">0dp</item>
     </style>
 
     <style name="label" parent="Widget.AppCompat.TextView">
         <item name="android:textColor">?attr/app_text</item>
-        <item name="android:textSize">20sp</item>
-
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_marginStart">16dp</item>
         <item name="android:layout_marginBottom">8dp</item>
     </style>
 
-    <style name="card" parent="Widget.Material3.CardView.Elevated">
+    <style name="card" parent="Widget.Material3.CardView.Outlined">
         <item name="android:layout_width">0dp</item>
-        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">48dp</item>
         <item name="android:layout_weight">1</item>
-        <!-- <item name="android:layout_margin">8dp</item> -->
         <item name="android:layout_marginStart">8dp</item>
         <item name="android:layout_marginEnd">8dp</item>
         <item name="android:layout_marginBottom">8dp</item>
         <item name="android:layout_marginTop">12dp</item>
-        <item name="cardElevation">2dp</item>
+        <item name="cardElevation">0dp</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
         <item name="android:checkable">true</item>
-        <item name="cardCornerRadius">16dp</item>
-        <item name="strokeWidth">2dp</item>
+        <item name="cardCornerRadius">14dp</item>
+        <item name="strokeWidth">1dp</item>
         <item name="android:layout_columnWeight">1</item>
         <item name="android:gravity">center</item>
         <item name="strokeColor">@color/settings_card_border</item>
@@ -62,49 +75,92 @@
 
     <style name="card_text">
         <item name="android:textColor">?attr/app_text</item>
-        <item name="android:textSize">19sp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
         <item name="android:layout_height">match_parent</item>
         <item name="android:layout_width">match_parent</item>
         <item name="android:gravity">center</item>
     </style>
 
     <style name="settings_secondary_button" parent="Widget.Material3.Button.OutlinedButton">
-        <item name="android:backgroundTint">?attr/card_bg</item>
+        <item name="backgroundTint">?attr/card_bg</item>
         <item name="android:textColor">?attr/app_text</item>
-        <item name="android:textSize">16sp</item>
-        <item name="android:textStyle">bold</item>
-        <item name="cornerRadius">16dp</item>
-        <item name="strokeWidth">2dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="cornerRadius">14dp</item>
+        <item name="strokeWidth">1dp</item>
         <item name="strokeColor">?attr/card_border</item>
         <item name="iconTint">?attr/app_text</item>
-        <item name="iconSize">22dp</item>
+        <item name="iconSize">18dp</item>
         <item name="iconPadding">8dp</item>
-        <item name="elevation">2dp</item>
+        <item name="elevation">0dp</item>
         <item name="android:stateListAnimator">@null</item>
     </style>
 
-    <style name="CustomPopupMenu" parent="Widget.Material3.PopupMenu">
-        <item name="android:popupBackground">@drawable/bg_popup_menu</item>
-        <item name="android:popupElevation">8dp</item>
+    <!-- Unified design system styles -->
+    <style name="WSPlanner.TopBarTitle" parent="Widget.AppCompat.TextView">
+        <item name="android:textColor">?attr/app_text</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
     </style>
 
-    <style name="CustomPopupMenuTheme" parent="Base.Theme.WSPlanner">
-        <item name="popupMenuStyle">@style/CustomPopupMenu</item>
-        <item name="android:popupMenuStyle">@style/CustomPopupMenu</item>
-        <item name="android:popupBackground">@drawable/bg_popup_menu</item>
-        <item name="android:textColorPrimary">?attr/app_text</item>
-        <item name="colorOnSurface">?attr/app_text</item>
-        <item name="colorControlHighlight">#263B82F6</item>
+    <style name="WSPlanner.SectionHeader" parent="Widget.AppCompat.TextView">
+        <item name="android:textColor">?attr/text_muted</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.06</item>
+    </style>
+
+    <style name="WSPlanner.Card" parent="Widget.Material3.CardView.Outlined">
+        <item name="cardBackgroundColor">?attr/card_bg</item>
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">?attr/card_border</item>
+    </style>
+
+    <style name="WSPlanner.SelectableCard" parent="Widget.Material3.CardView.Outlined">
+        <item name="cardBackgroundColor">@color/settings_card_checked_bg</item>
+        <item name="cardCornerRadius">14dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">@color/settings_card_border</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:checkable">true</item>
+        <item name="checkedIcon">@null</item>
+        <item name="checkedIconTint">@null</item>
+        <item name="cardForegroundColor">@android:color/transparent</item>
+    </style>
+
+    <style name="WSPlanner.HeaderIconButton" parent="Widget.AppCompat.ImageButton">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:background">@drawable/bg_icon_btn</item>
+        <item name="android:padding">10dp</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="tint">?attr/app_text</item>
+    </style>
+
+    <style name="WSPlanner.PrimaryButton" parent="button" />
+
+    <style name="WSPlanner.SecondaryButton" parent="settings_secondary_button" />
+
+    <style name="WSPlanner.CardInput" parent="input">
+        <item name="android:background">@drawable/shape_input_recessed_default</item>
+        <item name="android:layout_marginHorizontal">0dp</item>
     </style>
 
     <style name="CustomSwitchStyle" parent="Widget.Material3.CompoundButton.MaterialSwitch">
         <item name="thumbTint">?attr/switch_thumb_tint</item>
         <item name="trackTint">?attr/switch_track_tint</item>
         <item name="trackDecorationTint">@android:color/transparent</item>
-    </style>
-
-    <style name="CustomSwitchMaterialStyle" parent="Widget.MaterialComponents.CompoundButton.Switch">
-        <item name="thumbTint">?attr/switch_thumb_tint</item>
-        <item name="trackTint">?attr/switch_track_tint</item>
     </style>
 </resources>

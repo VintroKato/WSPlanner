@@ -1,131 +1,131 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:id="@+id/main">
+    android:background="?attr/app_bg"
+    android:fillViewport="true">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
+        android:id="@+id/root_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:animateLayoutChanges="true"
-        android:paddingBottom="80dp">
+        android:orientation="vertical"
+        android:paddingBottom="28dp">
 
-        <ImageButton
-            android:id="@+id/back_button"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/button_back"
-            android:src="@drawable/ic_arrow_back"
-            android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="@+id/title_label"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/title_label"
-            app:tint="?attr/app_text" />
+        <!-- Header -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:paddingHorizontal="16dp">
 
-        <TextView
-            android:id="@+id/title_label"
-            style="@style/label"
-            android:layout_marginTop="20dp"
-            android:text="@string/onboarding_course_title"
-            android:textSize="32sp"
-            android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            <ImageButton
+                android:id="@+id/back_button"
+                style="@style/WSPlanner.HeaderIconButton"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:contentDescription="@string/button_back"
+                android:src="@drawable/ic_arrow_back"
+                android:visibility="gone" />
 
+            <TextView
+                android:id="@+id/title_label"
+                style="@style/WSPlanner.TopBarTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:layout_marginHorizontal="52dp"
+                android:text="@string/onboarding_course_title" />
+        </RelativeLayout>
+
+        <!-- 4-step progress indicator -->
+        <include layout="@layout/layout_onboarding_steps" />
+
+        <!-- Loading / Error state -->
         <LinearLayout
             android:id="@+id/loading_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
             android:layout_marginTop="48dp"
-            android:paddingHorizontal="24dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/title_label">
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingHorizontal="24dp">
 
             <ProgressBar
                 android:id="@+id/progress_bar"
                 style="?android:attr/progressBarStyle"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:indeterminateTint="?attr/app_text"
-                android:indeterminateTintMode="src_atop"
-                android:indeterminate="true" />
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:indeterminate="true"
+                android:indeterminateTint="?attr/colorPrimary"
+                android:indeterminateTintMode="src_atop" />
 
             <TextView
                 android:id="@+id/loading_label"
-                style="@style/label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="0dp"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="14dp"
                 android:gravity="center"
                 android:text="@string/onboarding_loading_courses"
-                android:textSize="16sp" />
+                android:textColor="?attr/text_secondary"
+                android:textSize="14sp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_retry"
-                style="@style/Widget.Material3.Button.TonalButton"
+                style="@style/WSPlanner.SecondaryButton"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="44dp"
                 android:layout_marginTop="16dp"
-                android:text="@string/button_retry"
+                android:paddingHorizontal="20dp"
+                android:text="@string/common_retry"
                 android:visibility="gone" />
         </LinearLayout>
 
+        <!-- Course selection content -->
         <LinearLayout
             android:id="@+id/content_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
             android:animateLayoutChanges="true"
-            android:visibility="gone"
-            app:layout_constraintTop_toBottomOf="@+id/title_label"
-            app:layout_constraintStart_toStartOf="parent">
+            android:orientation="vertical"
+            android:visibility="gone">
 
             <TextView
                 android:id="@+id/major_label"
-                style="@style/label"
+                style="@style/WSPlanner.SectionHeader"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="12dp"
                 android:text="@string/onboarding_major_label" />
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/major_card"
+                style="@style/WSPlanner.SelectableCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="12dp"
-                android:layout_marginTop="4dp"
-                android:checkable="true"
-                app:checkedIcon="@null"
-                app:cardElevation="0dp"
-                app:strokeWidth="2dp"
-                app:strokeColor="@color/settings_card_border"
-                app:cardBackgroundColor="@color/settings_card_checked_bg"
-                app:cardCornerRadius="16dp">
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="8dp">
 
                 <TextView
                     android:id="@+id/major_text"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
                     android:gravity="center"
-                    android:paddingVertical="14dp"
                     android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp"
                     android:text="Informatyka"
                     android:textColor="?attr/app_text"
-                    android:textSize="16sp" />
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
             </com.google.android.material.card.MaterialCardView>
 
             <TextView
                 android:id="@+id/level_label"
-                style="@style/label"
+                style="@style/WSPlanner.SectionHeader"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
@@ -136,54 +136,57 @@
                 android:id="@+id/level_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:columnCount="2"
-                android:paddingHorizontal="8dp" />
+                android:paddingHorizontal="12dp" />
 
             <TextView
                 android:id="@+id/mode_label"
-                style="@style/label"
+                style="@style/WSPlanner.SectionHeader"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:layout_marginTop="24dp"
-                android:visibility="gone"
-                android:text="@string/onboarding_mode_label" />
+                android:layout_marginTop="20dp"
+                android:text="@string/onboarding_mode_label"
+                android:visibility="gone" />
 
             <GridLayout
                 android:id="@+id/mode_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:columnCount="3"
-                android:visibility="gone"
-                android:paddingHorizontal="8dp" />
+                android:paddingHorizontal="12dp"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/year_label"
-                style="@style/label"
+                style="@style/WSPlanner.SectionHeader"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:layout_marginTop="24dp"
-                android:visibility="gone"
-                android:text="@string/onboarding_year_label" />
+                android:layout_marginTop="20dp"
+                android:text="@string/onboarding_year_label"
+                android:visibility="gone" />
 
             <GridLayout
                 android:id="@+id/year_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:columnCount="4"
-                android:visibility="gone"
-                android:paddingHorizontal="8dp" />
+                android:paddingHorizontal="12dp"
+                android:visibility="gone" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/confirm_button"
-                style="@style/button"
-                android:layout_width="183dp"
-                android:layout_height="57dp"
-                android:layout_marginTop="32dp"
-                android:layout_gravity="center_horizontal"
+                style="@style/WSPlanner.PrimaryButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="28dp"
                 android:text="@string/onboarding_button_next" />
 
         </LinearLayout>
-    </androidx.constraintlayout.widget.ConstraintLayout>
-</ScrollView>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

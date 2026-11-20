@@ -8,7 +8,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_popup_menu"
+        android:background="@drawable/bg_dialog_surface"
         android:elevation="8dp"
         android:orientation="vertical"
         android:padding="20dp">
@@ -20,8 +20,8 @@
 
             <ImageView
                 android:id="@+id/dialog_update_icon"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:layout_alignParentStart="true"
                 android:layout_centerVertical="true"
                 android:contentDescription="@null"
@@ -33,8 +33,8 @@
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
                 android:layout_marginStart="12dp"
-                android:layout_toEndOf="@+id/dialog_update_icon"
                 android:layout_toStartOf="@+id/dialog_update_close"
+                android:layout_toEndOf="@+id/dialog_update_icon"
                 android:text="@string/update_dialog_title"
                 android:textColor="?attr/app_text"
                 android:textSize="18sp"
@@ -47,9 +47,9 @@
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Close"
+                android:contentDescription="@string/common_close"
                 android:src="@drawable/ic_close"
-                app:tint="?attr/app_text" />
+                app:tint="?attr/text_secondary" />
         </RelativeLayout>
 
         <!-- Version Comparison Badges -->
@@ -65,33 +65,33 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:background="@drawable/bg_badge_rect"
-                android:backgroundTint="?attr/card_bg"
+                android:background="@drawable/bg_recessed_chip"
+                android:fontFamily="sans-serif-medium"
                 android:gravity="center"
-                android:paddingVertical="8dp"
                 android:paddingHorizontal="10dp"
+                android:paddingVertical="8dp"
                 android:text="0.5.1"
-                android:textColor="?attr/app_text"
+                android:textColor="?attr/text_secondary"
                 android:textSize="13sp" />
 
             <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
                 android:layout_marginHorizontal="8dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                app:tint="?attr/app_text" />
+                app:tint="?attr/text_muted" />
 
             <TextView
                 android:id="@+id/dialog_new_version_badge"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:background="@drawable/bg_badge_rect"
-                android:backgroundTint="?attr/update_badge_new_bg"
+                android:background="@drawable/bg_update_version_pill"
+                android:fontFamily="sans-serif-medium"
                 android:gravity="center"
-                android:paddingVertical="8dp"
                 android:paddingHorizontal="10dp"
+                android:paddingVertical="8dp"
                 android:text="v0.5.2"
                 android:textColor="?attr/update_badge_new_text"
                 android:textSize="13sp"
@@ -103,36 +103,36 @@
             android:id="@+id/dialog_changelog_header"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
+            android:layout_marginTop="16dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_edit_note"
-                app:tint="?attr/update_badge_new_text" />
+                app:tint="?attr/colorPrimary" />
 
             <TextView
                 android:id="@+id/dialog_changelog_subtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
+                android:fontFamily="sans-serif-medium"
                 android:text="@string/update_dialog_changelog_subtitle"
                 android:textColor="?attr/app_text"
                 android:textSize="13sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Changelog Scrollable Card Container -->
+        <!-- Changelog Scrollable Container -->
         <androidx.core.widget.NestedScrollView
             android:id="@+id/dialog_changelog_scroll"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:background="@drawable/bg_badge_rect"
-            android:backgroundTint="?attr/card_bg"
+            android:background="@drawable/bg_recessed_input"
             android:fadeScrollbars="false"
             android:overScrollMode="ifContentScrolls"
             android:padding="12dp"
@@ -148,22 +148,20 @@
                     android:id="@+id/dialog_update_desc"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:alpha="0.85"
                     android:lineSpacingExtra="3dp"
                     android:text="@string/update_dialog_desc"
-                    android:textColor="?attr/app_text"
+                    android:textColor="?attr/text_secondary"
                     android:textSize="13sp" />
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
 
-        <!-- Error / Failure Banner (Shown if automatic download or launch fails) -->
+        <!-- Error / Failure Banner -->
         <LinearLayout
             android:id="@+id/dialog_update_error_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:background="@drawable/bg_badge_rect"
-            android:backgroundTint="#24FF5252"
+            android:background="@drawable/bg_error_banner"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingHorizontal="12dp"
@@ -171,12 +169,12 @@
             android:visibility="gone">
 
             <ImageView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:layout_marginEnd="10dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_update_alert"
-                app:tint="#FF5252" />
+                app:tint="?attr/input_border_error" />
 
             <TextView
                 android:id="@+id/dialog_update_error_text"
@@ -203,9 +201,10 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/dialog_btn_auto_update"
-                    style="@style/button"
+                    style="@style/WSPlanner.PrimaryButton"
                     android:layout_width="match_parent"
                     android:layout_height="50dp"
+                    android:minHeight="50dp"
                     android:text="@string/update_dialog_button_auto"
                     android:textSize="15sp"
                     app:icon="@drawable/ic_update_check"
@@ -227,17 +226,15 @@
             <!-- Secondary Action: Open GitHub Release Page -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/dialog_btn_open_github"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                style="@style/WSPlanner.SecondaryButton"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="46dp"
                 android:layout_marginTop="8dp"
                 android:text="@string/update_dialog_button_github"
-                android:textColor="?attr/app_text"
                 android:textSize="14sp"
                 app:icon="@drawable/ic_arrow_outward"
                 app:iconGravity="textEnd"
-                app:iconSize="18dp"
-                app:iconTint="?attr/app_text" />
+                app:iconSize="17dp" />
 
             <!-- Tertiary Action: Later -->
             <com.google.android.material.button.MaterialButton
@@ -246,9 +243,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="42dp"
                 android:layout_marginTop="4dp"
+                android:fontFamily="sans-serif-medium"
                 android:text="@string/update_dialog_button_later"
-                android:textColor="?attr/app_text"
-                android:textSize="14sp" />
+                android:textColor="?attr/text_secondary"
+                android:textSize="14sp"
+                app:cornerRadius="14dp" />
         </LinearLayout>
 
     </LinearLayout>

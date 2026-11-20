@@ -9,7 +9,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.card.MaterialCardView;
@@ -17,17 +16,30 @@ import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.enums.LocationType;
 import com.vintro.wsplanner.models.Lesson;
 import com.vintro.wsplanner.models.Location;
+import com.vintro.wsplanner.ui.helpers.UIHelper;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
-// adapter for semester timeline
+// adapter for semester meetings timeline
 public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.TimelineViewHolder> {
     private final Context context;
     private final List<Lesson> lessons = new ArrayList<>();
+    private final int lineCompletedColor;
+    private final int lineUpcomingColor;
+    private final int textPrimaryColor;
+    private final int textSecondaryColor;
+    private final int textMutedColor;
+    private final int badgePuwTextColor;
+    private final int badgeFieldTextColor;
+    private final int badgeWspaTextColor;
+
     private int nearestIndex = -1;
     private String primaryLocationText = null;
 
@@ -36,6 +48,14 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
 
     public TimelineAdapter(Context context) {
         this.context = context;
+        this.lineCompletedColor = UIHelper.getThemeColor(context, androidx.appcompat.R.attr.colorPrimary);
+        this.lineUpcomingColor = UIHelper.getThemeColor(context, R.attr.divider_color);
+        this.textPrimaryColor = UIHelper.getThemeColor(context, R.attr.app_text);
+        this.textSecondaryColor = UIHelper.getThemeColor(context, R.attr.text_secondary);
+        this.textMutedColor = UIHelper.getThemeColor(context, R.attr.text_muted);
+        this.badgePuwTextColor = UIHelper.getThemeColor(context, R.attr.badge_puw_text);
+        this.badgeFieldTextColor = UIHelper.getThemeColor(context, R.attr.badge_field_text);
+        this.badgeWspaTextColor = UIHelper.getThemeColor(context, R.attr.badge_wspa_text);
     }
 
     public void submitLessons(List<Lesson> newLessons) {
@@ -45,7 +65,7 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
         }
 
         // find most frequent location
-        java.util.Map<String, Integer> locationCounts = new java.util.HashMap<>();
+        Map<String, Integer> locationCounts = new HashMap<>();
         for (Lesson l : lessons) {
             if (l.getLocation() != null && l.getLocation().getDisplayText() != null) {
                 String text = l.getLocation().getDisplayText().trim();
@@ -56,7 +76,7 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
         }
         String maxLoc = null;
         int maxCount = -1;
-        for (java.util.Map.Entry<String, Integer> entry : locationCounts.entrySet()) {
+        for (Map.Entry<String, Integer> entry : locationCounts.entrySet()) {
             if (entry.getValue() > maxCount) {
                 maxCount = entry.getValue();
                 maxLoc = entry.getKey();
@@ -69,7 +89,7 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
         LocalDateTime now = LocalDateTime.now();
         for (int i = 0; i < lessons.size(); i++) {
             Lesson l = lessons.get(i);
-            if (l.isCurrent(now) || (l.getDate() != null && l.getStartTime() != null 
+            if (l.isCurrent(now) || (l.getDate() != null && l.getStartTime() != null
                     && LocalDateTime.of(l.getDate(), l.getStartTime()).isAfter(now))) {
                 nearestIndex = i;
                 break;
@@ -139,18 +159,12 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
             boolean isPast = lesson.isPast(now);
             int itemNumber = position + 1;
 
-            // connecting lines
             timelineLineTop.setVisibility(isFirst ? View.INVISIBLE : View.VISIBLE);
             timelineLineBottom.setVisibility(isLast ? View.INVISIBLE : View.VISIBLE);
 
-            int blueColor = ContextCompat.getColor(context, R.color.timeline_line_completed);
-            int grayColor = ContextCompat.getColor(context, R.color.timeline_line_upcoming);
+            timelineLineTop.setBackgroundColor(isPast || isNearest ? lineCompletedColor : lineUpcomingColor);
+            timelineLineBottom.setBackgroundColor((isPast && !isNearest) ? lineCompletedColor : lineUpcomingColor);
 
-            // past lines are blue
-            timelineLineTop.setBackgroundColor(isPast ? blueColor : grayColor);
-            timelineLineBottom.setBackgroundColor((isPast && !isNearest) ? blueColor : grayColor);
-
-            // node dot state
             if (isNearest) {
                 dotCompleted.setVisibility(View.GONE);
                 dotUpcomingNumber.setVisibility(View.GONE);
@@ -167,11 +181,10 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
                 dotUpcomingNumber.setText(String.valueOf(itemNumber));
             }
 
-            // format date
             String dayName = "";
             String dayMonth = "";
             if (lesson.getDate() != null) {
-                dayName = lesson.getDate().getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, Locale.getDefault());
+                dayName = lesson.getDate().getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.getDefault());
                 if (!dayName.isEmpty()) {
                     dayName = dayName.substring(0, 1).toUpperCase(Locale.getDefault()) + dayName.substring(1);
                 }
@@ -179,28 +192,19 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
             }
             String headerTitle = context.getString(R.string.timeline_item_header_format, itemNumber, dayName, dayMonth);
 
-            // format time and room
             String start = lesson.getStartTime() != null ? lesson.getStartTime().format(timeFormatter) : "--:--";
             String end = lesson.getEndTime() != null ? lesson.getEndTime().format(timeFormatter) : "--:--";
             Location loc = lesson.getLocation();
             String room = loc != null ? loc.getDisplayText() : "—";
             String subtitle = context.getString(R.string.timeline_time_room_format, start, end, room);
 
-            // card for next lesson, row for others
             if (isNearest) {
                 standardContentLayout.setVisibility(View.GONE);
                 nearestCardLayout.setVisibility(View.VISIBLE);
 
                 nearestDateTitle.setText(headerTitle);
                 nearestTimeText.setText(start + " – " + end);
-
-                String lessonTypeName = lesson.getLessonType();
-                if (lessonTypeName != null && !lessonTypeName.trim().isEmpty()) {
-                    lessonTypeName = lessonTypeName.substring(0, 1).toUpperCase(Locale.getDefault()) + lessonTypeName.substring(1);
-                    nearestRoomText.setText(room);
-                } else {
-                    nearestRoomText.setText(room);
-                }
+                nearestRoomText.setText(room);
             } else {
                 standardContentLayout.setVisibility(View.VISIBLE);
                 nearestCardLayout.setVisibility(View.GONE);
@@ -210,19 +214,18 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
 
                 if (isPast) {
                     timelineStatusLabel.setText(context.getString(R.string.subject_status_completed));
-                    timelineStatusLabel.setAlpha(0.5f);
-                    timelineDateTitle.setAlpha(0.6f);
-                    timelineSubtitle.setAlpha(0.5f);
+                    timelineDateTitle.setTextColor(textSecondaryColor);
+                    timelineSubtitle.setTextColor(textMutedColor);
+                    timelineStatusLabel.setTextColor(textMutedColor);
                 } else {
                     timelineStatusLabel.setText(context.getString(R.string.subject_status_upcoming));
-                    timelineStatusLabel.setAlpha(0.7f);
-                    timelineDateTitle.setAlpha(0.9f);
-                    timelineSubtitle.setAlpha(0.7f);
+                    timelineDateTitle.setTextColor(textPrimaryColor);
+                    timelineSubtitle.setTextColor(textSecondaryColor);
+                    timelineStatusLabel.setTextColor(textMutedColor);
                 }
 
-                // badge if location differs from primary
                 String currentLocText = (loc != null && loc.getDisplayText() != null) ? loc.getDisplayText().trim() : "";
-                boolean isDifferentLocation = primaryLocationText != null && !currentLocText.isEmpty() 
+                boolean isDifferentLocation = primaryLocationText != null && !currentLocText.isEmpty()
                         && !currentLocText.equalsIgnoreCase(primaryLocationText);
 
                 if (isDifferentLocation && loc != null) {
@@ -233,13 +236,13 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
 
                     if (loc.getType() == LocationType.ONLINE) {
                         badgeSpecialLocation.setBackgroundResource(R.drawable.bg_badge_puw);
-                        badgeSpecialLocation.setTextColor(ContextCompat.getColor(context, R.color.badge_puw_text));
+                        badgeSpecialLocation.setTextColor(badgePuwTextColor);
                     } else if (loc.getType() == LocationType.W_TERENIE) {
                         badgeSpecialLocation.setBackgroundResource(R.drawable.bg_badge_field);
-                        badgeSpecialLocation.setTextColor(ContextCompat.getColor(context, R.color.badge_field_text));
+                        badgeSpecialLocation.setTextColor(badgeFieldTextColor);
                     } else {
                         badgeSpecialLocation.setBackgroundResource(R.drawable.bg_badge_wspa);
-                        badgeSpecialLocation.setTextColor(ContextCompat.getColor(context, R.color.badge_wspa_text));
+                        badgeSpecialLocation.setTextColor(badgeWspaTextColor);
                     }
                 } else {
                     badgeSpecialLocation.setVisibility(View.GONE);

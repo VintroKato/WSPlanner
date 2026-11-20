@@ -6,36 +6,34 @@
     android:baselineAligned="false"
     android:orientation="horizontal">
 
-    <!-- Timeline Column (Dot + Top Line + Bottom Line) -->
+    <!-- Timeline column: dot + top and bottom lines -->
     <RelativeLayout
         android:id="@+id/timeline_column"
-        android:layout_width="20dp"
+        android:layout_width="22dp"
         android:layout_height="match_parent"
         android:layout_marginEnd="12dp">
 
-        <!-- Line to previous node -->
         <View
             android:id="@+id/timeline_line_top"
             android:layout_width="2dp"
             android:layout_height="0dp"
-            android:layout_alignParentTop="true"
             android:layout_above="@id/timeline_dot_container"
+            android:layout_alignParentTop="true"
             android:layout_centerHorizontal="true"
-            android:background="@color/timeline_line_upcoming" />
+            android:background="?attr/divider_color" />
 
-        <!-- Dot Container (Height 20dp, aligned with the first line of content) -->
         <FrameLayout
             android:id="@+id/timeline_dot_container"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
             android:layout_alignParentTop="true"
             android:layout_centerHorizontal="true">
 
-            <!-- 1. Completed state: Blue circle with white checkmark -->
+            <!-- Completed dot -->
             <FrameLayout
                 android:id="@+id/dot_completed"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
                 android:background="@drawable/bg_timeline_dot_completed">
 
                 <ImageView
@@ -43,37 +41,37 @@
                     android:layout_height="12dp"
                     android:layout_gravity="center"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_check" />
+                    android:src="@drawable/ic_check"
+                    app:tint="?attr/button_text" />
             </FrameLayout>
 
-            <!-- 2. Upcoming state: Dark circle with number -->
+            <!-- Upcoming dot -->
             <TextView
                 android:id="@+id/dot_upcoming_number"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
                 android:background="@drawable/bg_timeline_dot_upcoming"
                 android:gravity="center"
                 android:text="4"
-                android:textColor="#A1A1AA"
+                android:textColor="?attr/text_muted"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
-            <!-- 3. Current / Nearest state: Highlighted circle with number -->
+            <!-- Current / Nearest dot -->
             <TextView
                 android:id="@+id/dot_current_number"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
                 android:background="@drawable/bg_timeline_dot_current"
                 android:gravity="center"
                 android:text="3"
-                android:textColor="#FFFFFF"
+                android:textColor="?attr/button_text"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
         </FrameLayout>
 
-        <!-- Line to next node -->
         <View
             android:id="@+id/timeline_line_bottom"
             android:layout_width="2dp"
@@ -82,10 +80,10 @@
             android:layout_centerHorizontal="true"
             android:layout_marginTop="2dp"
             android:layout_marginBottom="2dp"
-            android:background="@color/timeline_line_upcoming" />
+            android:background="?attr/divider_color" />
     </RelativeLayout>
 
-    <!-- Content Column -->
+    <!-- Content column -->
     <LinearLayout
         android:id="@+id/timeline_content_container"
         android:layout_width="0dp"
@@ -94,18 +92,19 @@
         android:orientation="vertical"
         android:paddingBottom="16dp">
 
-        <!-- Standard view for Completed / Upcoming meetings -->
+        <!-- Standard meeting row -->
         <LinearLayout
             android:id="@+id/standard_content_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- First line: fixed height 20dp matching the 20dp dot container perfectly -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="20dp"
+                android:layout_height="wrap_content"
+                android:baselineAligned="false"
                 android:gravity="center_vertical"
+                android:minHeight="22dp"
                 android:orientation="horizontal">
 
                 <TextView
@@ -117,10 +116,9 @@
                     android:maxLines="1"
                     android:text="1. Środa, 02.10"
                     android:textColor="?attr/app_text"
-                    android:textSize="12sp"
+                    android:textSize="13sp"
                     android:textStyle="bold" />
 
-                <!-- Badge for offsite or special location (e.g. W TERENIE) -->
                 <TextView
                     android:id="@+id/badge_special_location"
                     android:layout_width="wrap_content"
@@ -128,50 +126,47 @@
                     android:layout_marginStart="6dp"
                     android:layout_marginEnd="6dp"
                     android:background="@drawable/bg_badge_field"
+                    android:letterSpacing="0.03"
                     android:paddingStart="6dp"
                     android:paddingTop="1dp"
                     android:paddingEnd="6dp"
                     android:paddingBottom="1dp"
                     android:text="W TERENIE"
-                    android:textColor="@color/badge_field_text"
-                    android:textSize="9sp"
+                    android:textColor="?attr/badge_field_text"
+                    android:textSize="10sp"
                     android:textStyle="bold"
                     android:visibility="gone" />
 
-                <!-- Status label (Zrealizowane / Zaplanowane) -->
                 <TextView
                     android:id="@+id/timeline_status_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:alpha="0.6"
                     android:text="Zrealizowane"
-                    android:textColor="?attr/app_text"
-                    android:textSize="11sp" />
+                    android:textColor="?attr/text_muted"
+                    android:textSize="12sp" />
             </LinearLayout>
 
-            <!-- Second line: time & room -->
             <TextView
                 android:id="@+id/timeline_subtitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:alpha="0.65"
                 android:text="08:15 – 09:45 · Sala 204"
-                android:textColor="?attr/app_text"
-                android:textSize="12sp" />
+                android:textColor="?attr/text_secondary"
+                android:textSize="13sp" />
         </LinearLayout>
 
-        <!-- Highlighted Card view for Nearest / Current meeting -->
+        <!-- Highlighted card for nearest / current meeting -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/nearest_card_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:visibility="gone"
-            app:cardBackgroundColor="@color/hero_card_bg"
-            app:cardCornerRadius="12dp"
+            app:cardBackgroundColor="?attr/card_bg"
+            app:cardCornerRadius="14dp"
             app:cardElevation="0dp"
-            app:strokeColor="@color/timeline_card_border_highlight"
-            app:strokeWidth="1dp">
+            app:strokeColor="?attr/active_lesson_border"
+            app:strokeWidth="1.5dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -179,10 +174,10 @@
                 android:orientation="vertical"
                 android:padding="12dp">
 
-                <!-- Header row inside highlighted card -->
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="20dp"
+                    android:layout_height="wrap_content"
+                    android:baselineAligned="false"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 
@@ -194,21 +189,22 @@
                         android:ellipsize="end"
                         android:maxLines="1"
                         android:text="3. Środa, 30.10"
-                        android:textColor="#FFFFFF"
-                        android:textSize="12sp"
+                        android:textColor="?attr/app_text"
+                        android:textSize="13sp"
                         android:textStyle="bold" />
 
-                    <!-- Badge: NAJBLIŻSZE -->
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
                         android:background="@drawable/bg_badge_next"
+                        android:letterSpacing="0.03"
                         android:paddingStart="8dp"
                         android:paddingTop="2dp"
                         android:paddingEnd="8dp"
                         android:paddingBottom="2dp"
                         android:text="@string/subject_status_next"
-                        android:textColor="@color/badge_next_text"
+                        android:textColor="?attr/badge_next_text"
                         android:textSize="10sp"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -219,8 +215,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="08:15 – 09:45"
-                    android:textColor="#BFDBFE"
-                    android:textSize="12sp"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="13sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -228,13 +224,11 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:alpha="0.8"
-                    android:text="Sala 204 (Laboratorium)"
-                    android:textColor="?attr/app_text"
-                    android:textSize="11sp" />
+                    android:text="Sala 204"
+                    android:textColor="?attr/text_secondary"
+                    android:textSize="12sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
-
 </LinearLayout>

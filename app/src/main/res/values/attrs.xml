@@ -1,34 +1,79 @@
 <resources>
-        <attr name="app_widget_padding" format="dimension" />
-        <attr name="app_widget_inner_radius" format="dimension" />
-        <attr name="app_widget_radius" format="dimension" />
+    <attr name="app_widget_padding" format="dimension" />
+    <attr name="app_widget_inner_radius" format="dimension" />
+    <attr name="app_widget_radius" format="dimension" />
 
-        <attr name="app_bg" format="color" />
-        <attr name="app_text" format="color" />
+    <attr name="app_bg" format="color" />
+    <attr name="app_text" format="color" />
+    <attr name="text_secondary" format="color" />
+    <attr name="text_muted" format="color" />
 
-        <attr name="button_bg" format="color" />
-        <attr name="button_text" format="color" />
+    <attr name="button_bg" format="color" />
+    <attr name="button_text" format="color" />
 
-        <attr name="input_bg" format="color" />
-        <attr name="input_bg_active" format="color" />
-        <attr name="input_bg_autofilled" format="color" />
-        <attr name="input_border" format="color" />
-        <attr name="input_border_active" format="color" />
-        <attr name="input_hint" format="color" />
+    <attr name="input_bg" format="color" />
+    <attr name="input_bg_active" format="color" />
+    <attr name="input_bg_autofilled" format="color" />
+    <attr name="input_border" format="color" />
+    <attr name="input_border_active" format="color" />
+    <attr name="input_hint" format="color" />
+    <attr name="input_border_ok" format="color" />
+    <attr name="input_border_error" format="color" />
 
-        <attr name="input_border_ok" format="color" />
-        <attr name="input_border_error" format="color" />
+    <attr name="card_checked_bg" format="color" />
+    <attr name="card_bg" format="color" />
+    <attr name="card_border" format="color" />
+    <attr name="card_checked_border" format="color" />
+    <attr name="surface_recessed" format="color" />
+    <attr name="divider_color" format="color" />
 
-        <attr name="card_checked_bg" format="color" />
-        <attr name="card_bg" format="color" />
-        <attr name="card_border" format="color" />
-        <attr name="card_checked_border" format="color" />
+    <attr name="dialog_bg" format="color" />
+    <attr name="dialog_border" format="color" />
 
-        <attr name="popup_bg" format="color" />
-        <attr name="popup_border" format="color" />
+    <attr name="bottom_nav_bg" format="color" />
+    <attr name="bottom_nav_indicator" format="color" />
 
-        <attr name="update_badge_new_bg" format="color" />
-        <attr name="update_badge_new_text" format="color" />
-        <attr name="switch_thumb_tint" format="color" />
-        <attr name="switch_track_tint" format="color" />
+    <attr name="stripe_active" format="color" />
+    <attr name="stripe_past" format="color" />
+    <attr name="banner_now_bg" format="color" />
+    <attr name="banner_next_bg" format="color" />
+    <attr name="progress_track_now" format="color" />
+    <attr name="active_lesson_border" format="color" />
+    <attr name="next_lesson_border" format="color" />
+
+    <attr name="badge_wspa_bg" format="color" />
+    <attr name="badge_wspa_border" format="color" />
+    <attr name="badge_wspa_text" format="color" />
+
+    <attr name="badge_puw_bg" format="color" />
+    <attr name="badge_puw_border" format="color" />
+    <attr name="badge_puw_text" format="color" />
+
+    <attr name="badge_field_bg" format="color" />
+    <attr name="badge_field_border" format="color" />
+    <attr name="badge_field_text" format="color" />
+
+    <attr name="badge_now_bg" format="color" />
+    <attr name="badge_now_border" format="color" />
+    <attr name="badge_now_text" format="color" />
+
+    <attr name="badge_next_bg" format="color" />
+    <attr name="badge_next_border" format="color" />
+    <attr name="badge_next_text" format="color" />
+
+    <attr name="badge_type_bg" format="color" />
+    <attr name="badge_type_border" format="color" />
+    <attr name="badge_type_text" format="color" />
+
+    <attr name="update_alert_tint" format="color" />
+
+    <attr name="update_badge_new_bg" format="color" />
+    <attr name="update_badge_new_text" format="color" />
+    <attr name="switch_thumb_tint" format="color" />
+    <attr name="switch_track_tint" format="color" />
+    <attr name="card_now_bg" format="color" />
+    <attr name="email_link_text" format="color" />
+    <attr name="wspa_logo_grey" format="color" />
+    <attr name="wspa_logo_red" format="color" />
+    <attr name="card_shadow_color" format="color" />
 </resources>

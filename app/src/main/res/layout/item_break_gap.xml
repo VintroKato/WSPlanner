@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:gravity="center"
+    android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingStart="16dp"
     android:paddingTop="8dp"
@@ -10,24 +11,45 @@
     android:paddingBottom="8dp">
 
     <View
-        android:layout_width="32dp"
+        android:layout_width="0dp"
         android:layout_height="1dp"
-        android:background="?attr/card_border" />
+        android:layout_weight="1"
+        android:background="?attr/divider_color" />
 
-    <TextView
-        android:id="@+id/gap_text"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:layout_marginEnd="12dp"
-        android:alpha="0.65"
-        android:text="Okienko: 1 godz. 15 min"
-        android:textColor="?attr/app_text"
-        android:textSize="12sp"
-        android:textStyle="normal" />
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:background="@drawable/bg_recessed_chip"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="5dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="5dp">
+
+        <ImageView
+            android:layout_width="13dp"
+            android:layout_height="13dp"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_clock"
+            app:tint="?attr/text_muted" />
+
+        <TextView
+            android:id="@+id/gap_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:text="Окно · 1 ч 15 мин"
+            android:textColor="?attr/text_muted"
+            android:textSize="12sp" />
+    </LinearLayout>
 
     <View
-        android:layout_width="32dp"
+        android:layout_width="0dp"
         android:layout_height="1dp"
-        android:background="?attr/card_border" />
+        android:layout_weight="1"
+        android:background="?attr/divider_color" />
 </LinearLayout>

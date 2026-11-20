@@ -9,43 +9,37 @@
     android:fillViewport="true"
     tools:context=".ui.activities.StudentPanelActivity">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/root_constraint"
+    <LinearLayout
+        android:id="@+id/root_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:animateLayoutChanges="true"
-        android:paddingBottom="32dp">
+        android:orientation="vertical"
+        android:paddingBottom="28dp">
 
-        <ImageButton
-            android:id="@+id/back_button"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="14dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/button_back"
-            android:src="@drawable/ic_arrow_back"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:tint="?attr/app_text" />
+        <!-- Header -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:paddingHorizontal="16dp">
 
-        <TextView
-            android:id="@+id/title_label"
-            style="@style/label"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="56dp"
-            android:layout_marginTop="18dp"
-            android:layout_marginEnd="56dp"
-            android:layout_marginBottom="0dp"
-            android:gravity="center"
-            android:text="@string/student_panel_title"
-            android:textAlignment="center"
-            android:textSize="28sp"
-            android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            <ImageButton
+                android:id="@+id/back_button"
+                style="@style/WSPlanner.HeaderIconButton"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:contentDescription="@string/button_back"
+                android:src="@drawable/ic_arrow_back" />
+
+            <TextView
+                android:id="@+id/title_label"
+                style="@style/WSPlanner.TopBarTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:layout_marginHorizontal="52dp"
+                android:text="@string/student_panel_title" />
+        </RelativeLayout>
 
         <LinearLayout
             android:id="@+id/content_layout"
@@ -53,32 +47,25 @@
             android:layout_height="wrap_content"
             android:animateLayoutChanges="true"
             android:orientation="vertical"
-            android:paddingTop="24dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/title_label">
+            android:paddingTop="8dp">
 
-            <!-- Onboarding / Study Information Header -->
+            <!-- Study Information Section Header -->
             <TextView
                 android:id="@+id/course_section_header"
-                style="@style/label"
+                style="@style/WSPlanner.SectionHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:layout_marginBottom="8dp"
-                android:text="@string/student_panel_course_section"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:text="@string/student_panel_course_section" />
 
             <!-- Study Information Card -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_course_info"
+                style="@style/WSPlanner.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
-                app:cardBackgroundColor="?attr/card_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp"
-                app:strokeColor="?attr/card_border"
-                app:strokeWidth="2dp">
+                android:layout_marginTop="8dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -90,10 +77,11 @@
                         android:id="@+id/tv_major_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:alpha="0.65"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.04"
                         android:text="@string/onboarding_major_label"
                         android:textAllCaps="true"
-                        android:textColor="?attr/app_text"
+                        android:textColor="?attr/text_muted"
                         android:textSize="11sp"
                         android:textStyle="bold" />
 
@@ -101,9 +89,9 @@
                         android:id="@+id/tv_major_value"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
+                        android:layout_marginTop="3dp"
                         android:textColor="?attr/app_text"
-                        android:textSize="19sp"
+                        android:textSize="18sp"
                         android:textStyle="bold"
                         tools:text="Informatyka" />
 
@@ -112,8 +100,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginVertical="12dp"
-                        android:alpha="0.4"
-                        android:background="?attr/card_border" />
+                        android:background="?attr/divider_color" />
 
                     <LinearLayout
                         android:id="@+id/layout_course_metrics"
@@ -132,9 +119,8 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:alpha="0.65"
                                 android:text="@string/onboarding_level_label"
-                                android:textColor="?attr/app_text"
+                                android:textColor="?attr/text_muted"
                                 android:textSize="12sp" />
 
                             <TextView
@@ -142,8 +128,9 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
+                                android:fontFamily="sans-serif-medium"
                                 android:textColor="?attr/app_text"
-                                android:textSize="15sp"
+                                android:textSize="14sp"
                                 android:textStyle="bold"
                                 tools:text="I stopień" />
                         </LinearLayout>
@@ -158,9 +145,8 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:alpha="0.65"
                                 android:text="@string/onboarding_mode_label"
-                                android:textColor="?attr/app_text"
+                                android:textColor="?attr/text_muted"
                                 android:textSize="12sp" />
 
                             <TextView
@@ -168,8 +154,9 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
+                                android:fontFamily="sans-serif-medium"
                                 android:textColor="?attr/app_text"
-                                android:textSize="15sp"
+                                android:textSize="14sp"
                                 android:textStyle="bold"
                                 tools:text="Stacjonarne" />
                         </LinearLayout>
@@ -177,15 +164,14 @@
                         <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:minWidth="56dp"
+                            android:minWidth="48dp"
                             android:orientation="vertical">
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:alpha="0.65"
                                 android:text="@string/onboarding_year_label"
-                                android:textColor="?attr/app_text"
+                                android:textColor="?attr/text_muted"
                                 android:textSize="12sp" />
 
                             <TextView
@@ -193,8 +179,9 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
+                                android:fontFamily="sans-serif-medium"
                                 android:textColor="?attr/app_text"
-                                android:textSize="15sp"
+                                android:textSize="14sp"
                                 android:textStyle="bold"
                                 tools:text="2" />
                         </LinearLayout>
@@ -212,15 +199,13 @@
                             android:layout_width="match_parent"
                             android:layout_height="1dp"
                             android:layout_marginVertical="12dp"
-                            android:alpha="0.4"
-                            android:background="?attr/card_border" />
+                            android:background="?attr/divider_color" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:alpha="0.65"
                             android:text="@string/student_panel_specialty_label"
-                            android:textColor="?attr/app_text"
+                            android:textColor="?attr/text_muted"
                             android:textSize="12sp" />
 
                         <TextView
@@ -228,15 +213,16 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
+                            android:fontFamily="sans-serif-medium"
                             android:textColor="?attr/app_text"
-                            android:textSize="15sp"
+                            android:textSize="14sp"
                             android:textStyle="bold"
                             tools:text="Programowanie" />
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Action Buttons for Course Re-Onboarding and Credentials Change -->
+            <!-- Compact secondary action buttons -->
             <LinearLayout
                 android:id="@+id/layout_onboarding_actions"
                 android:layout_width="match_parent"
@@ -247,186 +233,214 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_re_onboarding"
-                    style="@style/settings_secondary_button"
+                    style="@style/WSPlanner.SecondaryButton"
                     android:layout_width="0dp"
-                    android:layout_height="56dp"
+                    android:layout_height="wrap_content"
                     android:layout_marginEnd="6dp"
                     android:layout_weight="1"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:minHeight="44dp"
                     android:paddingHorizontal="10dp"
                     android:text="@string/student_panel_btn_re_onboarding"
-                    android:textSize="14sp"
+                    android:textSize="13sp"
                     app:icon="@drawable/ic_school"
                     app:iconGravity="textStart"
-                    app:iconSize="20dp" />
+                    app:iconSize="17dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_change_credentials"
-                    style="@style/settings_secondary_button"
+                    style="@style/WSPlanner.SecondaryButton"
                     android:layout_width="0dp"
-                    android:layout_height="56dp"
+                    android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
                     android:layout_weight="1"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:minHeight="44dp"
                     android:paddingHorizontal="10dp"
                     android:text="@string/student_panel_btn_change_login"
-                    android:textSize="14sp"
+                    android:textSize="13sp"
                     app:icon="@drawable/ic_key"
                     app:iconGravity="textStart"
-                    app:iconSize="20dp" />
+                    app:iconSize="17dp" />
             </LinearLayout>
 
             <!-- Personal Parameters Header -->
             <TextView
                 android:id="@+id/personal_section_header"
-                style="@style/label"
+                style="@style/WSPlanner.SectionHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:layout_marginTop="28dp"
-                android:layout_marginBottom="12dp"
-                android:text="@string/student_panel_personal_section"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:layout_marginTop="24dp"
+                android:text="@string/student_panel_personal_section" />
 
             <LinearLayout
                 android:id="@+id/searching_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
-                android:layout_marginBottom="14dp"
+                android:layout_marginTop="8dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:visibility="gone">
 
                 <ProgressBar
                     android:id="@+id/searching_progress"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:indeterminate="true" />
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:indeterminate="true"
+                    android:indeterminateTint="?attr/colorPrimary" />
 
                 <TextView
                     android:id="@+id/searching_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
-                    android:alpha="0.75"
                     android:text="@string/onboarding_searching_additional_data"
-                    android:textColor="?attr/app_text"
+                    android:textColor="?attr/text_secondary"
                     android:textSize="13sp" />
             </LinearLayout>
 
-            <!-- Student Surname Inline Edit -->
-            <TextView
-                android:id="@+id/surname_title_label"
-                style="@style/label"
+            <!-- Grouped Personal Parameters Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_personal_params"
+                style="@style/WSPlanner.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
-                android:layout_marginBottom="2dp"
-                android:text="@string/onboarding_surname_title"
-                android:textSize="16sp" />
+                android:layout_marginTop="8dp">
 
-            <TextView
-                android:id="@+id/surname_subtitle_label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="16dp"
-                android:alpha="0.65"
-                android:text="@string/onboarding_surname_subtitle"
-                android:textColor="?attr/app_text"
-                android:textSize="12sp" />
-
-            <EditText
-                android:id="@+id/student_surname_input"
-                style="@style/input"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginHorizontal="16dp"
-                android:layout_marginTop="8dp"
-                android:ems="8"
-                android:hint="@string/onboarding_surname_hint"
-                android:inputType="textCapWords"
-                android:paddingHorizontal="12dp"
-                android:textAlignment="textStart" />
-
-            <!-- English Group Switch & Input -->
-            <LinearLayout
-                android:id="@+id/english_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:animateLayoutChanges="true"
-                android:orientation="vertical">
-
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/english_switch"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="16dp"
-                    android:layout_marginTop="20dp"
-                    android:text="@string/onboarding_english_switch"
-                    android:textColor="?attr/app_text"
-                    android:textSize="16sp" />
+                    android:animateLayoutChanges="true"
+                    android:orientation="vertical">
 
-                <EditText
-                    android:id="@+id/english_input"
-                    style="@style/input"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginHorizontal="16dp"
-                    android:layout_marginTop="8dp"
-                    android:ems="8"
-                    android:hint="@string/onboarding_english_hint"
-                    android:inputType="number"
-                    android:paddingHorizontal="12dp"
-                    android:textAlignment="textStart"
-                    android:visibility="gone" />
-            </LinearLayout>
+                    <!-- Student Surname -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="14dp">
 
-            <!-- Diploma Seminar Switch & Input -->
-            <LinearLayout
-                android:id="@+id/seminar_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:animateLayoutChanges="true"
-                android:orientation="vertical">
+                        <TextView
+                            android:id="@+id/surname_title_label"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="@string/onboarding_surname_title"
+                            android:textColor="?attr/app_text"
+                            android:textSize="15sp" />
 
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/seminar_switch"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="16dp"
-                    android:layout_marginTop="20dp"
-                    android:text="@string/onboarding_seminar_switch"
-                    android:textColor="?attr/app_text"
-                    android:textSize="16sp" />
+                        <TextView
+                            android:id="@+id/surname_subtitle_label"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/onboarding_surname_subtitle"
+                            android:textColor="?attr/text_secondary"
+                            android:textSize="12sp" />
 
-                <EditText
-                    android:id="@+id/seminar_input"
-                    style="@style/input"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginHorizontal="16dp"
-                    android:layout_marginTop="8dp"
-                    android:ems="8"
-                    android:hint="@string/onboarding_seminar_hint"
-                    android:inputType="textPersonName"
-                    android:paddingHorizontal="12dp"
-                    android:textAlignment="textStart"
-                    android:visibility="gone" />
-            </LinearLayout>
+                        <EditText
+                            android:id="@+id/student_surname_input"
+                            style="@style/WSPlanner.CardInput"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:hint="@string/onboarding_surname_hint"
+                            android:inputType="textCapWords"
+                            android:tag="card_input"
+                            android:textAlignment="textStart" />
+                    </LinearLayout>
 
-            <!-- Save Button -->
+                    <View
+                        android:id="@+id/divider_english"
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/divider_color" />
+
+                    <!-- English Group Switch & Input -->
+                    <LinearLayout
+                        android:id="@+id/english_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:animateLayoutChanges="true"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/english_switch"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="@string/onboarding_english_switch"
+                            android:textColor="?attr/app_text"
+                            android:textSize="15sp" />
+
+                        <EditText
+                            android:id="@+id/english_input"
+                            style="@style/WSPlanner.CardInput"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:hint="@string/onboarding_english_hint"
+                            android:inputType="number"
+                            android:tag="card_input"
+                            android:textAlignment="textStart"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <View
+                        android:id="@+id/divider_seminar"
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/divider_color" />
+
+                    <!-- Diploma Seminar Switch & Input -->
+                    <LinearLayout
+                        android:id="@+id/seminar_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:animateLayoutChanges="true"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/seminar_switch"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="@string/onboarding_seminar_switch"
+                            android:textColor="?attr/app_text"
+                            android:textSize="15sp" />
+
+                        <EditText
+                            android:id="@+id/seminar_input"
+                            style="@style/WSPlanner.CardInput"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:hint="@string/onboarding_seminar_hint"
+                            android:inputType="textPersonName"
+                            android:tag="card_input"
+                            android:textAlignment="textStart"
+                            android:visibility="gone" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Wide Save CTA Button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/confirm_button"
-                style="@style/button"
-                android:layout_width="183dp"
-                android:layout_height="57dp"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="36dp"
-                android:layout_marginBottom="16dp"
+                style="@style/WSPlanner.PrimaryButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="24dp"
                 android:text="@string/student_panel_save_button" />
 
         </LinearLayout>
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
 </androidx.core.widget.NestedScrollView>

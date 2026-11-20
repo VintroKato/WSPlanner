@@ -58,6 +58,7 @@ public class PUW {
 
     private static final Map<String, List<Cookie>> globalCookieStore = new java.util.concurrent.ConcurrentHashMap<>();
     private static volatile OkHttpClient sharedClient;
+    private static volatile OkHttpClient sharedApiClient;
     private static volatile String activeSessionUser = null;
     private static volatile long lastLoginTime = 0;
     private static final long SESSION_MAX_AGE_MS = 60 * 60 * 1000; // 1 hour
@@ -101,6 +102,16 @@ public class PUW {
                     .build();
         }
         return sharedClient;
+    }
+
+    // stateless okhttp client sharing connection pool and dispatcher for moodle rest calls
+    public static synchronized OkHttpClient getApiClient() {
+        if (sharedApiClient == null) {
+            sharedApiClient = getClient().newBuilder()
+                    .cookieJar(CookieJar.NO_COOKIES)
+                    .build();
+        }
+        return sharedApiClient;
     }
 
     private static boolean hasMoodleSessionCookie() {

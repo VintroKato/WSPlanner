@@ -6,13 +6,14 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
+import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -23,7 +24,6 @@ import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -32,9 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.AutoTransition;
 import androidx.transition.Transition;
 import androidx.transition.TransitionManager;
-import android.view.ViewGroup;
 
-import com.google.android.material.button.MaterialButton;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.enums.LessonType;
@@ -42,8 +40,8 @@ import com.vintro.wsplanner.enums.LocationType;
 import com.vintro.wsplanner.models.Lesson;
 import com.vintro.wsplanner.models.Location;
 import com.vintro.wsplanner.models.SubjectDetails;
+import com.vintro.wsplanner.network.MoodleAutologinManager;
 import com.vintro.wsplanner.network.PUW;
-import java.util.Locale;
 import com.vintro.wsplanner.network.StudyPlanScraper;
 import com.vintro.wsplanner.services.TeacherEmailService;
 import com.vintro.wsplanner.ui.adapters.TimelineAdapter;
@@ -51,14 +49,17 @@ import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.utils.Logger;
 import com.vintro.wsplanner.utils.NetworkUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 import okhttp3.OkHttpClient;
 
-// subject details screen with notes and timeline
+// subject details screen with auto-saved notes and meetings timeline
 public class SubjectDetailsActivity extends AppCompatActivity {
     private static final String TAG = "SubjectDetailsActivity";
     private static final String PREFS_NOTES_NAME = "subject_notes_prefs";
+    private static final long NOTES_AUTOSAVE_DEBOUNCE_MS = 500L;
 
     public static final String EXTRA_SUBJECT_NAME = "extra_subject_name";
     public static final String EXTRA_LESSON_TYPE = "extra_lesson_type";
@@ -69,9 +70,12 @@ public class SubjectDetailsActivity extends AppCompatActivity {
     private String notePrefKey;
     private String savedNoteText = "";
 
-    // views
+    private final Handler notesHandler = new Handler(Looper.getMainLooper());
+    private Runnable autoSaveRunnable;
+
     private ImageButton buttonBack;
     private View buttonOpenCourse;
+    private View contentOpenCourse;
     private ProgressBar progressOpenCourse;
     private TextView heroBadgeLocation;
     private TextView heroBadgeType;
@@ -88,26 +92,24 @@ public class SubjectDetailsActivity extends AppCompatActivity {
 
     private String loadedTeacherEmail = null;
 
-    // notes views
     private EditText editSubjectNotes;
-    private View layoutSavedStatus;
-    private MaterialButton buttonSaveNotes;
+    private ImageView iconNotesStatus;
+    private TextView textNotesStatus;
 
-    // timeline views
     private TextView timelineProgressBadge;
     private RecyclerView recyclerTimeline;
     private TimelineAdapter timelineAdapter;
 
     private ScheduleRepository scheduleRepository;
-    private SubjectDetails currentDetails;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Logger.d("SubjectDetailsActivity.onCreate", "SubjectDetailsActivity created for subject: '" + getIntent().getStringExtra(EXTRA_SUBJECT_NAME) + "'");
+        Logger.d(TAG + ".onCreate", "SubjectDetailsActivity created for subject: '" + getIntent().getStringExtra(EXTRA_SUBJECT_NAME) + "'");
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
         EdgeToEdge.enable(this);
+        UIHelper.setupSystemBars(this);
         setContentView(R.layout.activity_subject_details);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.subject_details_root), (v, insets) -> {
@@ -128,7 +130,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         }
         if (rawLessonType == null) rawLessonType = "";
 
-        notePrefKey = "note_" + subjectName.trim().toLowerCase() + "_" + rawLessonType.trim().toLowerCase();
+        notePrefKey = "note_" + subjectName.trim().toLowerCase(Locale.ROOT) + "_" + rawLessonType.trim().toLowerCase(Locale.ROOT);
 
         scheduleRepository = ScheduleRepository.getInstance(this);
 
@@ -141,6 +143,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
     private void initViews() {
         buttonBack = findViewById(R.id.button_back);
         buttonOpenCourse = findViewById(R.id.button_open_course);
+        contentOpenCourse = findViewById(R.id.content_open_course);
         progressOpenCourse = findViewById(R.id.progress_open_course);
         heroBadgeLocation = findViewById(R.id.hero_badge_location);
         heroBadgeType = findViewById(R.id.hero_badge_type);
@@ -155,7 +158,6 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         heroLocationArrowIcon = findViewById(R.id.hero_location_arrow_icon);
         heroLocationRow = findViewById(R.id.hero_location_row);
 
-        // set title right away
         if (subjectName != null && !subjectName.trim().isEmpty()) {
             heroSubjectTitle.setText(subjectName.trim());
         }
@@ -163,13 +165,13 @@ public class SubjectDetailsActivity extends AppCompatActivity {
             heroBadgeType.setVisibility(View.VISIBLE);
             heroBadgeType.setText(rawLessonType.trim().toUpperCase(Locale.getDefault()));
             heroBadgeType.setBackgroundTintList(null);
-            heroBadgeType.setBackgroundResource(R.drawable.bg_badge_lab);
-            heroBadgeType.setTextColor(ContextCompat.getColor(this, R.color.badge_lab_text));
+            heroBadgeType.setBackgroundResource(R.drawable.bg_badge_type);
+            heroBadgeType.setTextColor(UIHelper.getThemeColor(this, R.attr.badge_type_text));
         }
 
         editSubjectNotes = findViewById(R.id.edit_subject_notes);
-        layoutSavedStatus = findViewById(R.id.layout_saved_status);
-        buttonSaveNotes = findViewById(R.id.button_save_notes);
+        iconNotesStatus = findViewById(R.id.icon_notes_status);
+        textNotesStatus = findViewById(R.id.text_notes_status);
 
         timelineProgressBadge = findViewById(R.id.timeline_progress_badge);
         recyclerTimeline = findViewById(R.id.recycler_timeline);
@@ -190,11 +192,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         SharedPreferences prefs = getSharedPreferences(PREFS_NOTES_NAME, MODE_PRIVATE);
         savedNoteText = prefs.getString(notePrefKey, "");
         editSubjectNotes.setText(savedNoteText);
-
-        // save button disabled until edited
-        buttonSaveNotes.setEnabled(false);
-        buttonSaveNotes.setAlpha(0.4f);
-        layoutSavedStatus.setVisibility(View.VISIBLE);
+        showNotesSavedState();
 
         editSubjectNotes.addTextChangedListener(new TextWatcher() {
             @Override
@@ -202,56 +200,79 @@ public class SubjectDetailsActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                boolean hasChanges = !s.toString().equals(savedNoteText);
-                buttonSaveNotes.setEnabled(hasChanges);
-                buttonSaveNotes.setAlpha(hasChanges ? 1.0f : 0.4f);
-                layoutSavedStatus.setVisibility(hasChanges ? View.INVISIBLE : View.VISIBLE);
+                String current = s != null ? s.toString() : "";
+                if (autoSaveRunnable != null) {
+                    notesHandler.removeCallbacks(autoSaveRunnable);
+                }
+                if (current.equals(savedNoteText)) {
+                    showNotesSavedState();
+                    return;
+                }
+                showNotesSavingState();
+                autoSaveRunnable = () -> persistNotes(current);
+                notesHandler.postDelayed(autoSaveRunnable, NOTES_AUTOSAVE_DEBOUNCE_MS);
             }
 
             @Override
             public void afterTextChanged(Editable s) {}
         });
-
-        buttonSaveNotes.setOnClickListener(v -> saveNotes());
     }
 
-    // persist subject personal notes to shared preferences
-    private void saveNotes() {
-        String currentText = editSubjectNotes.getText().toString();
-        SharedPreferences prefs = getSharedPreferences(PREFS_NOTES_NAME, MODE_PRIVATE);
-        prefs.edit().putString(notePrefKey, currentText).apply();
-
-        savedNoteText = currentText;
-        buttonSaveNotes.setEnabled(false);
-        buttonSaveNotes.setAlpha(0.4f);
-        layoutSavedStatus.setVisibility(View.VISIBLE);
-        Logger.i("SubjectDetailsActivity.saveNotes", "Saved notes for subject: '" + subjectName + "' (length: " + currentText.length() + ")");
-
-        // hide keyboard
-        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null && getCurrentFocus() != null) {
-            imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+    private void showNotesSavingState() {
+        if (iconNotesStatus != null) {
+            iconNotesStatus.setVisibility(View.GONE);
+        }
+        if (textNotesStatus != null) {
+            textNotesStatus.setText(R.string.subject_notes_saving);
+            textNotesStatus.setTextColor(UIHelper.getThemeColor(this, R.attr.text_muted));
         }
     }
 
-    // load subject details from schedule repository
-    private void loadSubjectDetails() {
-        if (!scheduleRepository.isConfigurationComplete()) {
-            Logger.d("SubjectDetailsActivity.loadSubjectDetails", "Student configuration incomplete, skipping details load");
+    private void showNotesSavedState() {
+        int okColor = UIHelper.getThemeColor(this, R.attr.input_border_ok);
+        if (iconNotesStatus != null) {
+            iconNotesStatus.setVisibility(View.VISIBLE);
+            iconNotesStatus.setImageTintList(android.content.res.ColorStateList.valueOf(okColor));
+        }
+        if (textNotesStatus != null) {
+            textNotesStatus.setText(R.string.subject_notes_saved);
+            textNotesStatus.setTextColor(okColor);
+        }
+    }
+
+    private void persistNotes(String currentText) {
+        if (currentText == null) currentText = "";
+        if (currentText.equals(savedNoteText)) {
+            showNotesSavedState();
             return;
         }
-        Logger.d("SubjectDetailsActivity.loadSubjectDetails", "Loading details for subject: '" + subjectName + "'");
+        SharedPreferences prefs = getSharedPreferences(PREFS_NOTES_NAME, MODE_PRIVATE);
+        prefs.edit().putString(notePrefKey, currentText).apply();
+        savedNoteText = currentText;
+        showNotesSavedState();
+        Logger.i(TAG + ".persistNotes", "Auto-saved notes for subject '" + subjectName + "' (length=" + currentText.length() + ")");
+    }
+
+    private void loadSubjectDetails() {
+        if (!scheduleRepository.isConfigurationComplete()) {
+            Logger.d(TAG + ".loadSubjectDetails", "Student configuration incomplete, skipping details load");
+            return;
+        }
+        Logger.d(TAG + ".loadSubjectDetails", "Loading details for subject: '" + subjectName + "'");
         scheduleRepository.getSubjectDetails(subjectName, rawLessonType, false, new ScheduleRepository.ScheduleCallback<SubjectDetails>() {
             @Override
             public void onSuccess(SubjectDetails result) {
-                currentDetails = result;
-                Logger.i("SubjectDetailsActivity.loadSubjectDetails", "Successfully loaded details for: '" + subjectName + "' (" + (result != null ? result.getTotalCount() : 0) + " lessons)");
-                runOnUiThread(() -> renderSubjectDetails(result));
+                Logger.i(TAG + ".loadSubjectDetails", "Successfully loaded details for: '" + subjectName + "' (" + (result != null ? result.getTotalCount() : 0) + " lessons)");
+                runOnUiThread(() -> {
+                    if (!isFinishing() && !isDestroyed()) {
+                        renderSubjectDetails(result);
+                    }
+                });
             }
 
             @Override
             public void onError(Exception e) {
-                Logger.e("SubjectDetailsActivity.loadSubjectDetails", "Error loading subject details: " + Logger.formatException(e));
+                Logger.e(TAG + ".loadSubjectDetails", "Error loading subject details: " + Logger.formatException(e));
             }
         });
     }
@@ -259,11 +280,10 @@ public class SubjectDetailsActivity extends AppCompatActivity {
     private void renderSubjectDetails(SubjectDetails details) {
         if (details == null) return;
 
-        // animate layout changes
         ViewGroup rootLayout = findViewById(R.id.subject_details_root);
         if (rootLayout != null) {
             Transition transition = new AutoTransition();
-            transition.setDuration(250);
+            transition.setDuration(220);
             TransitionManager.beginDelayedTransition(rootLayout, transition);
         }
 
@@ -277,15 +297,17 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         }
 
         LessonType type = details.getLessonType();
-        String displayTypeName = !details.getRawLessonType().isEmpty() 
-                ? details.getRawLessonType() 
+        String displayTypeName = !details.getRawLessonType().isEmpty()
+                ? details.getRawLessonType()
                 : (type != null && type != LessonType.INNE ? type.getDisplayName() : null);
-        if (displayTypeName != null && !displayTypeName.trim().isEmpty() && !displayTypeName.equalsIgnoreCase("inne") && !displayTypeName.equalsIgnoreCase("other")) {
+        if (displayTypeName != null && !displayTypeName.trim().isEmpty()
+                && !displayTypeName.equalsIgnoreCase("inne")
+                && !displayTypeName.equalsIgnoreCase("other")) {
             heroBadgeType.setVisibility(View.VISIBLE);
             heroBadgeType.setText(displayTypeName.toUpperCase(Locale.getDefault()));
             heroBadgeType.setBackgroundTintList(null);
-            heroBadgeType.setBackgroundResource(R.drawable.bg_badge_lab);
-            heroBadgeType.setTextColor(ContextCompat.getColor(this, R.color.badge_lab_text));
+            heroBadgeType.setBackgroundResource(R.drawable.bg_badge_type);
+            heroBadgeType.setTextColor(UIHelper.getThemeColor(this, R.attr.badge_type_text));
         } else {
             heroBadgeType.setVisibility(View.GONE);
         }
@@ -293,18 +315,16 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         List<Lesson> lessons = details.getSemesterLessons();
         timelineAdapter.submitLessons(lessons);
 
-        // progress badge
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
         int total = details.getTotalCount();
         int completed = details.getCompletedCount(now);
         int percent = details.getProgressPercentage(now);
         timelineProgressBadge.setText(getString(R.string.schedule_progress_format, completed, total, percent));
         timelineProgressBadge.setBackgroundTintList(null);
-        timelineProgressBadge.setBackgroundResource(R.drawable.bg_badge_lab);
-        timelineProgressBadge.setTextColor(ContextCompat.getColor(this, R.color.badge_lab_text));
+        timelineProgressBadge.setBackgroundResource(R.drawable.bg_badge_type);
+        timelineProgressBadge.setTextColor(UIHelper.getThemeColor(this, R.attr.badge_type_text));
         timelineProgressBadge.setVisibility(View.VISIBLE);
 
-        // setup location
         Location dominantLoc = details.getDominantLocation();
         if (dominantLoc == null && !lessons.isEmpty()) {
             dominantLoc = lessons.get(0).getLocation();
@@ -320,35 +340,32 @@ public class SubjectDetailsActivity extends AppCompatActivity {
 
         if (locType == LocationType.ONLINE) {
             heroBadgeLocation.setBackgroundResource(R.drawable.bg_badge_puw);
-            heroBadgeLocation.setTextColor(ContextCompat.getColor(this, R.color.badge_puw_text));
+            heroBadgeLocation.setTextColor(UIHelper.getThemeColor(this, R.attr.badge_puw_text));
         } else if (locType == LocationType.W_TERENIE) {
             heroBadgeLocation.setBackgroundResource(R.drawable.bg_badge_field);
-            heroBadgeLocation.setTextColor(ContextCompat.getColor(this, R.color.badge_field_text));
+            heroBadgeLocation.setTextColor(UIHelper.getThemeColor(this, R.attr.badge_field_text));
         } else {
             heroBadgeLocation.setBackgroundResource(R.drawable.bg_badge_wspa);
-            heroBadgeLocation.setTextColor(ContextCompat.getColor(this, R.color.badge_wspa_text));
+            heroBadgeLocation.setTextColor(UIHelper.getThemeColor(this, R.attr.badge_wspa_text));
         }
 
         if (location != null && location.hasMapLink()) {
             heroRoomText.setText(location.getDisplayText());
-            if (heroLocationArrowIcon != null) {
-                heroLocationArrowIcon.setVisibility(View.VISIBLE);
-            }
+            heroLocationArrowIcon.setVisibility(View.VISIBLE);
             View.OnClickListener mapsClick = v -> {
                 String query = location.getMapQueryUrl();
                 if (query != null) {
                     try {
                         startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(query)));
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
             };
             heroLocationRow.setOnClickListener(mapsClick);
             heroLocationRow.setClickable(true);
         } else {
-            heroRoomText.setText(location != null ? location.getDisplayText() : "Sala —");
-            if (heroLocationArrowIcon != null) {
-                heroLocationArrowIcon.setVisibility(View.GONE);
-            }
+            heroRoomText.setText(location != null ? location.getDisplayText() : "—");
+            heroLocationArrowIcon.setVisibility(View.GONE);
             heroLocationRow.setOnClickListener(null);
             heroLocationRow.setClickable(false);
         }
@@ -363,68 +380,48 @@ public class SubjectDetailsActivity extends AppCompatActivity {
 
         TeacherEmailService emailService = TeacherEmailService.getInstance(this);
 
-        // check cache first
         TeacherEmailService.TeacherEmailResult cachedResult = emailService.getCachedEmail(teacherName);
         if (cachedResult != null) {
-            Logger.d("SubjectDetailsActivity.searchTeacherEmail", "Teacher email cache hit for: " + teacherName);
+            Logger.d(TAG + ".searchTeacherEmail", "Teacher email cache hit");
             applyTeacherEmailResult(cachedResult);
             return;
         }
 
-        // if not in cache and no network available, show offline text immediately
         if (!NetworkUtils.isNetworkAvailable(this)) {
-            Logger.w("SubjectDetailsActivity.searchTeacherEmail", "Device is offline and email not cached for teacher: " + teacherName);
+            Logger.w(TAG + ".searchTeacherEmail", "Device is offline and email not cached");
             loadedTeacherEmail = null;
-            if (heroTeacherEmailRow != null) {
-                heroTeacherEmailRow.setVisibility(View.VISIBLE);
-            }
-            if (teacherEmailProgress != null) {
-                teacherEmailProgress.setVisibility(View.GONE);
-            }
+            if (heroTeacherEmailRow != null) heroTeacherEmailRow.setVisibility(View.VISIBLE);
+            if (teacherEmailProgress != null) teacherEmailProgress.setVisibility(View.GONE);
             if (heroTeacherEmail != null) {
                 heroTeacherEmail.setText(R.string.teacher_email_no_internet);
-                heroTeacherEmail.setAlpha(0.6f);
+                heroTeacherEmail.setTextColor(UIHelper.getThemeColor(this, R.attr.text_muted));
             }
-            if (buttonCopyTeacherEmail != null) {
-                buttonCopyTeacherEmail.setVisibility(View.GONE);
-            }
+            if (buttonCopyTeacherEmail != null) buttonCopyTeacherEmail.setVisibility(View.GONE);
             return;
         }
 
-        // wait for transition before searching email
         if (heroTeacherContainer != null) {
             heroTeacherContainer.postDelayed(() -> {
                 if (isFinishing() || isDestroyed()) return;
 
-                if (heroTeacherContainer != null) {
-                    Transition transition = new AutoTransition();
-                    transition.setDuration(200);
-                    TransitionManager.beginDelayedTransition(heroTeacherContainer, transition);
-                }
+                Transition transition = new AutoTransition();
+                transition.setDuration(200);
+                TransitionManager.beginDelayedTransition(heroTeacherContainer, transition);
 
-                if (heroTeacherEmailRow != null) {
-                    heroTeacherEmailRow.setVisibility(View.VISIBLE);
-                }
-                if (teacherEmailProgress != null) {
-                    teacherEmailProgress.setVisibility(View.VISIBLE);
-                }
+                if (heroTeacherEmailRow != null) heroTeacherEmailRow.setVisibility(View.VISIBLE);
+                if (teacherEmailProgress != null) teacherEmailProgress.setVisibility(View.VISIBLE);
                 if (heroTeacherEmail != null) {
                     heroTeacherEmail.setText(R.string.teacher_email_searching);
-                    heroTeacherEmail.setAlpha(0.6f);
+                    heroTeacherEmail.setTextColor(UIHelper.getThemeColor(this, R.attr.text_muted));
                 }
-                if (buttonCopyTeacherEmail != null) {
-                    buttonCopyTeacherEmail.setVisibility(View.GONE);
-                }
+                if (buttonCopyTeacherEmail != null) buttonCopyTeacherEmail.setVisibility(View.GONE);
                 loadedTeacherEmail = null;
 
                 emailService.getTeacherEmail(teacherName, result -> {
                     if (isFinishing() || isDestroyed()) return;
-
-                    if (heroTeacherContainer != null) {
-                        Transition transition = new AutoTransition();
-                        transition.setDuration(200);
-                        TransitionManager.beginDelayedTransition(heroTeacherContainer, transition);
-                    }
+                    Transition innerTransition = new AutoTransition();
+                    innerTransition.setDuration(200);
+                    TransitionManager.beginDelayedTransition(heroTeacherContainer, innerTransition);
                     applyTeacherEmailResult(result);
                 });
             }, 300);
@@ -438,40 +435,28 @@ public class SubjectDetailsActivity extends AppCompatActivity {
 
         if (result != null && result.hasEmail) {
             loadedTeacherEmail = result.email;
-            if (heroTeacherEmailRow != null) {
-                heroTeacherEmailRow.setVisibility(View.VISIBLE);
-            }
+            if (heroTeacherEmailRow != null) heroTeacherEmailRow.setVisibility(View.VISIBLE);
             if (heroTeacherEmail != null) {
                 heroTeacherEmail.setText(result.email);
-                heroTeacherEmail.setAlpha(1.0f);
+                heroTeacherEmail.setTextColor(UIHelper.getThemeColor(this, R.attr.email_link_text));
             }
-            if (buttonCopyTeacherEmail != null) {
-                buttonCopyTeacherEmail.setVisibility(View.VISIBLE);
-            }
+            if (buttonCopyTeacherEmail != null) buttonCopyTeacherEmail.setVisibility(View.VISIBLE);
         } else if (result != null && result.isNetworkError) {
             loadedTeacherEmail = null;
-            if (heroTeacherEmailRow != null) {
-                heroTeacherEmailRow.setVisibility(View.VISIBLE);
-            }
+            if (heroTeacherEmailRow != null) heroTeacherEmailRow.setVisibility(View.VISIBLE);
             if (heroTeacherEmail != null) {
                 heroTeacherEmail.setText(R.string.teacher_email_no_internet);
-                heroTeacherEmail.setAlpha(0.6f);
+                heroTeacherEmail.setTextColor(UIHelper.getThemeColor(this, R.attr.text_muted));
             }
-            if (buttonCopyTeacherEmail != null) {
-                buttonCopyTeacherEmail.setVisibility(View.GONE);
-            }
+            if (buttonCopyTeacherEmail != null) buttonCopyTeacherEmail.setVisibility(View.GONE);
         } else {
             loadedTeacherEmail = null;
-            if (heroTeacherEmailRow != null) {
-                heroTeacherEmailRow.setVisibility(View.VISIBLE);
-            }
+            if (heroTeacherEmailRow != null) heroTeacherEmailRow.setVisibility(View.VISIBLE);
             if (heroTeacherEmail != null) {
                 heroTeacherEmail.setText(R.string.teacher_email_not_found);
-                heroTeacherEmail.setAlpha(0.5f);
+                heroTeacherEmail.setTextColor(UIHelper.getThemeColor(this, R.attr.text_muted));
             }
-            if (buttonCopyTeacherEmail != null) {
-                buttonCopyTeacherEmail.setVisibility(View.GONE);
-            }
+            if (buttonCopyTeacherEmail != null) buttonCopyTeacherEmail.setVisibility(View.GONE);
         }
     }
 
@@ -481,6 +466,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
             ClipData clip = ClipData.newPlainText("Teacher email", loadedTeacherEmail);
             if (clipboard != null) {
                 clipboard.setPrimaryClip(clip);
+                Logger.d(TAG, "Copied teacher email to clipboard");
                 Toast.makeText(this, getString(R.string.teacher_email_copied), Toast.LENGTH_SHORT).show();
             }
         }
@@ -489,6 +475,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
     private void handleTeacherEmailClick() {
         if (loadedTeacherEmail != null && !loadedTeacherEmail.isEmpty()) {
             try {
+                Logger.d(TAG, "Opening mailto intent for teacher email");
                 Intent emailIntent = new Intent(Intent.ACTION_SENDTO);
                 emailIntent.setData(Uri.parse("mailto:" + loadedTeacherEmail));
                 startActivity(emailIntent);
@@ -498,95 +485,86 @@ public class SubjectDetailsActivity extends AppCompatActivity {
         }
     }
 
-    private void handleOpenPuwCourse() {
-        Toast.makeText(this, getString(R.string.subject_opening_puw_course), Toast.LENGTH_SHORT).show();
-
-        if (progressOpenCourse != null) {
-            progressOpenCourse.setVisibility(View.VISIBLE);
-            progressOpenCourse.animate().alpha(0.6f).setDuration(150).start();
-        }
+    private void setPuwButtonLoading(boolean loading) {
         if (buttonOpenCourse != null) {
-            buttonOpenCourse.setEnabled(false);
+            buttonOpenCourse.setEnabled(!loading);
         }
+        if (contentOpenCourse != null) {
+            contentOpenCourse.animate().cancel();
+            if (loading) {
+                contentOpenCourse.animate().alpha(0f).setDuration(120)
+                        .withEndAction(() -> contentOpenCourse.setVisibility(View.INVISIBLE)).start();
+            } else {
+                contentOpenCourse.setVisibility(View.VISIBLE);
+                contentOpenCourse.animate().alpha(1f).setDuration(150).start();
+            }
+        }
+        if (progressOpenCourse != null) {
+            progressOpenCourse.animate().cancel();
+            if (loading) {
+                progressOpenCourse.setAlpha(0f);
+                progressOpenCourse.setVisibility(View.VISIBLE);
+                progressOpenCourse.animate().alpha(1f).setDuration(140).start();
+            } else {
+                progressOpenCourse.animate().alpha(0f).setDuration(140)
+                        .withEndAction(() -> progressOpenCourse.setVisibility(View.GONE)).start();
+            }
+        }
+    }
+
+    private void handleOpenPuwCourse() {
+        if (buttonOpenCourse != null && !buttonOpenCourse.isEnabled()) {
+            return;
+        }
+        Logger.i(TAG + ".handleOpenPuwCourse", "User tapped PUW course button");
+        Toast.makeText(this, getString(R.string.subject_opening_puw_course), Toast.LENGTH_SHORT).show();
+        setPuwButtonLoading(true);
+        Context appContext = getApplicationContext();
 
         new Thread(() -> {
+            String foundCourseUrl = null;
             try {
-                OkHttpClient client = PUW.globalLogin(SubjectDetailsActivity.this);
-                String foundCourseUrl = null;
+                OkHttpClient client = PUW.globalLogin(appContext);
                 if (client != null) {
                     foundCourseUrl = StudyPlanScraper.findCourseUrl(client, subjectName, rawLessonType);
                 }
-
-                final String courseUrl = foundCourseUrl;
-                String targetUrl = (courseUrl != null) ? courseUrl : "https://puw.wspa.pl/my/";
-
-                // Security check: validate scheme and domain
-                try {
-                    Uri parsedUri = Uri.parse(targetUrl);
-                    String scheme = parsedUri.getScheme();
-                    String host = parsedUri.getHost();
-                    if (!"https".equalsIgnoreCase(scheme) || host == null || (!host.equalsIgnoreCase("puw.wspa.pl") && !host.endsWith(".wspa.pl"))) {
-                        Logger.w("SubjectDetailsActivity.handleOpenPuwCourse", "Blocked opening untrusted URL: " + targetUrl);
-                        targetUrl = "https://puw.wspa.pl/my/";
-                    }
-                } catch (Exception e) {
-                    targetUrl = "https://puw.wspa.pl/my/";
-                }
-
-                final String safeFinalUrl = targetUrl;
-
-                runOnUiThread(() -> {
-                    if (progressOpenCourse != null) {
-                        progressOpenCourse.animate().alpha(0f).setDuration(250).withEndAction(() -> {
-                            if (progressOpenCourse != null) progressOpenCourse.setVisibility(View.GONE);
-                        }).start();
-                    }
-                    if (buttonOpenCourse != null) {
-                        buttonOpenCourse.setEnabled(true);
-                    }
-
-                    if (courseUrl == null) {
-                        Toast.makeText(SubjectDetailsActivity.this, getString(R.string.subject_course_not_found), Toast.LENGTH_SHORT).show();
-                    }
-                    try {
-                        Logger.i("SubjectDetailsActivity.handleOpenPuwCourse", "Opening course URL: " + safeFinalUrl);
-                        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(safeFinalUrl));
-                        startActivity(browserIntent);
-                    } catch (Exception e) {
-                        Logger.e("SubjectDetailsActivity.handleOpenPuwCourse", "Failed to open browser: " + Logger.formatException(e));
-                    }
-                });
             } catch (Exception e) {
-                Logger.e("SubjectDetailsActivity.handleOpenPuwCourse", "Error in handleOpenPuwCourse: " + Logger.formatException(e));
-                runOnUiThread(() -> {
-                    if (progressOpenCourse != null) {
-                        progressOpenCourse.animate().alpha(0f).setDuration(250).withEndAction(() -> {
-                            if (progressOpenCourse != null) progressOpenCourse.setVisibility(View.GONE);
-                        }).start();
-                    }
-                    if (buttonOpenCourse != null) {
-                        buttonOpenCourse.setEnabled(true);
-                    }
-
-                    try {
-                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://puw.wspa.pl/my/")));
-                    } catch (Exception ignored) {}
-                });
+                Logger.e(TAG + ".handleOpenPuwCourse", "Error resolving course URL: " + Logger.formatException(e));
             }
+
+            final String resolvedCourseUrl = foundCourseUrl;
+            String targetUrl = MoodleAutologinManager.sanitizeTargetUrl(resolvedCourseUrl);
+            MoodleAutologinManager.ResolutionResult resolution =
+                    MoodleAutologinManager.resolveAutologinUriSync(appContext, targetUrl);
+
+            runOnUiThread(() -> {
+                setPuwButtonLoading(false);
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                if (resolvedCourseUrl == null) {
+                    Toast.makeText(SubjectDetailsActivity.this, getString(R.string.subject_course_not_found), Toast.LENGTH_SHORT).show();
+                }
+                MoodleAutologinManager.launchExternalBrowser(SubjectDetailsActivity.this, resolution);
+            });
         }).start();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        // save notes on exit
-        if (editSubjectNotes != null) {
-            String currentText = editSubjectNotes.getText().toString();
-            if (!currentText.equals(savedNoteText)) {
-                SharedPreferences prefs = getSharedPreferences(PREFS_NOTES_NAME, MODE_PRIVATE);
-                prefs.edit().putString(notePrefKey, currentText).apply();
-                savedNoteText = currentText;
-            }
+        if (autoSaveRunnable != null) {
+            notesHandler.removeCallbacks(autoSaveRunnable);
+            autoSaveRunnable = null;
         }
+        if (editSubjectNotes != null && editSubjectNotes.getText() != null) {
+            persistNotes(editSubjectNotes.getText().toString());
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        notesHandler.removeCallbacksAndMessages(null);
     }
 }

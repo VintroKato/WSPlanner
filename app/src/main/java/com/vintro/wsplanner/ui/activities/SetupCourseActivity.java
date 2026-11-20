@@ -8,20 +8,19 @@ import android.transition.TransitionManager;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.DegreeLevel;
@@ -63,13 +62,17 @@ public class SetupCourseActivity extends AppCompatActivity {
         Logger.d("SetupCourseActivity.onCreate", "SetupCourseActivity created");
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
+        EdgeToEdge.enable(this);
+        UIHelper.setupSystemBars(this);
         setContentView(R.layout.activity_setup_course);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        UIHelper.bindOnboardingSteps(this, 2);
 
         backButton = findViewById(R.id.back_button);
         loadingLayout = findViewById(R.id.loading_layout);
@@ -128,6 +131,7 @@ public class SetupCourseActivity extends AppCompatActivity {
                 availableCourses = courses;
                 loadedStudentFullName = studentFullName;
                 runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
                     TransitionManager.beginDelayedTransition((android.view.ViewGroup) findViewById(R.id.main), new AutoTransition());
                     loadingLayout.setVisibility(View.GONE);
                     contentLayout.setVisibility(View.VISIBLE);
@@ -139,6 +143,7 @@ public class SetupCourseActivity extends AppCompatActivity {
             public void onError(Exception e) {
                 Logger.e("SetupCourseActivity.fetchCourses", "Error loading courses: " + Logger.formatException(e));
                 runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
                     showCourseLoadError(getString(R.string.no_internet_onboarding_desc));
                 });
             }
@@ -167,10 +172,10 @@ public class SetupCourseActivity extends AppCompatActivity {
         selectedCourse = courseSetupService.determinePrimaryCourse(availableCourses);
         if (selectedCourse != null && selectedCourse.fieldOfStudy != null) {
             majorText.setText(selectedCourse.degreeLevel == DegreeLevel.ZERO_YEAR ? "ROK ZEROWY" : selectedCourse.fieldOfStudy);
-            majorCard.setChecked(true);
+            UIHelper.setSelectableCardChecked(this, majorCard, true);
         }
 
-        // if Rok Zerowy, skip degree/mode/year configuration
+        // if Rok Zerowy, skip degree, mode, and year configuration
         if (selectedCourse != null && selectedCourse.degreeLevel == DegreeLevel.ZERO_YEAR) {
             Logger.i("SetupCourseActivity.populateUI", "Rok Zerowy detected; auto-configuring DegreeLevel=ZERO_YEAR, Mode=FULL_TIME, Year=1");
             selectedLevel = DegreeLevel.ZERO_YEAR;
@@ -354,37 +359,36 @@ public class SetupCourseActivity extends AppCompatActivity {
         params.height = GridLayout.LayoutParams.WRAP_CONTENT;
         params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
         float density = getResources().getDisplayMetrics().density;
-        int margin = (int) (4 * density);
+        int margin = Math.round(4 * density);
         params.setMargins(margin, margin, margin, margin);
         card.setLayoutParams(params);
 
         card.setCheckable(true);
         card.setCheckedIcon(null);
         card.setCardElevation(0);
-        card.setStrokeWidth((int) (2 * density));
+        card.setStrokeWidth(Math.max(1, Math.round(1.0f * density)));
         card.setStrokeColor(UIHelper.getThemeColor(this, R.attr.card_border));
         card.setCardBackgroundColor(UIHelper.getThemeColor(this, R.attr.card_bg));
-        card.setRadius(16 * density);
+        card.setRadius(14 * density);
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER);
-        layout.setPadding((int) (6 * density), (int) (12 * density), (int) (6 * density), (int) (12 * density));
+        layout.setPadding(Math.round(8 * density), Math.round(12 * density), Math.round(8 * density), Math.round(12 * density));
 
         TextView tvTitle = new TextView(this);
         tvTitle.setText(title);
         tvTitle.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
         tvTitle.setTextColor(UIHelper.getThemeColor(this, R.attr.app_text));
-        tvTitle.setTextSize(18);
+        tvTitle.setTextSize(16);
         tvTitle.setTypeface(null, Typeface.BOLD);
 
         TextView tvSubtitle = new TextView(this);
         tvSubtitle.setText(subtitle);
         tvSubtitle.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
-        tvSubtitle.setTextColor(UIHelper.getThemeColor(this, R.attr.app_text));
+        tvSubtitle.setTextColor(UIHelper.getThemeColor(this, R.attr.text_secondary));
         tvSubtitle.setTextSize(12);
-        tvSubtitle.setAlpha(0.7f);
-        tvSubtitle.setPadding(0, (int) (2 * density), 0, 0);
+        tvSubtitle.setPadding(0, Math.round(2 * density), 0, 0);
 
         layout.addView(tvTitle);
         layout.addView(tvSubtitle);
@@ -399,24 +403,24 @@ public class SetupCourseActivity extends AppCompatActivity {
         params.height = GridLayout.LayoutParams.WRAP_CONTENT;
         params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
         float density = getResources().getDisplayMetrics().density;
-        int margin = (int) (4 * density);
+        int margin = Math.round(4 * density);
         params.setMargins(margin, margin, margin, margin);
         card.setLayoutParams(params);
 
         card.setCheckable(true);
         card.setCheckedIcon(null);
         card.setCardElevation(0);
-        card.setStrokeWidth((int) (2 * density));
+        card.setStrokeWidth(Math.max(1, Math.round(1.0f * density)));
         card.setStrokeColor(UIHelper.getThemeColor(this, R.attr.card_border));
         card.setCardBackgroundColor(UIHelper.getThemeColor(this, R.attr.card_bg));
-        card.setRadius(16 * density);
+        card.setRadius(14 * density);
 
         TextView tv = new TextView(this);
         tv.setText(text);
         tv.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
-        tv.setPadding(0, (int) (14 * density), 0, (int) (14 * density));
+        tv.setPadding(0, Math.round(14 * density), 0, Math.round(14 * density));
         tv.setTextColor(UIHelper.getThemeColor(this, R.attr.app_text));
-        tv.setTextSize(18);
+        tv.setTextSize(16);
         tv.setTypeface(null, Typeface.BOLD);
 
         card.addView(tv);
@@ -438,6 +442,9 @@ public class SetupCourseActivity extends AppCompatActivity {
             Toast.makeText(this, "Please select all options", Toast.LENGTH_SHORT).show();
             return;
         }
+
+        // clear saved visible weekdays so repository recomputes recommended days for the selected course
+        PreferencesManager.clearVisibleWeekdaysPref(this);
 
         PreferencesManager.saveGlobalPrefs(
                 this,

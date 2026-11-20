@@ -28,30 +28,61 @@ import java.util.stream.Collectors;
 
 public class BachelorFullTimeParser implements ScheduleParser {
 
+    // single date: 02.03 or 2.03 (valid day 01-31, valid month 01-12)
+    private final Pattern singleDatePattern =
+            Pattern.compile("((?:0?[1-9]|[12][0-9]|3[01])\\.(?:0[1-9]|1[0-2]))");
+
+    // additional dates pattern: +17.06 or + 02.06
+    private final Pattern plusDatePattern =
+            Pattern.compile("^\\+\\s*((?:0?[1-9]|[12][0-9]|3[01])\\.(?:0[1-9]|1[0-2]))");
+
+    // academic year in header: rok akademicki 2025/2026
+    private final Pattern academicYearPattern =
+            Pattern.compile("rok akademicki\\s*(\\d{4})/(\\d{4})", Pattern.CASE_INSENSITIVE);
+
+    // default time in first col: 8:15-9:45 or 815-945 or 8.15-9.45
+    private final Pattern defaultRowTimePattern =
+            Pattern.compile("(\\d{1,2})[:.]?(\\d{2})\\s*[-–—~]\\s*(\\d{1,2})[:.]?(\\d{2})");
+
+    // specific time range override: w godz. 8:15 - 9:45 or 10.00 - 14:15 or w godz 11:45-16:00
+    private final Pattern specificTimePattern =
+            Pattern.compile("(?:godz)?\\.?\\s*(\\d{1,2}\\s*[:.]\\s*\\d{2})\\s*[-–—~]\\s*(\\d{1,2}\\s*[:.]\\s*\\d{2})");
+
+    // specific start time override: od godz. 8:15 or od 8.15
+    private final Pattern overrideStartTimePattern =
+            Pattern.compile("od\\s*(?:godz)?\\.?\\s*(\\d{1,2}\\s*[:.]\\s*\\d{2})");
+
+    // surname range in header: wg nazwisk: A-Ha or A-J or K-La
+    private final Pattern surnameRangePattern =
+            Pattern.compile("(?:nazwisk\\s*[:]?\\s*|\\b)([a-ząćęłńóśźż]+)\\s*-\\s*([a-ząćęłńóśźż]+)", Pattern.CASE_INSENSITIVE);
+
+    // room with sala prefix: sala 205, w sali A018, w salach 205
+    private final Pattern roomSalaPattern =
+            Pattern.compile("(?:w\\s+)?sal(?:a|i|ach)\\s+([a-zA-Z0-9]+)");
+
+    // room with s. prefix: w s. 215
+    private final Pattern roomSPattern =
+            Pattern.compile("s\\.\\s+([a-zA-Z0-9]+)");
+
+    // postal code in offsite location: 20-535 Lublin
+    private final Pattern postalCodePattern =
+            Pattern.compile(".*\\b\\d{2}-\\d{3}\\b.*");
+
+    // prefix before offsite venue address: w dn. 15.04 zajecia w ...
+    private final Pattern offsitePrefixCleanPattern =
+            Pattern.compile("w dn(?:[a-zA-Z]*\\.)?.*?zaj[eę]cia\\s+(?:w\\s+)?", Pattern.CASE_INSENSITIVE);
+
+    // lesson duration in hours: 15h or 30h
+    private static final Pattern lessonHoursCleanPattern =
+            Pattern.compile("\\b\\d{1,2}h\\b|\\d{1,2}h", Pattern.CASE_INSENSITIVE);
+
+    // trailing university professor title: , prof. WSPA
+    private final Pattern teacherSuffixCleanPattern =
+            Pattern.compile("\\s*,?\\s*prof\\.?\\s*wspa\\b.*", Pattern.CASE_INSENSITIVE);
+
     private String formatCellValue(ExcelCell cell) {
         return cell != null ? cell.asString() : "";
     }
-
-    // daty: 02.03, 09.03
-    private final Pattern datesPattern = Pattern.compile("daty:\\s*(.+)");
-
-    // single date: 02.03 or 2.03 (valid day 01-31, valid month 01-12)
-    private final Pattern singleDatePattern = Pattern.compile("((?:0?[1-9]|[12][0-9]|3[01])\\.(?:0[1-9]|1[0-2]))");
-
-    // default time in first col: 8:15-9:45 or 815-945 or 8.15-9.45
-    private final Pattern defaultRowTimePattern = Pattern.compile("(\\d{1,2})[:.]?(\\d{2})\\s*[-–—~]\\s*(\\d{1,2})[:.]?(\\d{2})");
-
-    // specific time range override: w godz. 8:15 - 9:45 or 10.00 - 14:15 or w godz 11:45-16:00
-    private final Pattern specificTimePattern = Pattern.compile("(?:godz)?\\.?\\s*(\\d{1,2}\\s*[:.]\\s*\\d{2})\\s*[-–—~]\\s*(\\d{1,2}\\s*[:.]\\s*\\d{2})");
-
-    // specific start time override: od godz. 8:15 or od 8.15
-    private final Pattern overrideStartTimePattern = Pattern.compile("od\\s*(?:godz)?\\.?\\s*(\\d{1,2}\\s*[:.]\\s*\\d{2})");
-
-    // lesson duration in hours: 15h or 30h
-    private final Pattern subjectTypeFilter = Pattern.compile("\\s*[-–—]?\\s*\\d{1,2}h\\b", Pattern.CASE_INSENSITIVE);
-
-    // additional dates pattern: +17.06 or + 02.06
-    private final Pattern plusDatePattern = Pattern.compile("^\\+\\s*((?:0?[1-9]|[12][0-9]|3[01])\\.(?:0[1-9]|1[0-2]))");
 
     private static String normalizeSuperscript(String input) {
         if (input == null) return "";
@@ -93,9 +124,9 @@ public class BachelorFullTimeParser implements ScheduleParser {
 
     public static String cleanLessonType(String raw) {
         if (raw == null) return null;
-        // remove all occurrences of \d{1,2}h (e.g. 15h, 30h)
-        String cleaned = raw.replaceAll("(?i)\\b\\d{1,2}h\\b|\\d{1,2}h", "").trim();
-        // strip any remaining leading or trailing punctuation/dashes
+        // remove all occurrences of lesson hour counts such as 15h or 30h
+        String cleaned = lessonHoursCleanPattern.matcher(raw).replaceAll("").trim();
+        // strip any remaining leading or trailing punctuation and dashes
         cleaned = cleaned.replaceAll("^[-–—\\s,.]+|[-–—\\s,.]+$", "").trim();
         if (cleaned.isEmpty() || cleaned.equalsIgnoreCase("other") || cleaned.equalsIgnoreCase("inne")) {
             return null;
@@ -127,7 +158,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
             }
         }
 
-        // Match if the last name (surname) is present in the line
+        // match if the last name is present in the line
         if (!nameTokens.isEmpty()) {
             String surname = nameTokens.get(nameTokens.size() - 1);
             if (lowerLine.contains(surname)) {
@@ -137,18 +168,6 @@ public class BachelorFullTimeParser implements ScheduleParser {
 
         return false;
     }
-
-    // room with "sala" prefix: sala 205, w sali A018, w salach 205
-    private final Pattern roomSalaPattern = Pattern.compile("(?:w\\s+)?sal(?:a|i|ach)\\s+([a-zA-Z0-9]+)");
-
-    // room with "s." prefix: w s. 215
-    private final Pattern roomSPattern = Pattern.compile("s\\.\\s+([a-zA-Z0-9]+)");
-
-    // academic year in header: rok akademicki 2025/2026
-    private final Pattern academicYearPattern = Pattern.compile("rok akademicki\\s*(\\d{4})/(\\d{4})", Pattern.CASE_INSENSITIVE);
-
-    // surname range in header: wg nazwisk: A-Ha or A-J or K-La
-    private final Pattern surnameRangePattern = Pattern.compile("(?:nazwisk\\s*[:]?\\s*|\\b)([a-ząćęłńóśźż]+)\\s*-\\s*([a-ząćęłńóśźż]+)", Pattern.CASE_INSENSITIVE);
 
     int academicYearStart = LocalDate.now().getYear();
     int academicYearEnd = academicYearStart + 1;
@@ -567,12 +586,12 @@ public class BachelorFullTimeParser implements ScheduleParser {
                         lineIdx++;
                     }
                     globalTeacher = String.join(" ", tLines).replaceAll("\\s+", " ").trim();
-                    globalTeacher = globalTeacher.replaceAll("(?i)\\s*,?\\s*prof\\.?\\s*wspa\\b.*", "").trim();
+                    globalTeacher = teacherSuffixCleanPattern.matcher(globalTeacher).replaceAll("").trim();
                     if (globalTeacher.isEmpty()) globalTeacher = "Unknown Teacher";
                 } else if (lowerLine.startsWith("sala") || lowerLine.contains("on-line") || lowerLine.contains("online")
                         || lowerLine.contains("ul.") || lowerLine.contains("al.") || lowerLine.contains("lublin")
                         || lowerLine.contains("fit") || lowerLine.contains("siłownia") || lowerLine.contains("basen")
-                        || lowerLine.matches(".*\\b\\d{2}-\\d{3}\\b.*") || lowerLine.contains("w siedzibie")) {
+                        || postalCodePattern.matcher(lowerLine).matches() || lowerLine.contains("w siedzibie")) {
                     String potentialRoom = extractRoomInfo(line);
                     if (potentialRoom != null) {
                         if (globalRoom.equals("Unknown Room") || globalRoom.equals("WSPA")) {
@@ -692,8 +711,8 @@ public class BachelorFullTimeParser implements ScheduleParser {
         // format addresses and offsite venues by removing unrelated text
         if (lower.contains("ul.") || lower.contains("al.") || lower.contains("instytut")
                 || lower.contains("lublin") || lower.contains("fit") || lower.contains("siłownia")
-                || lower.contains("basen") || lower.matches(".*\\b\\d{2}-\\d{3}\\b.*")) {
-            return line.replaceAll("(?i)w dn(?:[a-zA-Z]*\\.)?.*?zaj[eę]cia\\s+(?:w\\s+)?", "").trim();
+                || lower.contains("basen") || postalCodePattern.matcher(lower).matches()) {
+            return offsitePrefixCleanPattern.matcher(line).replaceAll("").trim();
         }
 
         Matcher mSala = roomSalaPattern.matcher(lower);

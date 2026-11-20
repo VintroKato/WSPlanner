@@ -236,7 +236,8 @@ public class DailyScheduleWidget extends AppWidgetProvider {
 
     private static void openMainActivity(Context context) {
         Intent mainIntent = new Intent(context, MainActivity.class);
-        mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        mainIntent.putExtra(MainActivity.EXTRA_TARGET_TAB, R.id.nav_schedule);
+        mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         context.startActivity(mainIntent);
     }
 
@@ -265,7 +266,8 @@ public class DailyScheduleWidget extends AppWidgetProvider {
             views.setViewVisibility(R.id.widget_daily_empty_subtext, View.VISIBLE);
 
             Intent appIntent = new Intent(context, MainActivity.class);
-            appIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            appIntent.putExtra(MainActivity.EXTRA_TARGET_TAB, R.id.nav_schedule);
+            appIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             PendingIntent appPendingIntent = PendingIntent.getActivity(
                     context,
                     widgetId + 200,
@@ -310,7 +312,8 @@ public class DailyScheduleWidget extends AppWidgetProvider {
         views.setOnClickPendingIntent(R.id.widget_daily_btn_refresh, createActionPendingIntent(context, widgetId, ACTION_DAILY_REFRESH));
 
         Intent appIntent = new Intent(context, MainActivity.class);
-        appIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        appIntent.putExtra(MainActivity.EXTRA_TARGET_TAB, R.id.nav_schedule);
+        appIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent appPendingIntent = PendingIntent.getActivity(
                 context,
                 widgetId + 200,

@@ -10,18 +10,21 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.DegreeLevel;
+import com.vintro.wsplanner.enums.InputState;
 import com.vintro.wsplanner.enums.StudyMode;
 import com.vintro.wsplanner.services.CourseSetupService;
+import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.utils.Logger;
 import com.vintro.wsplanner.utils.NetworkUtils;
@@ -29,10 +32,13 @@ import com.vintro.wsplanner.utils.NetworkUtils;
 public class SetupAdditionalActivity extends AppCompatActivity {
     private ImageButton backButton;
     private LinearLayout contentLayout;
-    private SwitchMaterial englishSwitch;
+    private View dividerEnglish;
+    private View englishContainer;
+    private MaterialSwitch englishSwitch;
     private EditText englishInput;
+    private View dividerSeminar;
     private LinearLayout seminarContainer;
-    private SwitchMaterial seminarSwitch;
+    private MaterialSwitch seminarSwitch;
     private EditText seminarInput;
     private EditText studentSurnameInput;
     private Button confirmButton;
@@ -46,19 +52,27 @@ public class SetupAdditionalActivity extends AppCompatActivity {
         Logger.d("SetupAdditionalActivity.onCreate", "SetupAdditionalActivity created");
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
+        EdgeToEdge.enable(this);
+        UIHelper.setupSystemBars(this);
         setContentView(R.layout.activity_setup_additional);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, Math.max(systemBars.bottom, ime.bottom));
             return insets;
         });
+
+        UIHelper.bindOnboardingSteps(this, 4);
 
         backButton = findViewById(R.id.back_button);
         contentLayout = findViewById(R.id.content_layout);
         searchingContainer = findViewById(R.id.searching_container);
+        dividerEnglish = findViewById(R.id.divider_english);
+        englishContainer = findViewById(R.id.english_container);
         englishSwitch = findViewById(R.id.english_switch);
         englishInput = findViewById(R.id.english_input);
+        dividerSeminar = findViewById(R.id.divider_seminar);
         seminarContainer = findViewById(R.id.seminar_container);
         seminarSwitch = findViewById(R.id.seminar_switch);
         seminarInput = findViewById(R.id.seminar_input);
@@ -77,6 +91,15 @@ public class SetupAdditionalActivity extends AppCompatActivity {
             seminarInput.setVisibility(isChecked ? View.VISIBLE : View.GONE);
         });
 
+        View.OnFocusChangeListener focusListener = (v, hasFocus) -> {
+            if (v instanceof EditText) {
+                AnimationHelper.animateInputState(this, (EditText) v, InputState.NORMAL, InputState.NORMAL);
+            }
+        };
+        studentSurnameInput.setOnFocusChangeListener(focusListener);
+        englishInput.setOnFocusChangeListener(focusListener);
+        seminarInput.setOnFocusChangeListener(focusListener);
+
         confirmButton.setOnClickListener(v -> finishSetup());
 
         initData();
@@ -93,10 +116,14 @@ public class SetupAdditionalActivity extends AppCompatActivity {
 
         if (isZeroYear) {
             Logger.i("SetupAdditionalActivity.initData", "Rok Zerowy detected; English group and seminar teacher are hidden");
-            englishSwitch.setVisibility(View.GONE);
-            englishInput.setVisibility(View.GONE);
+            if (dividerEnglish != null) dividerEnglish.setVisibility(View.GONE);
+            if (englishContainer != null) englishContainer.setVisibility(View.GONE);
+            if (dividerSeminar != null) dividerSeminar.setVisibility(View.GONE);
             seminarContainer.setVisibility(View.GONE);
         } else {
+            if (dividerEnglish != null) dividerEnglish.setVisibility(View.VISIBLE);
+            if (englishContainer != null) englishContainer.setVisibility(View.VISIBLE);
+
             // pre-fill english group
             String savedEnglish = PreferencesManager.getGlobalEnglishGroupPref(this);
             Integer detectedEnglish = courseSetupService.getCachedEnglishGroup();
@@ -127,6 +154,7 @@ public class SetupAdditionalActivity extends AppCompatActivity {
                     : detectedSeminar;
 
             if (isSeniorYear || (effectiveSeminar != null && !effectiveSeminar.isEmpty())) {
+                if (dividerSeminar != null) dividerSeminar.setVisibility(View.VISIBLE);
                 seminarContainer.setVisibility(View.VISIBLE);
                 if (effectiveSeminar != null && !effectiveSeminar.trim().isEmpty()) {
                     seminarSwitch.setChecked(true);
@@ -137,6 +165,7 @@ public class SetupAdditionalActivity extends AppCompatActivity {
                     seminarInput.setVisibility(View.GONE);
                 }
             } else {
+                if (dividerSeminar != null) dividerSeminar.setVisibility(View.GONE);
                 seminarContainer.setVisibility(View.GONE);
             }
         }
@@ -161,13 +190,12 @@ public class SetupAdditionalActivity extends AppCompatActivity {
             }
         }
 
-        // Check if we need to search PUW in the background for missing data
+        // check if we need to search PUW in the background for missing data
         boolean missingEnglish = (effectiveEnglish == null);
         boolean missingSeminar = isSeniorYear && (effectiveSeminar == null || effectiveSeminar.trim().isEmpty());
         boolean missingSurname = (studentSurnameInput.getText() == null || studentSurnameInput.getText().toString().trim().isEmpty());
 
         if (isZeroYear) {
-            // For Rok Zerowy, English group and seminar teacher are not applicable
             if (missingSurname && NetworkUtils.isNetworkAvailable(this)) {
                 if (searchingContainer != null) {
                     searchingContainer.setVisibility(View.VISIBLE);
@@ -228,6 +256,7 @@ public class SetupAdditionalActivity extends AppCompatActivity {
                             englishInput.setVisibility(View.VISIBLE);
                         }
                         if (semTeacher != null && !semTeacher.trim().isEmpty() && isSeniorYear) {
+                            if (dividerSeminar != null) dividerSeminar.setVisibility(View.VISIBLE);
                             seminarContainer.setVisibility(View.VISIBLE);
                             if (!seminarSwitch.isChecked() && seminarInput.getText().toString().trim().isEmpty()) {
                                 seminarSwitch.setChecked(true);
@@ -299,6 +328,9 @@ public class SetupAdditionalActivity extends AppCompatActivity {
 
         PreferencesManager.saveGlobalPrefs(this, login, password, major, degreeLevel, studyMode, year, specialty, englishGroup);
         PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_COMPLETED);
+
+        // reset visible weekdays so repository detects recommended days for the new course
+        PreferencesManager.clearVisibleWeekdaysPref(this);
 
         // clear cached schedule
         ScheduleRepository.getInstance(this).invalidateCache();

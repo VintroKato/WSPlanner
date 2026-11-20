@@ -1,168 +1,228 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:id="@+id/main">
+    android:background="?attr/app_bg"
+    android:fillViewport="true">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:id="@+id/content_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:animateLayoutChanges="true"
-        android:paddingBottom="32dp"
-        >
+        android:orientation="vertical"
+        android:paddingBottom="28dp">
 
-        <ImageButton
-            android:id="@+id/back_button"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/button_back"
-            android:src="@drawable/ic_arrow_back"
-            android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="@+id/title_label"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/title_label"
-            app:tint="?attr/app_text" />
+        <!-- Header -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:paddingHorizontal="16dp">
 
-        <TextView
-            android:id="@+id/title_label"
-            style="@style/label"
-            android:layout_marginTop="20dp"
-            android:text="@string/onboarding_login_title"
-            android:textSize="32sp"
-            android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            <ImageButton
+                android:id="@+id/back_button"
+                style="@style/WSPlanner.HeaderIconButton"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:contentDescription="@string/button_back"
+                android:src="@drawable/ic_arrow_back"
+                android:visibility="gone" />
 
-        <ImageButton
-            android:id="@+id/button_settings"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="16dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/settings_title"
-            android:src="@drawable/ic_settings"
-            app:tint="?attr/app_text"
-            app:layout_constraintBottom_toBottomOf="@+id/title_label"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/title_label" />
+            <TextView
+                android:id="@+id/title_label"
+                style="@style/WSPlanner.TopBarTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:layout_marginHorizontal="52dp"
+                android:text="@string/onboarding_login_title" />
 
+            <ImageButton
+                android:id="@+id/button_settings"
+                style="@style/WSPlanner.HeaderIconButton"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:contentDescription="@string/settings_title"
+                android:src="@drawable/ic_settings" />
+        </RelativeLayout>
+
+        <!-- 4-step progress indicator -->
+        <include layout="@layout/layout_onboarding_steps" />
+
+        <!-- Recessed low-contrast info notice explaining PUW login and local encryption -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/login_info_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp"
+            app:cardBackgroundColor="?attr/surface_recessed"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="top"
+                android:orientation="horizontal"
+                android:padding="14dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginEnd="10dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_info"
+                    app:tint="?attr/text_muted" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="@string/onboarding_login_info_title"
+                        android:textColor="?attr/text_secondary"
+                        android:textSize="13.5sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:lineSpacingExtra="2dp"
+                        android:text="@string/onboarding_login_info_desc"
+                        android:textColor="?attr/text_muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Email field -->
         <TextView
             android:id="@+id/login_label"
-            style="@style/label"
-            android:layout_marginTop="60dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="24dp"
+            android:fontFamily="sans-serif-medium"
             android:text="@string/configure_email_label"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/title_label" />
+            android:textColor="?attr/text_secondary"
+            android:textSize="14sp" />
 
         <EditText
             android:id="@+id/login_input"
-            android:autofillHints="email"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
             style="@style/input"
-            android:ems="10"
-            android:paddingHorizontal="8dp"
-            android:layout_marginTop="12dp"
-            android:hint="@string/configure_email_hint"        
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp"
+            android:autofillHints="email"
+            android:hint="@string/configure_email_hint"
             android:inputType="textEmailAddress"
-            android:textAlignment="textStart"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.0"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/login_label" />
+            android:textAlignment="textStart" />
 
+        <!-- Password field -->
         <TextView
             android:id="@+id/password_label"
-            style="@style/label"
-            android:layout_marginTop="40dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="18dp"
+            android:fontFamily="sans-serif-medium"
             android:text="@string/configure_password_label"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/login_input" />
-            
-        <EditText
-            android:id="@+id/password_input"
-            android:autofillHints="password"
+            android:textColor="?attr/text_secondary"
+            android:textSize="14sp" />
+
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp">
+
+            <EditText
+                android:id="@+id/password_input"
+                style="@style/input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="0dp"
+                android:autofillHints="password"
+                android:hint="@string/configure_password_hint"
+                android:inputType="textPassword"
+                android:paddingEnd="48dp"
+                android:textAlignment="textStart" />
+
+            <ImageButton
+                android:id="@+id/button_toggle_password"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="end|center_vertical"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/show_password"
+                android:focusable="false"
+                android:src="@drawable/ic_visibility_off"
+                app:srcCompat="@drawable/ic_visibility_off"
+                app:tint="?attr/text_secondary" />
+        </FrameLayout>
+
+        <!-- Verification status row -->
+        <LinearLayout
+            android:id="@+id/status_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
             android:layout_marginTop="12dp"
-            style="@style/input"
-            android:ems="10"
-            android:paddingStart="12dp"
-            android:paddingEnd="48dp"
-            android:paddingVertical="8dp"
-            android:textAlignment="textStart"
-            android:hint="@string/configure_password_hint"
-            android:inputType="textPassword"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.0"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/password_label" />
+            android:gravity="center_vertical"
+            android:minHeight="24dp"
+            android:orientation="horizontal">
 
-        <ImageButton
-            android:id="@+id/button_toggle_password"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="16dp"
-            android:background="@android:color/transparent"
-            android:contentDescription="@string/show_password"
-            android:src="@drawable/ic_visibility_off"
-            app:srcCompat="@drawable/ic_visibility_off"
-            app:tint="?attr/app_text"
-            android:tint="?attr/app_text"
-            android:elevation="4dp"
-            android:translationZ="4dp"
-            android:focusable="false"
-            app:layout_constraintBottom_toBottomOf="@+id/password_input"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/password_input" />
+            <ProgressBar
+                android:id="@+id/progress_bar"
+                style="?android:attr/progressBarStyle"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginEnd="10dp"
+                android:indeterminate="true"
+                android:indeterminateTint="?attr/colorPrimary"
+                android:indeterminateTintMode="src_atop"
+                android:visibility="gone" />
 
-        <ProgressBar
-            android:id="@+id/progress_bar"
-            style="?android:attr/progressBarStyle"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="8dp"
-            android:indeterminateTint="?attr/app_text"
-            android:indeterminateTintMode="src_atop"
-            android:indeterminate="true"
-            android:visibility="gone"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/password_input" />
+            <TextView
+                android:id="@+id/error_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:text=""
+                android:textColor="?attr/text_secondary"
+                android:textSize="13.5sp"
+                android:visibility="gone" />
+        </LinearLayout>
 
-        <TextView
-            android:id="@+id/error_label"
-            style="@style/label"
-            android:layout_height="24dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="8dp"
-            android:text=""
-            android:visibility="gone"
-            app:layout_constraintStart_toEndOf="@+id/progress_bar"
-            app:layout_constraintTop_toBottomOf="@+id/password_input" />
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
+        <!-- Wide primary CTA button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/confirm_button"
-            style="@style/button"
-            android:layout_width="183dp"
-            android:layout_height="57dp"
-            android:layout_marginTop="48dp"
-            android:layout_marginBottom="32dp"
-            android:text="@string/onboarding_button_next"
-            app:layout_constraintTop_toBottomOf="@+id/password_input"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintVertical_bias="1.0" 
-            
+            style="@style/WSPlanner.PrimaryButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="24dp"
             android:focusable="true"
-            android:focusableInTouchMode="true"/>
+            android:focusableInTouchMode="true"
+            android:text="@string/onboarding_button_next" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
-</ScrollView>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

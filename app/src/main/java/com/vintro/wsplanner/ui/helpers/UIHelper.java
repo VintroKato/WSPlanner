@@ -2,23 +2,26 @@ package com.vintro.wsplanner.ui.helpers;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.graphics.drawable.ColorDrawable;
 import android.util.TypedValue;
+import android.view.View;
 
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.os.LocaleListCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
+import com.google.android.material.card.MaterialCardView;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
-import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.enums.AppTheme;
+import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.utils.Logger;
 
 import java.util.Locale;
-
-import androidx.core.view.WindowCompat;
-import androidx.core.view.WindowInsetsControllerCompat;
 
 public class UIHelper {
     public static boolean isNightTheme(Context context, AppTheme theme) {
@@ -90,6 +93,25 @@ public class UIHelper {
         }
     }
 
+    // update activity configuration and rebase theme in place so new fragments resolve updated colors
+    public static void applyNightModeWithoutRecreate(Activity activity, boolean isNight) {
+        if (activity == null) return;
+        Resources res = activity.getResources();
+        Configuration config = new Configuration(res.getConfiguration());
+        int desiredNightMask = isNight ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO;
+        if ((config.uiMode & Configuration.UI_MODE_NIGHT_MASK) != desiredNightMask) {
+            config.uiMode = desiredNightMask | (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK);
+            res.updateConfiguration(config, res.getDisplayMetrics());
+        }
+        activity.getTheme().rebase();
+        if (activity.getWindow() != null) {
+            int appBg = getThemeColor(activity, R.attr.app_bg);
+            activity.getWindow().setBackgroundDrawable(new ColorDrawable(appBg));
+        }
+        setupSystemBars(activity, isNight);
+        Logger.d("UIHelper.applyNightModeWithoutRecreate", "Rebased activity theme without recreate (isNight=" + isNight + ")");
+    }
+
     public static void setSelectedLanguage(Context context) {
         if (context == null) return;
         Language language = PreferencesManager.getLanguagePref(context);
@@ -120,5 +142,36 @@ public class UIHelper {
             config.locale = locale;
         }
         res.updateConfiguration(config, res.getDisplayMetrics());
+    }
+
+    // apply checked state and unified stroke thickness on selectable cards
+    public static void setSelectableCardChecked(Context context, MaterialCardView card, boolean checked) {
+        if (context == null || card == null) return;
+        card.setChecked(checked);
+        float density = context.getResources().getDisplayMetrics().density;
+        int strokePx = Math.max(1, Math.round((checked ? 1.5f : 1.0f) * density));
+        card.setStrokeWidth(strokePx);
+        card.setStrokeColor(getThemeColor(context, checked ? R.attr.card_checked_border : R.attr.card_border));
+        card.setCardBackgroundColor(getThemeColor(context, checked ? R.attr.card_checked_bg : R.attr.card_bg));
+    }
+
+    // highlight completed and active steps in the four-step onboarding progress bar
+    public static void bindOnboardingSteps(Activity activity, int currentStep) {
+        if (activity == null) return;
+        int activeColor = getThemeColor(activity, androidx.appcompat.R.attr.colorPrimary);
+        int inactiveColor = getThemeColor(activity, R.attr.divider_color);
+        int[] stepIds = new int[]{
+                R.id.onboarding_step_1,
+                R.id.onboarding_step_2,
+                R.id.onboarding_step_3,
+                R.id.onboarding_step_4
+        };
+        for (int i = 0; i < stepIds.length; i++) {
+            View stepView = activity.findViewById(stepIds[i]);
+            if (stepView != null) {
+                int tint = (i + 1) <= currentStep ? activeColor : inactiveColor;
+                stepView.setBackgroundTintList(ColorStateList.valueOf(tint));
+            }
+        }
     }
 }

@@ -12,13 +12,14 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
@@ -38,7 +39,7 @@ public class StudentPanelActivity extends AppCompatActivity {
     private ImageButton backButton;
     private LinearLayout contentLayout;
 
-    // Onboarding course info views
+    // study information views
     private TextView tvMajorValue;
     private View courseDetailsDivider;
     private View layoutCourseMetrics;
@@ -48,18 +49,20 @@ public class StudentPanelActivity extends AppCompatActivity {
     private View layoutSpecialtyRow;
     private TextView tvSpecialtyValue;
 
-    // Action buttons
+    // action buttons
     private MaterialButton btnReOnboarding;
     private MaterialButton btnChangeCredentials;
 
-    // Inline personal parameters views
+    // personal parameters views
     private View searchingContainer;
     private EditText studentSurnameInput;
+    private View dividerEnglish;
     private View englishContainer;
-    private SwitchMaterial englishSwitch;
+    private MaterialSwitch englishSwitch;
     private EditText englishInput;
+    private View dividerSeminar;
     private View seminarContainer;
-    private SwitchMaterial seminarSwitch;
+    private MaterialSwitch seminarSwitch;
     private EditText seminarInput;
     private Button confirmButton;
 
@@ -73,14 +76,17 @@ public class StudentPanelActivity extends AppCompatActivity {
         Logger.d("StudentPanelActivity.onCreate", "StudentPanelActivity created");
         UIHelper.setSelectedTheme(this);
         UIHelper.setSelectedLanguage(this);
+        EdgeToEdge.enable(this);
+        UIHelper.setupSystemBars(this);
         setContentView(R.layout.activity_student_panel);
 
         currentLanguage = PreferencesManager.getLanguagePref(this);
         currentTheme = PreferencesManager.getThemePref(this);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, Math.max(systemBars.bottom, ime.bottom));
             return insets;
         });
 
@@ -108,9 +114,11 @@ public class StudentPanelActivity extends AppCompatActivity {
 
         searchingContainer = findViewById(R.id.searching_container);
         studentSurnameInput = findViewById(R.id.student_surname_input);
+        dividerEnglish = findViewById(R.id.divider_english);
         englishContainer = findViewById(R.id.english_container);
         englishSwitch = findViewById(R.id.english_switch);
         englishInput = findViewById(R.id.english_input);
+        dividerSeminar = findViewById(R.id.divider_seminar);
         seminarContainer = findViewById(R.id.seminar_container);
         seminarSwitch = findViewById(R.id.seminar_switch);
         seminarInput = findViewById(R.id.seminar_input);
@@ -222,7 +230,7 @@ public class StudentPanelActivity extends AppCompatActivity {
         DegreeLevel degreeLevel = PreferencesManager.getGlobalDegreeLevelPref(this);
         boolean isZeroYear = (degreeLevel == DegreeLevel.ZERO_YEAR);
 
-        // Pre-fill student surname
+        // pre-fill student surname
         String currentSurname = PreferencesManager.getGlobalStudentSurnamePref(this);
         if (currentSurname == null || currentSurname.trim().isEmpty()) {
             currentSurname = PreferencesManager.getDetectedStudentSurname(this);
@@ -243,7 +251,9 @@ public class StudentPanelActivity extends AppCompatActivity {
         }
 
         if (isZeroYear) {
+            if (dividerEnglish != null) dividerEnglish.setVisibility(View.GONE);
             englishContainer.setVisibility(View.GONE);
+            if (dividerSeminar != null) dividerSeminar.setVisibility(View.GONE);
             seminarContainer.setVisibility(View.GONE);
             if (searchingContainer != null) {
                 searchingContainer.setVisibility(View.GONE);
@@ -251,10 +261,12 @@ public class StudentPanelActivity extends AppCompatActivity {
             return;
         }
 
+        if (dividerEnglish != null) dividerEnglish.setVisibility(View.VISIBLE);
         englishContainer.setVisibility(View.VISIBLE);
+        if (dividerSeminar != null) dividerSeminar.setVisibility(View.VISIBLE);
         seminarContainer.setVisibility(View.VISIBLE);
 
-        // Pre-fill English group
+        // pre-fill english group
         String savedEnglish = PreferencesManager.getGlobalEnglishGroupPref(this);
         if (savedEnglish != null && !savedEnglish.trim().isEmpty()) {
             englishSwitch.setChecked(true);
@@ -266,7 +278,7 @@ public class StudentPanelActivity extends AppCompatActivity {
             englishInput.setVisibility(View.GONE);
         }
 
-        // Pre-fill Seminar teacher
+        // pre-fill seminar teacher
         String savedSeminar = PreferencesManager.getGlobalSeminarTeacherPref(this);
         if (savedSeminar != null && !savedSeminar.trim().isEmpty()) {
             seminarSwitch.setChecked(true);
@@ -278,7 +290,7 @@ public class StudentPanelActivity extends AppCompatActivity {
             seminarInput.setVisibility(View.GONE);
         }
 
-        // If surname is missing and device is online, try background detection
+        // if surname is missing and device is online, try background detection
         boolean missingSurname = studentSurnameInput.getText() == null || studentSurnameInput.getText().toString().trim().isEmpty();
         if (missingSurname && NetworkUtils.isNetworkAvailable(this)) {
             if (searchingContainer != null) {
@@ -347,7 +359,7 @@ public class StudentPanelActivity extends AppCompatActivity {
         PreferencesManager.setGlobalSeminarTeacherPref(this, seminarTeacher);
 
         Logger.i("StudentPanelActivity.saveChanges", "Saved student panel parameters: surname="
-                + Logger.maskSurname(enteredSurname) + ", englishGroup=" + englishGroup + ", seminarTeacher=" + seminarTeacher);
+                + Logger.maskSurname(enteredSurname) + ", englishGroup=" + englishGroup + ", hasSeminarTeacher=" + (seminarTeacher != null));
 
         ScheduleRepository.getInstance(this).invalidateMemoryCache();
         WidgetUpdateManager.updateAllWidgets(this);
