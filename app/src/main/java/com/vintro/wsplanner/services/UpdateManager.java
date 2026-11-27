@@ -72,10 +72,11 @@ public class UpdateManager {
     private static final String KEY_LATEST_SHA256_URL = "latest_sha256_download_url";
     private static final String KEY_LATEST_CHANGELOG = "latest_release_changelog";
     private static final String KEY_CHANGELOG_PARSER_VERSION = "changelog_parser_version";
-    private static final int CHANGELOG_PARSER_VERSION = 2;
+    private static final int CHANGELOG_PARSER_VERSION = 3;
 
-    public static final long COOLDOWN_MS = 60_000L;
+    public static final long COOLDOWN_MS = 120_000L;
     public static final long AUTO_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000L; // 24 hours
+    public static final long PENDING_UPDATE_RECHECK_INTERVAL_MS = 6 * 60 * 60 * 1000L; // 6 hours when update is pending
 
     private static long lastManualCheckTimestamp = 0L;
     private static final OkHttpClient httpClient = new OkHttpClient.Builder()
@@ -148,6 +149,16 @@ public class UpdateManager {
 
     public static void recordManualCheck() {
         lastManualCheckTimestamp = System.currentTimeMillis();
+    }
+
+    public static long getLastCheckTimestamp(Context context) {
+        long lastAuto = context != null ? getPrefs(context).getLong(KEY_LAST_AUTO_CHECK_TIME, 0L) : 0L;
+        return Math.max(lastManualCheckTimestamp, lastAuto);
+    }
+
+    // check if either an auto or manual update check ran within the cooldown window
+    public static boolean isRecentCheckWithinCooldown(Context context) {
+        return (System.currentTimeMillis() - getLastCheckTimestamp(context)) < COOLDOWN_MS;
     }
 
     public static String getSavedLatestVersion(Context context) {
@@ -247,12 +258,14 @@ public class UpdateManager {
 
         long lastCheck = getPrefs(context).getLong(KEY_LAST_AUTO_CHECK_TIME, 0L);
         long now = System.currentTimeMillis();
+        boolean pendingUpdate = hasPendingUpdate(context);
+        long effectiveInterval = pendingUpdate ? PENDING_UPDATE_RECHECK_INTERVAL_MS : AUTO_CHECK_INTERVAL_MS;
 
-        if (now - lastCheck < AUTO_CHECK_INTERVAL_MS) {
-            long remainingHours = (AUTO_CHECK_INTERVAL_MS - (now - lastCheck)) / (1000 * 60 * 60);
-            Logger.d(TAG, "Auto update check interval not elapsed yet. Last check: " + lastCheck + " (~" + remainingHours + "h remaining)");
+        if (now - lastCheck < effectiveInterval) {
+            long remainingHours = (effectiveInterval - (now - lastCheck)) / (1000 * 60 * 60);
+            Logger.d(TAG, "Auto update check interval not elapsed yet (pending=" + pendingUpdate + "). Last check: " + lastCheck + " (~" + remainingHours + "h remaining)");
             if (callback != null) {
-                if (hasPendingUpdate(context)) {
+                if (pendingUpdate) {
                     String pendingVer = getSavedLatestVersion(context);
                     String pendingUrl = getSavedReleaseUrl(context);
                     Logger.i(TAG, "Auto-check skipped by interval: found cached pending update: " + pendingVer);
@@ -454,15 +467,29 @@ public class UpdateManager {
                             String relBody = rel.optString("body", "");
                             List<String> items = extractChangelogBulletList(relName, relBody);
                             String commitMsg = extractCommitMessage(relName, relBody);
+                            LocalizedChangelog ruChangelog = extractLocalizedChangelog(relBody, "ru");
+                            LocalizedChangelog ukChangelog = extractLocalizedChangelog(relBody, "uk");
 
                             JSONObject verObj = new JSONObject();
                             verObj.put("version", relTag);
                             verObj.put("title", commitMsg);
-                            JSONArray itemsJson = new JSONArray();
-                            for (String itm : items) {
-                                itemsJson.put(itm);
+                            verObj.put("items", toJsonArray(items));
+                            if (ruChangelog != null) {
+                                if (!ruChangelog.title.isEmpty()) {
+                                    verObj.put("title_ru", ruChangelog.title);
+                                }
+                                if (!ruChangelog.items.isEmpty()) {
+                                    verObj.put("items_ru", toJsonArray(ruChangelog.items));
+                                }
                             }
-                            verObj.put("items", itemsJson);
+                            if (ukChangelog != null) {
+                                if (!ukChangelog.title.isEmpty()) {
+                                    verObj.put("title_uk", ukChangelog.title);
+                                }
+                                if (!ukChangelog.items.isEmpty()) {
+                                    verObj.put("items_uk", toJsonArray(ukChangelog.items));
+                                }
+                            }
                             multiVersionChangelog.put(verObj);
                         }
                     }
@@ -510,6 +537,76 @@ public class UpdateManager {
                 }
             }
         });
+    }
+
+    // holds localized release title and bullet points parsed from hidden changelog comment
+    public static final class LocalizedChangelog {
+        public final String title;
+        public final List<String> items;
+
+        public LocalizedChangelog(String title, List<String> items) {
+            this.title = title != null ? title : "";
+            this.items = items != null ? items : new ArrayList<>();
+        }
+    }
+
+    private static JSONArray toJsonArray(List<String> items) {
+        JSONArray array = new JSONArray();
+        if (items != null) {
+            for (String item : items) {
+                array.put(item);
+            }
+        }
+        return array;
+    }
+
+    // extract localized title and bullet list from hidden html comment block in release body
+    public static LocalizedChangelog extractLocalizedChangelog(String body, String langCode) {
+        if (body == null || body.trim().isEmpty() || langCode == null || langCode.trim().isEmpty()) {
+            return null;
+        }
+        String normalized = langCode.trim().toLowerCase(Locale.ROOT);
+        String langPattern = ("uk".equals(normalized) || "ua".equals(normalized))
+                ? "(?:uk|ua)"
+                : Pattern.quote(normalized);
+
+        Pattern commentPattern = Pattern.compile("(?i)<!--\\s*changelog:" + langPattern + "\\s*\\r?\\n([\\s\\S]*?)-->");
+        Matcher matcher = commentPattern.matcher(body);
+        if (!matcher.find()) {
+            return null;
+        }
+
+        String block = matcher.group(1);
+        if (block == null || block.trim().isEmpty()) {
+            return null;
+        }
+
+        String localizedTitle = "";
+        List<String> items = new ArrayList<>();
+        String[] lines = block.split("\\r?\\n");
+        for (String rawLine : lines) {
+            String line = rawLine.trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            if (line.matches("^[-*•]\\s+.*")) {
+                String item = line.replaceFirst("^[-*•]\\s+", "")
+                        .replace("`", "")
+                        .trim();
+                if (!item.isEmpty()) {
+                    items.add(item);
+                }
+            } else if (localizedTitle.isEmpty() && items.isEmpty()) {
+                localizedTitle = line.replaceFirst("^#{1,6}\\s*", "")
+                        .replace("`", "")
+                        .trim();
+            }
+        }
+
+        if (localizedTitle.isEmpty() && items.isEmpty()) {
+            return null;
+        }
+        return new LocalizedChangelog(localizedTitle, items);
     }
 
     // Extract only bulleted list items from the release changelog section, excluding headings and commit titles

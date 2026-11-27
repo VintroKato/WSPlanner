@@ -1,7 +1,7 @@
 package com.vintro.wsplanner.ui.adapters;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
-import android.content.res.ColorStateList;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +15,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.card.MaterialCardView;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
+import com.vintro.wsplanner.ui.helpers.AnimationHelper;
+import com.vintro.wsplanner.ui.helpers.AnimationHelper.DayCardVisualState;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 
 import java.time.LocalDate;
@@ -29,6 +31,8 @@ import java.util.Map;
 
 // adapter for week-snapping horizontal ViewPager2 day strip
 public class WeekStripAdapter extends RecyclerView.Adapter<WeekStripAdapter.WeekViewHolder> {
+
+    private static final Object PAYLOAD_SELECTION = new Object();
 
     public interface OnDayClickListener {
         void onDayClick(LocalDate date);
@@ -45,35 +49,43 @@ public class WeekStripAdapter extends RecyclerView.Adapter<WeekStripAdapter.Week
 
     private final DateTimeFormatter dayMonthFormatter = DateTimeFormatter.ofPattern("dd.MM");
 
-    private final int cardBgColor;
-    private final int cardBorderColor;
-    private final int cardCheckedBgColor;
-    private final int buttonBgColor;
-    private final int buttonTextColor;
-    private final int colorPrimary;
-    private final int textPrimaryColor;
-    private final int textSecondaryColor;
-    private final int textMutedColor;
-    private final int strokeDefaultPx;
-    private final int strokeTodayPx;
+    private final DayCardVisualState selectedState;
+    private final DayCardVisualState todayState;
+    private final DayCardVisualState normalState;
 
     public WeekStripAdapter(Context context, ScheduleRepository scheduleRepository, OnDayClickListener listener) {
         this.scheduleRepository = scheduleRepository;
         this.onDayClickListener = listener;
 
         float density = context.getResources().getDisplayMetrics().density;
-        this.strokeDefaultPx = Math.max(1, Math.round(1.0f * density));
-        this.strokeTodayPx = Math.max(1, Math.round(1.5f * density));
+        int strokeDefaultPx = Math.max(1, Math.round(1.0f * density));
+        int strokeTodayPx = Math.max(1, Math.round(1.5f * density));
 
-        this.cardBgColor = UIHelper.getThemeColor(context, R.attr.card_bg);
-        this.cardBorderColor = UIHelper.getThemeColor(context, R.attr.card_border);
-        this.cardCheckedBgColor = UIHelper.getThemeColor(context, R.attr.card_checked_bg);
-        this.buttonBgColor = UIHelper.getThemeColor(context, R.attr.button_bg);
-        this.buttonTextColor = UIHelper.getThemeColor(context, R.attr.button_text);
-        this.colorPrimary = UIHelper.getThemeColor(context, androidx.appcompat.R.attr.colorPrimary);
-        this.textPrimaryColor = UIHelper.getThemeColor(context, R.attr.app_text);
-        this.textSecondaryColor = UIHelper.getThemeColor(context, R.attr.text_secondary);
-        this.textMutedColor = UIHelper.getThemeColor(context, R.attr.text_muted);
+        int cardBgColor = UIHelper.getThemeColor(context, R.attr.card_bg);
+        int cardBorderColor = UIHelper.getThemeColor(context, R.attr.card_border);
+        int cardCheckedBgColor = UIHelper.getThemeColor(context, R.attr.card_checked_bg);
+        int buttonBgColor = UIHelper.getThemeColor(context, R.attr.button_bg);
+        int buttonTextColor = UIHelper.getThemeColor(context, R.attr.button_text);
+        int colorPrimary = UIHelper.getThemeColor(context, androidx.appcompat.R.attr.colorPrimary);
+        int textPrimaryColor = UIHelper.getThemeColor(context, R.attr.app_text);
+        int textSecondaryColor = UIHelper.getThemeColor(context, R.attr.text_secondary);
+        int textMutedColor = UIHelper.getThemeColor(context, R.attr.text_muted);
+
+        this.selectedState = new DayCardVisualState(
+                buttonBgColor, buttonBgColor, 0,
+                buttonTextColor, buttonTextColor,
+                buttonTextColor, buttonTextColor, 0.48f
+        );
+        this.todayState = new DayCardVisualState(
+                cardCheckedBgColor, colorPrimary, strokeTodayPx,
+                colorPrimary, colorPrimary,
+                colorPrimary, colorPrimary, 0.38f
+        );
+        this.normalState = new DayCardVisualState(
+                cardBgColor, cardBorderColor, strokeDefaultPx,
+                textSecondaryColor, textPrimaryColor,
+                colorPrimary, textMutedColor, 0.38f
+        );
     }
 
     public void submitDates(List<LocalDate> visibleDates, LocalDate todayDate, LocalDate selected) {
@@ -113,10 +125,10 @@ public class WeekStripAdapter extends RecyclerView.Adapter<WeekStripAdapter.Week
         Integer oldWeek = dateToWeekIndex.get(oldSelected);
         Integer newWeek = dateToWeekIndex.get(newSelected);
         if (oldWeek != null) {
-            notifyItemChanged(oldWeek);
+            notifyItemChanged(oldWeek, PAYLOAD_SELECTION);
         }
         if (newWeek != null && !newWeek.equals(oldWeek)) {
-            notifyItemChanged(newWeek);
+            notifyItemChanged(newWeek, PAYLOAD_SELECTION);
         }
     }
 
@@ -149,6 +161,33 @@ public class WeekStripAdapter extends RecyclerView.Adapter<WeekStripAdapter.Week
         holder.bind(weeks.get(position));
     }
 
+    @Override
+    public void onBindViewHolder(@NonNull WeekViewHolder holder, int position, @NonNull List<Object> payloads) {
+        if (!payloads.isEmpty() && payloads.contains(PAYLOAD_SELECTION)) {
+            holder.updateSelection(weeks.get(position), true);
+            return;
+        }
+        holder.bind(weeks.get(position));
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull WeekViewHolder holder) {
+        super.onViewRecycled(holder);
+        holder.cancelAnimations();
+        holder.itemView.setAlpha(1f);
+        holder.itemView.setTranslationX(0f);
+    }
+
+    private DayCardVisualState resolveStateForDate(LocalDate date) {
+        if (date.equals(selectedDate)) {
+            return selectedState;
+        }
+        if (date.equals(today)) {
+            return todayState;
+        }
+        return normalState;
+    }
+
     private String formatShortWeekday(LocalDate date, Locale locale) {
         String name = date.getDayOfWeek().getDisplayName(TextStyle.SHORT_STANDALONE, locale);
         if (name == null || name.isEmpty()) return "";
@@ -157,107 +196,174 @@ public class WeekStripAdapter extends RecyclerView.Adapter<WeekStripAdapter.Week
         return name.substring(0, 1).toUpperCase(locale) + name.substring(1).toLowerCase(locale);
     }
 
+    // holds view references and live animation state for a single day card slot
+    private static final class DaySlotHolder {
+        final LocalDate date;
+        final MaterialCardView card;
+        final TextView weekdayText;
+        final TextView numberText;
+        final View emptyDash;
+        final View[] dots;
+        DayCardVisualState currentState;
+        DayCardVisualState targetState;
+        ValueAnimator activeAnimator;
+
+        DaySlotHolder(LocalDate date, View cardRoot) {
+            this.date = date;
+            this.card = cardRoot.findViewById(R.id.day_strip_card);
+            this.weekdayText = cardRoot.findViewById(R.id.day_strip_weekday);
+            this.numberText = cardRoot.findViewById(R.id.day_strip_number);
+            this.emptyDash = cardRoot.findViewById(R.id.day_strip_empty_dash);
+            this.dots = new View[]{
+                    cardRoot.findViewById(R.id.day_strip_dot_1),
+                    cardRoot.findViewById(R.id.day_strip_dot_2),
+                    cardRoot.findViewById(R.id.day_strip_dot_3),
+                    cardRoot.findViewById(R.id.day_strip_dot_4)
+            };
+        }
+
+        void cancelAnimation() {
+            if (activeAnimator != null) {
+                activeAnimator.cancel();
+                activeAnimator = null;
+            }
+            if (card != null) {
+                card.animate().cancel();
+                card.setScaleX(1f);
+                card.setScaleY(1f);
+            }
+        }
+
+        void applyImmediate(DayCardVisualState state) {
+            cancelAnimation();
+            currentState = state;
+            targetState = state;
+            state.applyTo(card, weekdayText, numberText, emptyDash, dots);
+        }
+
+        void bindLessonIndicators(int lessonCount) {
+            int visibleDots = Math.min(lessonCount, dots.length);
+            if (visibleDots == 0) {
+                if (emptyDash != null) {
+                    emptyDash.setVisibility(View.VISIBLE);
+                }
+                for (View dot : dots) {
+                    dot.setVisibility(View.GONE);
+                }
+            } else {
+                if (emptyDash != null) {
+                    emptyDash.setVisibility(View.GONE);
+                }
+                for (int i = 0; i < dots.length; i++) {
+                    dots[i].setVisibility(i < visibleDots ? View.VISIBLE : View.GONE);
+                }
+            }
+        }
+    }
+
     class WeekViewHolder extends RecyclerView.ViewHolder {
         private final LinearLayout rowContainer;
+        private final List<LocalDate> boundDates = new ArrayList<>();
+        private final List<DaySlotHolder> slotHolders = new ArrayList<>();
 
         WeekViewHolder(@NonNull View itemView) {
             super(itemView);
             rowContainer = itemView.findViewById(R.id.week_strip_row);
         }
 
+        void cancelAnimations() {
+            for (DaySlotHolder slot : slotHolders) {
+                slot.cancelAnimation();
+            }
+        }
+
         void bind(List<LocalDate> weekDates) {
+            // clear any stale page transformer alpha or translation from recycled offscreen pages
+            itemView.setAlpha(1f);
+            itemView.setTranslationX(0f);
+
+            if (weekDates == null || weekDates.isEmpty()) {
+                cancelAnimations();
+                rowContainer.removeAllViews();
+                boundDates.clear();
+                slotHolders.clear();
+                return;
+            }
+
+            // reuse existing day card views when the week structure has not changed
+            if (boundDates.equals(weekDates) && slotHolders.size() == weekDates.size()) {
+                for (DaySlotHolder slot : slotHolders) {
+                    int lessonCount = scheduleRepository != null ? scheduleRepository.getLessonCountForDateFromMemory(slot.date) : 0;
+                    slot.bindLessonIndicators(lessonCount);
+                    slot.applyImmediate(resolveStateForDate(slot.date));
+                }
+                return;
+            }
+
+            cancelAnimations();
             rowContainer.removeAllViews();
-            if (weekDates == null || weekDates.isEmpty()) return;
+            boundDates.clear();
+            slotHolders.clear();
 
             LayoutInflater inflater = LayoutInflater.from(rowContainer.getContext());
             Locale locale = Locale.getDefault();
 
             for (LocalDate date : weekDates) {
                 View cardRoot = inflater.inflate(R.layout.item_day_strip_card, rowContainer, false);
-                MaterialCardView card = cardRoot.findViewById(R.id.day_strip_card);
-                TextView weekdayText = cardRoot.findViewById(R.id.day_strip_weekday);
-                TextView numberText = cardRoot.findViewById(R.id.day_strip_number);
-                View emptyDash = cardRoot.findViewById(R.id.day_strip_empty_dash);
-                View[] dots = new View[]{
-                        cardRoot.findViewById(R.id.day_strip_dot_1),
-                        cardRoot.findViewById(R.id.day_strip_dot_2),
-                        cardRoot.findViewById(R.id.day_strip_dot_3),
-                        cardRoot.findViewById(R.id.day_strip_dot_4)
-                };
+                DaySlotHolder slot = new DaySlotHolder(date, cardRoot);
 
-                weekdayText.setText(formatShortWeekday(date, locale));
-                numberText.setText(date.format(dayMonthFormatter));
+                slot.weekdayText.setText(formatShortWeekday(date, locale));
+                slot.numberText.setText(date.format(dayMonthFormatter));
 
                 int lessonCount = scheduleRepository != null ? scheduleRepository.getLessonCountForDateFromMemory(date) : 0;
-                int visibleDots = Math.min(lessonCount, dots.length);
+                slot.bindLessonIndicators(lessonCount);
+                slot.applyImmediate(resolveStateForDate(date));
 
-                boolean isSelected = date.equals(selectedDate);
-                boolean isToday = date.equals(today);
-
-                int dotColor;
-                int dashColor;
-                float dashAlpha;
-                if (isSelected) {
-                    card.setCardBackgroundColor(buttonBgColor);
-                    card.setStrokeWidth(0);
-                    card.setStrokeColor(buttonBgColor);
-                    weekdayText.setTextColor(buttonTextColor);
-                    numberText.setTextColor(buttonTextColor);
-                    dotColor = buttonTextColor;
-                    dashColor = buttonTextColor;
-                    dashAlpha = 0.48f;
-                } else if (isToday) {
-                    card.setCardBackgroundColor(cardCheckedBgColor);
-                    card.setStrokeWidth(strokeTodayPx);
-                    card.setStrokeColor(colorPrimary);
-                    weekdayText.setTextColor(colorPrimary);
-                    numberText.setTextColor(colorPrimary);
-                    dotColor = colorPrimary;
-                    dashColor = colorPrimary;
-                    dashAlpha = 0.38f;
-                } else {
-                    // keep uniform high contrast on all non-selected days; dots or dash indicate lessons
-                    card.setCardBackgroundColor(cardBgColor);
-                    card.setStrokeWidth(strokeDefaultPx);
-                    card.setStrokeColor(cardBorderColor);
-                    weekdayText.setTextColor(textSecondaryColor);
-                    numberText.setTextColor(textPrimaryColor);
-                    dotColor = colorPrimary;
-                    dashColor = textMutedColor;
-                    dashAlpha = 0.38f;
-                }
-
-                if (visibleDots == 0) {
-                    if (emptyDash != null) {
-                        emptyDash.setVisibility(View.VISIBLE);
-                        emptyDash.setBackgroundTintList(ColorStateList.valueOf(dashColor));
-                        emptyDash.setAlpha(dashAlpha);
-                    }
-                    for (View dot : dots) {
-                        dot.setVisibility(View.GONE);
-                    }
-                } else {
-                    if (emptyDash != null) {
-                        emptyDash.setVisibility(View.GONE);
-                    }
-                    ColorStateList dotTint = ColorStateList.valueOf(dotColor);
-                    for (int i = 0; i < dots.length; i++) {
-                        if (i < visibleDots) {
-                            dots[i].setVisibility(View.VISIBLE);
-                            dots[i].setBackgroundTintList(dotTint);
-                        } else {
-                            dots[i].setVisibility(View.GONE);
-                        }
-                    }
-                }
-
-                card.setOnClickListener(v -> {
+                slot.card.setOnClickListener(v -> {
                     if (onDayClickListener != null) {
                         onDayClickListener.onDayClick(date);
                     }
                 });
 
+                boundDates.add(date);
+                slotHolders.add(slot);
                 rowContainer.addView(cardRoot);
+            }
+        }
+
+        void updateSelection(List<LocalDate> weekDates, boolean animate) {
+            if (weekDates == null || !boundDates.equals(weekDates) || slotHolders.size() != weekDates.size()) {
+                bind(weekDates);
+                return;
+            }
+
+            for (DaySlotHolder slot : slotHolders) {
+                DayCardVisualState target = resolveStateForDate(slot.date);
+                if (slot.targetState != null && slot.targetState.visualEquals(target)) {
+                    continue;
+                }
+                if (!animate || slot.currentState == null) {
+                    slot.applyImmediate(target);
+                    continue;
+                }
+
+                if (slot.activeAnimator != null) {
+                    slot.activeAnimator.cancel();
+                    slot.activeAnimator = null;
+                }
+                boolean isNowSelected = slot.date.equals(selectedDate);
+                slot.targetState = target;
+                slot.activeAnimator = AnimationHelper.animateDayStripCard(
+                        slot.card,
+                        slot.weekdayText,
+                        slot.numberText,
+                        slot.emptyDash,
+                        slot.dots,
+                        slot.currentState,
+                        target,
+                        isNowSelected,
+                        liveState -> slot.currentState = liveState
+                );
             }
         }
     }

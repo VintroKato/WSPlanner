@@ -1,12 +1,6 @@
-- Redesigned the entire app interface across both dark and light themes with cleaner cards, softer colors, subtle shadows, and consistent spacing
-- Added automatic login when opening PUW pages in your browser from Schedule, Subject Details, and Student Zone so you no longer have to sign in manually
-- Added a setting to choose which days of the week appear in your schedule, while always keeping today and any days with classes visible
-- Replaced the top menu with a bottom navigation bar for quick switching between Courses, Schedule, and Settings
-- Added a swipeable weekly calendar strip with class count indicators, a subtle preview of neighboring weeks, and a clickable month button to jump to any date
-- Added a quick PUW portal shortcut button directly to the Schedule header alongside the Excel schedule button
-- Updated lesson cards with clearer ongoing and upcoming class banners, remaining time next to the status badge, a highlighted current class, and a floating Back to today button
-- Added automatic saving for subject notes with a live saved indicator and refreshed the Subject Details screen with a cleaner teacher section and class timeline
-- Improved the All Courses screen with a collapsible filter panel, color-coded chips for location, class type, and completion status, an active filter counter badge, and one-tap reset
-- Updated the Settings screen with a clearer student profile card, matching theme, language, and schedule day selectors, smoother theme switching, and cleaner GitHub and Telegram links
-- Refreshed onboarding, Student Panel, and widget settings with a setup progress bar, clearer input fields, and smoother animations
-- Fixed visual issues including clipped course type badges, oversized tap ripples on inline buttons, and added extra scroll space at the bottom of the schedule list
+- Added a sliding animation to bottom navigation bar
+- Added color and border morphing animations when switching selected days in the weekly calendar strip
+- Added long-press tooltips to the PUW portal buttons
+- Added localized Russian and Ukrainian changelogs to the in-app update dialog
+- Fixed an issue where changing visible schedule days in Settings left the current week strip dimmed
+- Improved update checks to refresh from GitHub when an older update is cached, preventing skipped releases

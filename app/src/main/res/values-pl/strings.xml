@@ -127,7 +127,7 @@
     <string name="teacher_email_not_found">Brak adresu e-mail</string>
     <string name="teacher_email_copied">Skopiowano adres e-mail</string>
     <string name="teacher_email_copy_desc">Skopiuj adres e-mail</string>
-    <string name="subject_opening_puw_course">Szukanie kursu na PUW…</string>
+    <string name="subject_opening_puw_course">Otwieranie kursu na PUW…</string>
     <string name="subject_course_not_found">Nie znaleziono kursu. Otwieranie PUW…</string>
     <string name="maps_hint_format">(Google Maps: %1$s ↗)</string>
     <string name="maps_hint_wspa">(Google Maps: WSPA Lublin, ul. Bursaki 12 ↗)</string>
@@ -271,4 +271,6 @@
     <string name="settings_share_logs">Udostępnij logi</string>
     <string name="schedule_open_puw_desc">Otwórz PUW</string>
     <string name="schedule_opening_puw">Otwieranie PUW…</string>
+    <string name="schedule_open_puw_tooltip">Otwórz ekran główny PUW</string>
+    <string name="subject_open_puw_course_tooltip">Otwórz stronę kursu w PUW</string>
 </resources>

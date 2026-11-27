@@ -127,7 +127,7 @@
     <string name="teacher_email_not_found">Email не найден</string>
     <string name="teacher_email_copied">Email скопирован в буфер обмена</string>
     <string name="teacher_email_copy_desc">Скопировать email преподавателя</string>
-    <string name="subject_opening_puw_course">Поиск курса на PUW…</string>
+    <string name="subject_opening_puw_course">Открытие курса на PUW…</string>
     <string name="subject_course_not_found">Курс не найден на PUW. Открываем дашборд…</string>
     <string name="maps_hint_format">(Google Maps: %1$s ↗)</string>
     <string name="maps_hint_wspa">(Google Maps: WSPA Lublin, ul. Bursaki 12 ↗)</string>
@@ -271,4 +271,6 @@
     <string name="settings_share_logs">Поделиться логами</string>
     <string name="schedule_open_puw_desc">Открыть PUW</string>
     <string name="schedule_opening_puw">Открытие PUW…</string>
+    <string name="schedule_open_puw_tooltip">Открыть главный экран PUW</string>
+    <string name="subject_open_puw_course_tooltip">Открыть страницу курса в PUW</string>
 </resources>

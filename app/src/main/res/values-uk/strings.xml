@@ -127,7 +127,7 @@
     <string name="teacher_email_not_found">Email не знайдено</string>
     <string name="teacher_email_copied">Email скопійовано</string>
     <string name="teacher_email_copy_desc">Скопіювати email викладача</string>
-    <string name="subject_opening_puw_course">Пошук курсу на PUW…</string>
+    <string name="subject_opening_puw_course">Відкриття курсу на PUW…</string>
     <string name="subject_course_not_found">Курс не знайдено на PUW. Відкриваємо головну…</string>
     <string name="maps_hint_format">(Google Maps: %1$s ↗)</string>
     <string name="maps_hint_wspa">(Google Maps: WSPA Lublin, ul. Bursaki 12 ↗)</string>
@@ -271,4 +271,6 @@
     <string name="settings_share_logs">Поділитися логами</string>
     <string name="schedule_open_puw_desc">Відкрити PUW</string>
     <string name="schedule_opening_puw">Відкриття PUW…</string>
+    <string name="schedule_open_puw_tooltip">Відкрити головний екран PUW</string>
+    <string name="subject_open_puw_course_tooltip">Відкрити сторінку курсу в PUW</string>
 </resources>

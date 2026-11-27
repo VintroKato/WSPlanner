@@ -31,6 +31,7 @@ import com.vintro.wsplanner.ui.activities.WidgetConfigureActivity;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.utils.NetworkUtils;
 
 import java.time.DayOfWeek;
 import java.time.format.TextStyle;
@@ -483,16 +484,19 @@ public class SettingsFragment extends Fragment {
         if (!isAdded() || getActivity() == null) return;
         Context context = requireContext();
         Logger.i(TAG, "User tapped check updates row in Settings");
-        if (UpdateManager.hasPendingUpdate(context)) {
+
+        boolean hasPending = UpdateManager.hasPendingUpdate(context);
+        boolean isOffline = !NetworkUtils.isNetworkAvailable(context);
+        if (hasPending && (isOffline || UpdateManager.isRecentCheckWithinCooldown(context))) {
             String pendingVersion = UpdateManager.getSavedLatestVersion(context);
             String pendingUrl = UpdateManager.getSavedReleaseUrl(context);
             String pendingApk = UpdateManager.getSavedApkUrl(context);
-            Logger.i(TAG, "Opening update dialog with cached update: version=" + pendingVersion);
+            Logger.i(TAG, "Opening cached update dialog immediately (version=" + pendingVersion + ", offline=" + isOffline + ")");
             UpdateManager.showUpdateDialog(requireActivity(), pendingVersion, pendingUrl, pendingApk);
             return;
         }
 
-        if (UpdateManager.isCooldownActive()) {
+        if (!hasPending && UpdateManager.isCooldownActive()) {
             int remaining = UpdateManager.getRemainingCooldownSeconds();
             Logger.w(TAG, "Manual update check blocked by cooldown (" + remaining + "s remaining)");
             Toast.makeText(context, getString(R.string.update_cooldown_toast, remaining), Toast.LENGTH_SHORT).show();

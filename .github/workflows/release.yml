@@ -64,7 +64,11 @@ jobs:
           echo "COMMIT_MSG=$COMMIT_MSG" >> "$GITHUB_ENV"
 
           CHANGELOG_FILE="$GITHUB_WORKSPACE/.github/release-notes/changelist.md"
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${APK_NAME}"
+          BADGE_APK_NAME=$(printf '%s' "$APK_NAME" | sed 's/-/--/g; s/_/__/g; s/ /%20/g')
           {
+            echo "[![Download APK](https://img.shields.io/badge/Download-${BADGE_APK_NAME}-2563EB?style=for-the-badge&logo=android&logoColor=white)](${DOWNLOAD_URL})"
+            echo ""
             echo "## What's changed"
             echo "### ${COMMIT_MSG}"
             echo ""
@@ -85,7 +89,7 @@ jobs:
             echo ""
             echo "| Property | Value |"
             echo "| :--- | :--- |"
-            echo "| **File** | \`${APK_NAME}\` |"
+            echo "| **File** | [\`${APK_NAME}\`](${DOWNLOAD_URL}) |"
             echo "| **Commit** | ${FULL_SHA} (${COMMIT_MSG}) |"
             echo "| **SHA-256** | \`${HASH}\` |"
             echo "| **VirusTotal** | [Scan Report](https://www.virustotal.com/gui/file/${HASH}) |"
@@ -96,6 +100,21 @@ jobs:
             echo "\`\`\`"
             echo ""
             echo "---"
+
+            for LANG_SPEC in "ru:changelist-ru.md" "uk:changelist-ua.md"; do
+              LANG_CODE="${LANG_SPEC%%:*}"
+              LANG_FILE="$GITHUB_WORKSPACE/.github/release-notes/${LANG_SPEC#*:}"
+              if [ -f "$LANG_FILE" ]; then
+                LANG_TRIMMED=$(grep -v '^[[:space:]]*$' "$LANG_FILE" || true)
+                if [ -n "$LANG_TRIMMED" ]; then
+                  SAFE_CONTENT=$(sed 's/--/—/g' "$LANG_FILE")
+                  echo ""
+                  echo "<!-- changelog:${LANG_CODE}"
+                  printf '%s\n' "$SAFE_CONTENT"
+                  echo "-->"
+                fi
+              fi
+            done
           } > "$GITHUB_WORKSPACE/release_notes.md"
 
       - name: Upload APK to VirusTotal

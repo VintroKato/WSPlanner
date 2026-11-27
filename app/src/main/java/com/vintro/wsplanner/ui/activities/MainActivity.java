@@ -6,13 +6,13 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -26,6 +26,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
@@ -49,11 +50,14 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
     private static final String TAG_SCHEDULE = "tab_schedule";
     private static final String TAG_COURSES = "tab_courses";
     private static final String TAG_SETTINGS = "tab_settings";
+    private static final long BOTTOM_NAV_ANIM_DURATION_MS = 260L;
 
     private View mainRoot;
     private View fragmentContainer;
     private View bottomNavDivider;
     private View bottomNavigationBar;
+    private View bottomNavActiveIndicator;
+    private View bottomNavTabsRow;
 
     private View tabCourses;
     private ImageView iconCourses;
@@ -77,9 +81,11 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
     private boolean currentNightMode;
     private boolean isThemeAnimationRunning = false;
     private boolean pendingRecreateHiddenFragments = false;
+    private boolean isIndicatorPositioned = false;
     private ValueAnimator animTabCourses;
     private ValueAnimator animTabSchedule;
     private ValueAnimator animTabSettings;
+    private final FastOutSlowInInterpolator bottomNavInterpolator = new FastOutSlowInInterpolator();
 
     private OnBackPressedCallback backPressedCallback;
 
@@ -161,6 +167,8 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
         fragmentContainer = findViewById(R.id.fragment_container);
         bottomNavDivider = findViewById(R.id.bottom_nav_divider);
         bottomNavigationBar = findViewById(R.id.bottom_navigation);
+        bottomNavActiveIndicator = findViewById(R.id.bottom_nav_active_indicator);
+        bottomNavTabsRow = findViewById(R.id.bottom_nav_tabs_row);
 
         tabCourses = findViewById(R.id.nav_courses);
         iconCourses = findViewById(R.id.nav_courses_icon);
@@ -244,6 +252,15 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
     private void setupBottomNavigation() {
         applyBottomNavTabStates(false);
 
+        if (bottomNavTabsRow != null) {
+            bottomNavTabsRow.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                boolean sizeChanged = (right - left) != (oldRight - oldLeft) || (bottom - top) != (oldBottom - oldTop);
+                if (!isIndicatorPositioned || sizeChanged) {
+                    positionBottomNavIndicator(activeTabId, false);
+                }
+            });
+        }
+
         tabCourses.setOnClickListener(v -> onBottomTabClicked(R.id.nav_courses));
         tabSchedule.setOnClickListener(v -> onBottomTabClicked(R.id.nav_schedule));
         tabSettings.setOnClickListener(v -> onBottomTabClicked(R.id.nav_settings));
@@ -277,12 +294,66 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
         int activeColor = UIHelper.getThemeColor(this, androidx.appcompat.R.attr.colorPrimary);
         int inactiveColor = UIHelper.getThemeColor(this, R.attr.text_muted);
 
-        applySingleTabState(tabCourses, iconCourses, labelCourses, activeTabId == R.id.nav_courses, activeBg, activeColor, inactiveColor);
-        applySingleTabState(tabSchedule, iconSchedule, labelSchedule, activeTabId == R.id.nav_schedule, activeBg, activeColor, inactiveColor);
-        applySingleTabState(tabSettings, iconSettings, labelSettings, activeTabId == R.id.nav_settings, activeBg, activeColor, inactiveColor);
+        applyBottomNavIndicatorColor(activeBg);
+        applySingleTabState(iconCourses, labelCourses, activeTabId == R.id.nav_courses, activeColor, inactiveColor);
+        applySingleTabState(iconSchedule, labelSchedule, activeTabId == R.id.nav_schedule, activeColor, inactiveColor);
+        applySingleTabState(iconSettings, labelSettings, activeTabId == R.id.nav_settings, activeColor, inactiveColor);
+        positionBottomNavIndicator(activeTabId, animate);
+    }
+
+    private void applyBottomNavIndicatorColor(int activeBg) {
+        if (bottomNavActiveIndicator == null) return;
+        Drawable bg = bottomNavActiveIndicator.getBackground();
+        if (bg instanceof GradientDrawable) {
+            GradientDrawable mutable = (GradientDrawable) bg.mutate();
+            mutable.setColor(activeBg);
+            bottomNavActiveIndicator.setBackground(mutable);
+        }
+        bottomNavActiveIndicator.setTag(AnimationHelper.ROLE_BOTTOM_NAV_PILL_ACTIVE);
+    }
+
+    private void positionBottomNavIndicator(int tabId, boolean animate) {
+        View targetTab = getTabView(tabId);
+        if (bottomNavActiveIndicator == null || targetTab == null) return;
+        int targetWidth = targetTab.getWidth();
+        int targetHeight = targetTab.getHeight();
+        if (targetWidth <= 0 || targetHeight <= 0) {
+            return;
+        }
+
+        ViewGroup.LayoutParams lp = bottomNavActiveIndicator.getLayoutParams();
+        if (lp.width != targetWidth || lp.height != targetHeight) {
+            lp.width = targetWidth;
+            lp.height = targetHeight;
+            bottomNavActiveIndicator.setLayoutParams(lp);
+        }
+
+        float targetX = targetTab.getLeft();
+        float targetY = targetTab.getTop();
+        bottomNavActiveIndicator.animate().cancel();
+
+        if (!animate || !isIndicatorPositioned) {
+            bottomNavActiveIndicator.setTranslationX(targetX);
+            bottomNavActiveIndicator.setTranslationY(targetY);
+            isIndicatorPositioned = true;
+            return;
+        }
+
+        bottomNavActiveIndicator.animate()
+                .translationX(targetX)
+                .translationY(targetY)
+                .setDuration(BOTTOM_NAV_ANIM_DURATION_MS)
+                .setInterpolator(bottomNavInterpolator)
+                .start();
     }
 
     private void cancelBottomNavAnimators() {
+        if (bottomNavActiveIndicator != null) {
+            bottomNavActiveIndicator.animate().cancel();
+        }
+        if (iconCourses != null) iconCourses.animate().cancel();
+        if (iconSchedule != null) iconSchedule.animate().cancel();
+        if (iconSettings != null) iconSettings.animate().cancel();
         if (animTabCourses != null) {
             animTabCourses.cancel();
             animTabCourses = null;
@@ -320,82 +391,71 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
         }
     }
 
-    private void applySingleTabState(View pill, ImageView icon, TextView label, boolean selected,
-                                     int activeBg, int activeColor, int inactiveColor) {
-        if (pill == null || icon == null || label == null) return;
-        Drawable bg = pill.getBackground();
-        if (bg instanceof GradientDrawable) {
-            GradientDrawable mutable = (GradientDrawable) bg.mutate();
-            mutable.setColor(selected ? activeBg : Color.TRANSPARENT);
-            pill.setBackground(mutable);
-        }
-        pill.setTag(selected ? AnimationHelper.ROLE_BOTTOM_NAV_PILL_ACTIVE : null);
-
+    private void applySingleTabState(ImageView icon, TextView label, boolean selected,
+                                     int activeColor, int inactiveColor) {
+        if (icon == null || label == null) return;
         int tint = selected ? activeColor : inactiveColor;
         String role = selected ? AnimationHelper.ROLE_PRIMARY : AnimationHelper.ROLE_TEXT_MUTED;
         icon.setImageTintList(ColorStateList.valueOf(tint));
         icon.setTag(role);
+        icon.setScaleX(1f);
+        icon.setScaleY(1f);
         label.setTextColor(tint);
         label.setTag(role);
         label.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
     }
 
     private void animateBottomNavTransition(int oldTabId, int newTabId) {
-        int activeBg = UIHelper.getThemeColor(this, R.attr.bottom_nav_indicator);
         int activeColor = UIHelper.getThemeColor(this, androidx.appcompat.R.attr.colorPrimary);
         int inactiveColor = UIHelper.getThemeColor(this, R.attr.text_muted);
 
-        View oldPill = getTabView(oldTabId);
         ImageView oldIcon = getTabIcon(oldTabId);
         TextView oldLabel = getTabLabel(oldTabId);
 
-        View newPill = getTabView(newTabId);
         ImageView newIcon = getTabIcon(newTabId);
         TextView newLabel = getTabLabel(newTabId);
 
-        if (oldPill != null && oldIcon != null && oldLabel != null) {
+        if (oldIcon != null && oldLabel != null) {
             cancelTabAnimator(oldTabId);
-            oldPill.setTag(null);
             oldIcon.setTag(AnimationHelper.ROLE_TEXT_MUTED);
             oldLabel.setTag(AnimationHelper.ROLE_TEXT_MUTED);
             oldLabel.setTypeface(null, Typeface.NORMAL);
-            ValueAnimator outAnim = animateSingleTabPill(oldPill, oldIcon, oldLabel, activeBg, Color.TRANSPARENT, activeColor, inactiveColor);
+            int startTint = oldLabel.getCurrentTextColor();
+            ValueAnimator outAnim = animateSingleTabForeground(oldIcon, oldLabel, startTint, inactiveColor);
             storeTabAnimator(oldTabId, outAnim);
         }
 
-        if (newPill != null && newIcon != null && newLabel != null) {
+        if (newIcon != null && newLabel != null) {
             cancelTabAnimator(newTabId);
-            newPill.setTag(AnimationHelper.ROLE_BOTTOM_NAV_PILL_ACTIVE);
             newIcon.setTag(AnimationHelper.ROLE_PRIMARY);
             newLabel.setTag(AnimationHelper.ROLE_PRIMARY);
             newLabel.setTypeface(null, Typeface.BOLD);
-            ValueAnimator inAnim = animateSingleTabPill(newPill, newIcon, newLabel, Color.TRANSPARENT, activeBg, inactiveColor, activeColor);
+            int startTint = newLabel.getCurrentTextColor();
+            ValueAnimator inAnim = animateSingleTabForeground(newIcon, newLabel, startTint, activeColor);
             storeTabAnimator(newTabId, inAnim);
 
-            newPill.setScaleX(0.95f);
-            newPill.setScaleY(0.95f);
-            newPill.animate().scaleX(1f).scaleY(1f).setDuration(180).start();
+            newIcon.animate().cancel();
+            newIcon.setScaleX(0.88f);
+            newIcon.setScaleY(0.88f);
+            newIcon.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(BOTTOM_NAV_ANIM_DURATION_MS)
+                    .setInterpolator(bottomNavInterpolator)
+                    .start();
         }
+
+        positionBottomNavIndicator(newTabId, true);
     }
 
-    private ValueAnimator animateSingleTabPill(View pill, ImageView icon, TextView label,
-                                               int startBg, int endBg, int startTint, int endTint) {
-        GradientDrawable drawable = null;
-        if (pill.getBackground() instanceof GradientDrawable) {
-            drawable = (GradientDrawable) pill.getBackground().mutate();
-            pill.setBackground(drawable);
-        }
-        final GradientDrawable targetDrawable = drawable;
+    private ValueAnimator animateSingleTabForeground(ImageView icon, TextView label, int startTint, int endTint) {
         ArgbEvaluator evaluator = new ArgbEvaluator();
         ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
-        animator.setDuration(190);
+        animator.setDuration(BOTTOM_NAV_ANIM_DURATION_MS);
+        animator.setInterpolator(bottomNavInterpolator);
         animator.addUpdateListener(anim -> {
             float fraction = (float) anim.getAnimatedValue();
-            int bgColor = (int) evaluator.evaluate(fraction, startBg, endBg);
             int fgColor = (int) evaluator.evaluate(fraction, startTint, endTint);
-            if (targetDrawable != null) {
-                targetDrawable.setColor(bgColor);
-            }
             icon.setImageTintList(ColorStateList.valueOf(fgColor));
             label.setTextColor(fgColor);
         });

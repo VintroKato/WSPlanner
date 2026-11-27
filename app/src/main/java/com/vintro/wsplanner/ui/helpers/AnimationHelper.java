@@ -17,6 +17,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
@@ -41,7 +42,150 @@ public class AnimationHelper {
     public static final String ROLE_SKIP = "skip_theme_anim";
 
     private static final int animation_duration = 500;
+    private static final long DAY_CARD_ANIM_DURATION_MS = 240L;
+    private static final long DAY_CARD_PULSE_DURATION_MS = 220L;
+    private static final FastOutSlowInInterpolator fastOutSlowInInterpolator = new FastOutSlowInInterpolator();
     private static final List<ValueAnimator> activeThemeAnimators = new ArrayList<>();
+
+    // immutable visual state snapshot for a weekly day strip card
+    public static final class DayCardVisualState {
+        public final int backgroundColor;
+        public final int strokeColor;
+        public final int strokeWidthPx;
+        public final int weekdayTextColor;
+        public final int numberTextColor;
+        public final int dotColor;
+        public final int dashColor;
+        public final float dashAlpha;
+
+        public DayCardVisualState(int backgroundColor, int strokeColor, int strokeWidthPx,
+                                  int weekdayTextColor, int numberTextColor,
+                                  int dotColor, int dashColor, float dashAlpha) {
+            this.backgroundColor = backgroundColor;
+            this.strokeColor = strokeColor;
+            this.strokeWidthPx = strokeWidthPx;
+            this.weekdayTextColor = weekdayTextColor;
+            this.numberTextColor = numberTextColor;
+            this.dotColor = dotColor;
+            this.dashColor = dashColor;
+            this.dashAlpha = dashAlpha;
+        }
+
+        public boolean visualEquals(DayCardVisualState other) {
+            if (this == other) return true;
+            if (other == null) return false;
+            return backgroundColor == other.backgroundColor
+                    && strokeColor == other.strokeColor
+                    && strokeWidthPx == other.strokeWidthPx
+                    && weekdayTextColor == other.weekdayTextColor
+                    && numberTextColor == other.numberTextColor
+                    && dotColor == other.dotColor
+                    && dashColor == other.dashColor
+                    && Float.compare(dashAlpha, other.dashAlpha) == 0;
+        }
+
+        public void applyTo(MaterialCardView card, TextView weekdayText, TextView numberText,
+                            View emptyDash, View[] dots) {
+            if (card != null) {
+                card.setCardBackgroundColor(backgroundColor);
+                card.setStrokeWidth(strokeWidthPx);
+                card.setStrokeColor(strokeColor);
+            }
+            if (weekdayText != null) {
+                weekdayText.setTextColor(weekdayTextColor);
+            }
+            if (numberText != null) {
+                numberText.setTextColor(numberTextColor);
+            }
+            if (emptyDash != null && emptyDash.getVisibility() == View.VISIBLE) {
+                emptyDash.setBackgroundTintList(ColorStateList.valueOf(dashColor));
+                emptyDash.setAlpha(dashAlpha);
+            }
+            if (dots != null) {
+                ColorStateList dotTint = ColorStateList.valueOf(dotColor);
+                for (View dot : dots) {
+                    if (dot != null && dot.getVisibility() == View.VISIBLE) {
+                        dot.setBackgroundTintList(dotTint);
+                    }
+                }
+            }
+        }
+    }
+
+    @FunctionalInterface
+    public interface DayCardStateListener {
+        void onStateUpdated(DayCardVisualState state);
+    }
+
+    // smoothly morph a day strip card between two visual states using a single animator
+    public static ValueAnimator animateDayStripCard(MaterialCardView card,
+                                                    TextView weekdayText,
+                                                    TextView numberText,
+                                                    View emptyDash,
+                                                    View[] dots,
+                                                    DayCardVisualState from,
+                                                    DayCardVisualState to,
+                                                    boolean pulseScale,
+                                                    DayCardStateListener stateListener) {
+        if (card == null || from == null || to == null) {
+            return null;
+        }
+        ArgbEvaluator evaluator = new ArgbEvaluator();
+        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+        animator.setDuration(DAY_CARD_ANIM_DURATION_MS);
+        animator.setInterpolator(fastOutSlowInInterpolator);
+        animator.addUpdateListener(anim -> {
+            float f = (float) anim.getAnimatedValue();
+            int bg = (int) evaluator.evaluate(f, from.backgroundColor, to.backgroundColor);
+            int strokeColor = (int) evaluator.evaluate(f, from.strokeColor, to.strokeColor);
+            int strokeWidth = Math.round(from.strokeWidthPx + (to.strokeWidthPx - from.strokeWidthPx) * f);
+            int weekdayColor = (int) evaluator.evaluate(f, from.weekdayTextColor, to.weekdayTextColor);
+            int numberColor = (int) evaluator.evaluate(f, from.numberTextColor, to.numberTextColor);
+            int dotColor = (int) evaluator.evaluate(f, from.dotColor, to.dotColor);
+            int dashColor = (int) evaluator.evaluate(f, from.dashColor, to.dashColor);
+            float dashAlpha = from.dashAlpha + (to.dashAlpha - from.dashAlpha) * f;
+
+            DayCardVisualState frameState = new DayCardVisualState(
+                    bg, strokeColor, strokeWidth, weekdayColor, numberColor, dotColor, dashColor, dashAlpha
+            );
+            frameState.applyTo(card, weekdayText, numberText, emptyDash, dots);
+            if (stateListener != null) {
+                stateListener.onStateUpdated(frameState);
+            }
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            private boolean cancelled = false;
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                cancelled = true;
+            }
+
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (!cancelled) {
+                    to.applyTo(card, weekdayText, numberText, emptyDash, dots);
+                    if (stateListener != null) {
+                        stateListener.onStateUpdated(to);
+                    }
+                }
+            }
+        });
+        animator.start();
+
+        if (pulseScale) {
+            card.animate().cancel();
+            card.setScaleX(0.96f);
+            card.setScaleY(0.96f);
+            card.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(DAY_CARD_PULSE_DURATION_MS)
+                    .setInterpolator(fastOutSlowInInterpolator)
+                    .start();
+        }
+        return animator;
+    }
 
     public static synchronized void cancelActiveThemeAnimators() {
         for (ValueAnimator animator : new ArrayList<>(activeThemeAnimators)) {

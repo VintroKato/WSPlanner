@@ -24,6 +24,7 @@ import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.TooltipCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -178,6 +179,7 @@ public class SubjectDetailsActivity extends AppCompatActivity {
 
         buttonBack.setOnClickListener(v -> finish());
         buttonOpenCourse.setOnClickListener(v -> handleOpenPuwCourse());
+        TooltipCompat.setTooltipText(buttonOpenCourse, getString(R.string.subject_open_puw_course_tooltip));
         buttonCopyTeacherEmail.setOnClickListener(v -> copyTeacherEmailToClipboard());
         heroTeacherEmail.setOnClickListener(v -> handleTeacherEmailClick());
     }

@@ -17,8 +17,10 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.TooltipCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.viewpager2.widget.CompositePageTransformer;
 import androidx.viewpager2.widget.MarginPageTransformer;
@@ -98,6 +100,7 @@ public class ScheduleFragment extends Fragment {
     private boolean isSyncSpinning = false;
     private boolean isOpeningPuw = false;
     private boolean isRebuildingWeekStrip = false;
+    private boolean pendingWeekdaysRebuild = false;
     private ObjectAnimator syncSpinAnimator;
 
     private final Handler tickerHandler = new Handler(Looper.getMainLooper());
@@ -186,6 +189,9 @@ public class ScheduleFragment extends Fragment {
         scheduleViewPager = view.findViewById(R.id.schedule_view_pager);
         fabBackToToday = view.findViewById(R.id.fab_back_to_today);
         iconBackToToday = view.findViewById(R.id.icon_back_to_today);
+
+        TooltipCompat.setTooltipText(buttonOpenPuw, getString(R.string.schedule_open_puw_tooltip));
+        TooltipCompat.setTooltipText(buttonOpenFile, getString(R.string.widget_action_open_excel));
 
         setupSwipeRefreshColors();
     }
@@ -290,6 +296,20 @@ public class ScheduleFragment extends Fragment {
             innerRecycler.setClipToPadding(false);
             innerRecycler.setClipChildren(false);
             innerRecycler.setOverScrollMode(View.OVER_SCROLL_NEVER);
+            RecyclerView.ItemAnimator itemAnimator = innerRecycler.getItemAnimator();
+            if (itemAnimator instanceof SimpleItemAnimator) {
+                ((SimpleItemAnimator) itemAnimator).setSupportsChangeAnimations(false);
+            }
+            // keep page transformer alpha and margins accurate after dataset or visibility changes
+            innerRecycler.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+                if (weekStripPager != null && weekStripPager.getVisibility() == View.VISIBLE) {
+                    weekStripPager.post(() -> {
+                        if (weekStripPager != null && isAdded()) {
+                            weekStripPager.requestTransform();
+                        }
+                    });
+                }
+            });
         }
 
         CompositePageTransformer transformer = new CompositePageTransformer();
@@ -390,9 +410,19 @@ public class ScheduleFragment extends Fragment {
         if (weekPos == RecyclerView.NO_POSITION) return;
         if (weekStripPager.getCurrentItem() != weekPos) {
             weekStripPager.setCurrentItem(weekPos, smooth);
+        } else if (!smooth) {
+            View child = weekStripPager.getChildAt(0);
+            if (child instanceof RecyclerView) {
+                ((RecyclerView) child).scrollToPosition(weekPos);
+            }
         }
+        requestWeekStripTransform();
+    }
+
+    private void requestWeekStripTransform() {
+        if (weekStripPager == null) return;
         weekStripPager.post(() -> {
-            if (weekStripPager != null) {
+            if (weekStripPager != null && isAdded()) {
                 weekStripPager.requestTransform();
             }
         });
@@ -415,7 +445,14 @@ public class ScheduleFragment extends Fragment {
 
     public void onVisibleWeekdaysChanged() {
         if (!isAdded()) return;
+        // defer ViewPager2 rebuild while fragment is hidden so pages never lay out with stale alpha
+        if (isHidden() || getView() == null || !isResumed()) {
+            Logger.d(TAG, "Deferred visible weekdays rebuild until ScheduleFragment becomes visible");
+            pendingWeekdaysRebuild = true;
+            return;
+        }
         Logger.i(TAG, "Visible weekdays changed, rebuilding schedule date list");
+        pendingWeekdaysRebuild = false;
         extraPickedDate = null;
         rebuildVisibleDates(true, false);
         if (dayPagerAdapter != null && scheduleViewPager != null) {
@@ -814,7 +851,7 @@ public class ScheduleFragment extends Fragment {
         LocalDate today = LocalDate.now();
         boolean midnightChanged = !today.isEqual(anchorToday);
         Set<DayOfWeek> prefDays = PreferencesManager.getVisibleWeekdaysPref(requireContext());
-        boolean weekdaysChanged = !prefDays.equals(activeVisibleWeekdays);
+        boolean weekdaysChanged = pendingWeekdaysRebuild || !prefDays.equals(activeVisibleWeekdays);
 
         if (midnightChanged && selectedDate.isBefore(today)) {
             selectedDate = today;
@@ -823,9 +860,15 @@ public class ScheduleFragment extends Fragment {
         if (midnightChanged || weekdaysChanged) {
             Logger.i(TAG + ".syncStateIfActive", "Rebuilding visible dates (midnightChanged=" + midnightChanged + ", weekdaysChanged=" + weekdaysChanged + ")");
             if (weekdaysChanged) {
+                pendingWeekdaysRebuild = false;
                 extraPickedDate = null;
             }
             rebuildVisibleDates(true, false);
+            if (weekdaysChanged && dayPagerAdapter != null && scheduleViewPager != null) {
+                dayPagerAdapter.onScheduleLoaded(RecyclerView.NO_POSITION);
+            }
+        } else {
+            requestWeekStripTransform();
         }
 
         updateMonthHeader();

@@ -20,149 +20,160 @@
         android:background="?attr/divider_color"
         android:tag="divider" />
 
-    <!-- Custom 3-tab bottom bar: Courses - Schedule (center) - Settings -->
-    <LinearLayout
+    <!-- Custom 3-tab bottom bar with sliding active pill: Courses - Schedule (center) - Settings -->
+    <FrameLayout
         android:id="@+id/bottom_navigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?attr/bottom_nav_bg"
-        android:orientation="horizontal"
         android:paddingHorizontal="12dp"
         android:paddingTop="6dp"
         android:paddingBottom="6dp"
         android:tag="bottom_nav_bar">
 
-        <!-- Left tab: Courses -->
-        <LinearLayout
-            android:id="@+id/nav_courses"
+        <View
+            android:id="@+id/bottom_nav_active_indicator"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="4dp"
-            android:layout_weight="1"
+            android:layout_height="0dp"
+            android:layout_gravity="start|top"
             android:background="@drawable/bg_bottom_nav_pill"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:minHeight="52dp"
-            android:orientation="vertical"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="6dp">
+            android:tag="bottom_nav_pill_active" />
 
-            <ImageView
-                android:id="@+id/nav_courses_icon"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_book_type"
-                android:tag="text_muted"
-                app:tint="?attr/text_muted" />
+        <LinearLayout
+            android:id="@+id/bottom_nav_tabs_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/nav_courses_label"
-                android:layout_width="wrap_content"
+            <!-- Left tab: Courses -->
+            <LinearLayout
+                android:id="@+id/nav_courses"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:ellipsize="end"
-                android:fontFamily="sans-serif-medium"
-                android:maxLines="1"
-                android:tag="text_muted"
-                android:text="@string/nav_courses"
-                android:textColor="?attr/text_muted"
-                android:textSize="11.5sp" />
-        </LinearLayout>
-
-        <!-- Center tab: Schedule (default) -->
-        <LinearLayout
-            android:id="@+id/nav_schedule"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="4dp"
-            android:layout_weight="1"
-            android:background="@drawable/bg_bottom_nav_pill"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:minHeight="52dp"
-            android:orientation="vertical"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="6dp">
-
-            <ImageView
-                android:id="@+id/nav_schedule_icon"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_calendar"
-                android:tag="text_muted"
-                app:tint="?attr/text_muted" />
-
-            <TextView
-                android:id="@+id/nav_schedule_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:ellipsize="end"
-                android:fontFamily="sans-serif-medium"
-                android:maxLines="1"
-                android:tag="text_muted"
-                android:text="@string/nav_schedule"
-                android:textColor="?attr/text_muted"
-                android:textSize="11.5sp" />
-        </LinearLayout>
-
-        <!-- Right tab: Settings -->
-        <LinearLayout
-            android:id="@+id/nav_settings"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="4dp"
-            android:layout_weight="1"
-            android:background="@drawable/bg_bottom_nav_pill"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:minHeight="52dp"
-            android:orientation="vertical"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="6dp">
-
-            <FrameLayout
-                android:layout_width="28dp"
-                android:layout_height="22dp">
+                android:layout_marginHorizontal="4dp"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:minHeight="52dp"
+                android:orientation="vertical"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="6dp">
 
                 <ImageView
-                    android:id="@+id/nav_settings_icon"
+                    android:id="@+id/nav_courses_icon"
                     android:layout_width="22dp"
                     android:layout_height="22dp"
-                    android:layout_gravity="center"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_settings"
+                    android:src="@drawable/ic_book_type"
                     android:tag="text_muted"
                     app:tint="?attr/text_muted" />
 
-                <View
-                    android:id="@+id/nav_settings_update_dot"
-                    android:layout_width="7dp"
-                    android:layout_height="7dp"
-                    android:layout_gravity="top|end"
-                    android:background="@drawable/bg_update_dot"
-                    android:tag="skip_theme_anim"
-                    android:visibility="gone" />
-            </FrameLayout>
+                <TextView
+                    android:id="@+id/nav_courses_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:tag="text_muted"
+                    android:text="@string/nav_courses"
+                    android:textColor="?attr/text_muted"
+                    android:textSize="11.5sp" />
+            </LinearLayout>
 
-            <TextView
-                android:id="@+id/nav_settings_label"
-                android:layout_width="wrap_content"
+            <!-- Center tab: Schedule (default) -->
+            <LinearLayout
+                android:id="@+id/nav_schedule"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:ellipsize="end"
-                android:fontFamily="sans-serif-medium"
-                android:maxLines="1"
-                android:tag="text_muted"
-                android:text="@string/nav_settings"
-                android:textColor="?attr/text_muted"
-                android:textSize="11.5sp" />
+                android:layout_marginHorizontal="4dp"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:minHeight="52dp"
+                android:orientation="vertical"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="6dp">
+
+                <ImageView
+                    android:id="@+id/nav_schedule_icon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_calendar"
+                    android:tag="text_muted"
+                    app:tint="?attr/text_muted" />
+
+                <TextView
+                    android:id="@+id/nav_schedule_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:tag="text_muted"
+                    android:text="@string/nav_schedule"
+                    android:textColor="?attr/text_muted"
+                    android:textSize="11.5sp" />
+            </LinearLayout>
+
+            <!-- Right tab: Settings -->
+            <LinearLayout
+                android:id="@+id/nav_settings"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="4dp"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:minHeight="52dp"
+                android:orientation="vertical"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="6dp">
+
+                <FrameLayout
+                    android:layout_width="28dp"
+                    android:layout_height="22dp">
+
+                    <ImageView
+                        android:id="@+id/nav_settings_icon"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_settings"
+                        android:tag="text_muted"
+                        app:tint="?attr/text_muted" />
+
+                    <View
+                        android:id="@+id/nav_settings_update_dot"
+                        android:layout_width="7dp"
+                        android:layout_height="7dp"
+                        android:layout_gravity="top|end"
+                        android:background="@drawable/bg_update_dot"
+                        android:tag="skip_theme_anim"
+                        android:visibility="gone" />
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/nav_settings_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:tag="text_muted"
+                    android:text="@string/nav_settings"
+                    android:textColor="?attr/text_muted"
+                    android:textSize="11.5sp" />
+            </LinearLayout>
         </LinearLayout>
-    </LinearLayout>
+    </FrameLayout>
 
 </LinearLayout>

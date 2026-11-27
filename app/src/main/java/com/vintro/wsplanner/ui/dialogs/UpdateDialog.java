@@ -26,6 +26,8 @@ import androidx.core.widget.NestedScrollView;
 import com.google.android.material.button.MaterialButton;
 import com.vintro.wsplanner.BuildConfig;
 import com.vintro.wsplanner.R;
+import com.vintro.wsplanner.data.preferences.PreferencesManager;
+import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.services.UpdateManager;
 import com.vintro.wsplanner.utils.Logger;
 
@@ -243,21 +245,13 @@ public class UpdateDialog {
                     if (fallbackDesc != null) {
                         fallbackDesc.setVisibility(View.GONE);
                     }
+                    Language appLanguage = PreferencesManager.getLanguagePref(context);
+                    Logger.d(TAG, "Rendering changelog for app language: " + appLanguage);
                     for (int i = 0; i < array.length(); i++) {
                         JSONObject verObj = array.getJSONObject(i);
                         String verTag = verObj.optString("version", targetVersion);
-                        String verTitle = verObj.optString("title", "");
-                        JSONArray itemsJson = verObj.optJSONArray("items");
-
-                        List<String> items = new ArrayList<>();
-                        if (itemsJson != null) {
-                            for (int j = 0; j < itemsJson.length(); j++) {
-                                String item = itemsJson.optString(j, "").trim();
-                                if (!item.isEmpty()) {
-                                    items.add(item);
-                                }
-                            }
-                        }
+                        String verTitle = resolveLocalizedTitle(verObj, appLanguage);
+                        List<String> items = resolveLocalizedItems(verObj, appLanguage);
 
                         boolean isLast = (i == array.length() - 1);
                         renderVersionItem(context, inflater, container, verTag, verTitle, items, isLast);
@@ -332,6 +326,45 @@ public class UpdateDialog {
         }
 
         container.addView(versionView);
+    }
+
+    private static String resolveLocalizedTitle(@NonNull JSONObject verObj, @Nullable Language appLanguage) {
+        if (appLanguage == Language.RUSSIAN) {
+            String ruTitle = verObj.optString("title_ru", "").trim();
+            if (!ruTitle.isEmpty()) return ruTitle;
+        } else if (appLanguage == Language.UKRAINIAN) {
+            String ukTitle = verObj.optString("title_uk", "").trim();
+            if (!ukTitle.isEmpty()) return ukTitle;
+        }
+        return verObj.optString("title", "").trim();
+    }
+
+    private static List<String> resolveLocalizedItems(@NonNull JSONObject verObj, @Nullable Language appLanguage) {
+        JSONArray localized = null;
+        if (appLanguage == Language.RUSSIAN) {
+            localized = verObj.optJSONArray("items_ru");
+        } else if (appLanguage == Language.UKRAINIAN) {
+            localized = verObj.optJSONArray("items_uk");
+        }
+
+        List<String> localizedItems = readNonEmptyStrings(localized);
+        if (!localizedItems.isEmpty()) {
+            return localizedItems;
+        }
+        return readNonEmptyStrings(verObj.optJSONArray("items"));
+    }
+
+    private static List<String> readNonEmptyStrings(@Nullable JSONArray array) {
+        List<String> items = new ArrayList<>();
+        if (array != null) {
+            for (int j = 0; j < array.length(); j++) {
+                String item = array.optString(j, "").trim();
+                if (!item.isEmpty()) {
+                    items.add(item);
+                }
+            }
+        }
+        return items;
     }
 
     private static String formatBadgeText(@NonNull Context context, int resId, @NonNull String version) {

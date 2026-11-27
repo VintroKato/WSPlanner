@@ -135,7 +135,7 @@
     <string name="teacher_email_not_found">E-mail not found</string>
     <string name="teacher_email_copied">Email copied to clipboard</string>
     <string name="teacher_email_copy_desc">Copy teacher email</string>
-    <string name="subject_opening_puw_course">Searching for course on PUW…</string>
+    <string name="subject_opening_puw_course">Opening course on PUW…</string>
     <string name="subject_course_not_found">Course not found on PUW. Opening dashboard…</string>
     <string name="maps_hint_format">(Google Maps: %1$s ↗)</string>
     <string name="maps_hint_wspa">(Google Maps: WSPA Lublin, ul. Bursaki 12 ↗)</string>
@@ -281,4 +281,6 @@
     <string name="settings_telegram_button" translatable="false">Telegram</string>
     <string name="schedule_open_puw_desc">Open PUW</string>
     <string name="schedule_opening_puw">Opening PUW…</string>
+    <string name="schedule_open_puw_tooltip">Open PUW home screen</string>
+    <string name="subject_open_puw_course_tooltip">Open course page in PUW</string>
 </resources>
