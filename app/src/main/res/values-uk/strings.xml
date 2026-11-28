@@ -297,7 +297,7 @@
     <string name="settings_cache_cleared_toast">Кеш очищено, оновлюємо розклад…</string>
     <string name="settings_cache_cleared_offline_toast">Кеш очищено</string>
     <string name="widget_theme_auto">Авто</string>
-    <string name="widget_next_class_header">Наступна пара · %1$s, %2$s</string>
+    <string name="widget_next_class_header">Наступна пара: %1$s, %2$s</string>
 
     <!-- Update progress and install permission -->
     <string name="update_dialog_downloading_progress">Завантаження %1$d%% (%2$s / %3$s)</string>
@@ -305,6 +305,40 @@
 
     <!-- Teacher profile and notes badge -->
     <string name="teacher_open_profile">Відкрити профіль викладача</string>
-    <string name="teacher_email_retry_hint">Немає інтернету · Натисніть для повтору</string>
+    <string name="teacher_email_retry_hint">Немає інтернету • Натисніть для повтору</string>
     <string name="subject_has_note_desc">Є нотатка</string>
+
+    <!-- Online class notifications -->
+    <string name="notification_channel_online_name">Нагадування про онлайн-пари</string>
+    <string name="notification_channel_online_desc">Сповіщення про початок онлайн-занять у PUW</string>
+    <string name="notification_online_starts_now">Пара починається зараз (%1$s)</string>
+    <string name="notification_online_starts_in">Почнеться за %1$d хв (%2$s)</string>
+    <string name="notification_online_big_starts_now">Пара починається зараз</string>
+    <string name="notification_online_big_starts_in">Почнеться за %1$d хв</string>
+    <string name="notification_action_open_puw">Відкрити в PUW</string>
+
+    <!-- Settings: Notifications -->
+    <string name="settings_section_notifications">Сповіщення</string>
+    <string name="settings_notifications_online_title">Нагадування про онлайн-пари</string>
+    <string name="settings_notifications_online_subtitle">Сповіщати о початку занять у PUW</string>
+    <string name="settings_notifications_lead_label">Нагадати за (хв)  •  Можна обрати кілька</string>
+    <string name="settings_notifications_custom_hint">Своє</string>
+    <string name="settings_notifications_min_one">Залиште принаймні один час нагадування</string>
+    <string name="settings_notifications_summary_single_start">Сповіщення прийде в момент початку пари </string>
+    <string name="settings_notifications_summary_single_before">Сповіщення прийде за %1$d хв до початку</string>
+    <string name="settings_notifications_summary_multi">Прийде сповіщень: %1$d (%2$s)</string>
+    <string name="settings_notifications_token_start">на початку</string>
+    <string name="settings_notifications_token_before">за %1$d хв</string>
+    <string name="settings_notifications_permission_dialog_title">Сповіщення вимкнено</string>
+    <string name="settings_notifications_permission_dialog_desc">Дозвольте сповіщення для WSPlanner у системних налаштуваннях Android, щоб отримувати нагадування про онлайн-пари.</string>
+    <string name="settings_notifications_open_system_settings">Відкрити налаштування</string>
+    <string name="settings_notifications_cancel">Скасувати</string>
+    <string name="settings_notifications_denied_toast">Дозвіл не надано. Увімкнути сповіщення можна пізніше в Налаштуваннях</string>
+
+    <!-- First-launch notification promo dialog -->
+    <string name="notification_promo_title">Нагадування про онлайн-пари</string>
+    <string name="notification_promo_desc">Застосунок нагадає про початок онлайн-занять і дозволить одразу перейти на курс у PUW одним натисканням.\n\nЗа замовчуванням сповіщення приходить у момент початку пари (0 хв). Час можна змінити або вимкнути функцію в Налаштуваннях.</string>
+    <string name="notification_promo_enable">Увімкнути сповіщення</string>
+    <string name="notification_promo_later">Не зараз</string>
+    <string name="notification_promo_enabled_toast">Сповіщення увімкнено (на початку пари). Змінити можна в Налаштуваннях</string>
 </resources>

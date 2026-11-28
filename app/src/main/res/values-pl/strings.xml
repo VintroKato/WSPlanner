@@ -297,7 +297,7 @@
     <string name="settings_cache_cleared_toast">Wyczyszczono pamięć, pobieranie planu…</string>
     <string name="settings_cache_cleared_offline_toast">Pamięć podręczna wyczyszczona</string>
     <string name="widget_theme_auto">Auto</string>
-    <string name="widget_next_class_header">Następne zajęcia · %1$s, %2$s</string>
+    <string name="widget_next_class_header">Następne zajęcia: %1$s, %2$s</string>
 
     <!-- Update progress and install permission -->
     <string name="update_dialog_downloading_progress">Pobieranie %1$d%% (%2$s / %3$s)</string>
@@ -305,6 +305,40 @@
 
     <!-- Teacher profile and notes badge -->
     <string name="teacher_open_profile">Otwórz profil wykładowcy</string>
-    <string name="teacher_email_retry_hint">Brak internetu · Dotknij, aby ponowić</string>
+    <string name="teacher_email_retry_hint">Brak internetu • Dotknij, aby ponowić</string>
     <string name="subject_has_note_desc">Zapisana notatka</string>
+
+    <!-- Online class notifications -->
+    <string name="notification_channel_online_name">Przypomnienia o zajęciach online</string>
+    <string name="notification_channel_online_desc">Powiadomienia przed rozpoczęciem zajęć online na PUW</string>
+    <string name="notification_online_starts_now">Zajęcia właśnie się zaczynają (%1$s)</string>
+    <string name="notification_online_starts_in">Start za %1$d min (%2$s)</string>
+    <string name="notification_online_big_starts_now">Zajęcia właśnie się zaczynają</string>
+    <string name="notification_online_big_starts_in">Start za %1$d min</string>
+    <string name="notification_action_open_puw">Otwórz w PUW</string>
+
+    <!-- Settings: Notifications -->
+    <string name="settings_section_notifications">Powiadomienia</string>
+    <string name="settings_notifications_online_title">Przypomnienia o zajęciach online</string>
+    <string name="settings_notifications_online_subtitle">Powiadamiaj o rozpoczęciu zajęć na PUW</string>
+    <string name="settings_notifications_lead_label">Przypomnij przed (min)  •  Możesz wybrać kilka</string>
+    <string name="settings_notifications_custom_hint">Inne</string>
+    <string name="settings_notifications_min_one">Pozostaw co najmniej jeden wybrany czas</string>
+    <string name="settings_notifications_summary_single_start">Powiadomienie przyjdzie w momencie rozpoczęcia</string>
+    <string name="settings_notifications_summary_single_before">Powiadomienie przyjdzie %1$d min przed startem</string>
+    <string name="settings_notifications_summary_multi">Wyślemy %1$d powiadomień: %2$s</string>
+    <string name="settings_notifications_token_start">na start</string>
+    <string name="settings_notifications_token_before">%1$d min przed</string>
+    <string name="settings_notifications_permission_dialog_title">Powiadomienia są zablokowane</string>
+    <string name="settings_notifications_permission_dialog_desc">Włącz powiadomienia dla WSPlanner w ustawieniach systemu Android, aby otrzymywać przypomnienia o zajęciach online.</string>
+    <string name="settings_notifications_open_system_settings">Otwórz ustawienia</string>
+    <string name="settings_notifications_cancel">Anuluj</string>
+    <string name="settings_notifications_denied_toast">Brak zgody. Powiadomienia możesz włączyć w każdej chwili w Ustawieniach</string>
+
+    <!-- First-launch notification promo dialog -->
+    <string name="notification_promo_title">Przypomnienia o zajęciach online</string>
+    <string name="notification_promo_desc">Otrzymuj powiadomienie o rozpoczęciu zajęć online na PUW i przechodź od razu do kursu jednym kliknięciem.\n\nDomyślnie przypomnienie przychodzi w momencie startu zajęć (0 min). Czas możesz zmienić lub wyłączyć funkcję w Ustawieniach.</string>
+    <string name="notification_promo_enable">Włącz powiadomienia</string>
+    <string name="notification_promo_later">Nie teraz</string>
+    <string name="notification_promo_enabled_toast">Przypomnienia włączone (0 min). Czas możesz zmienić w Ustawieniach</string>
 </resources>

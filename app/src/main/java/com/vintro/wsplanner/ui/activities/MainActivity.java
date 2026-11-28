@@ -1,5 +1,6 @@
 package com.vintro.wsplanner.ui.activities;
 
+import android.Manifest;
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
@@ -15,9 +16,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
@@ -34,8 +38,11 @@ import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.DegreeLevel;
 import com.vintro.wsplanner.network.PUW;
 import com.vintro.wsplanner.network.StudyPlanScraper;
+import com.vintro.wsplanner.notifications.OnlineLessonNotificationManager;
+import com.vintro.wsplanner.notifications.OnlineLessonNotificationScheduler;
 import com.vintro.wsplanner.services.ScheduleSyncWorker;
 import com.vintro.wsplanner.services.UpdateManager;
+import com.vintro.wsplanner.ui.dialogs.NotificationPromoDialog;
 import com.vintro.wsplanner.ui.fragments.AllCoursesFragment;
 import com.vintro.wsplanner.ui.fragments.ScheduleFragment;
 import com.vintro.wsplanner.ui.fragments.SettingsFragment;
@@ -46,6 +53,7 @@ import com.vintro.wsplanner.utils.AppExecutors;
 import com.vintro.wsplanner.utils.Logger;
 
 import java.time.LocalDate;
+import java.util.Collections;
 
 public class MainActivity extends AppCompatActivity implements SettingsFragment.SettingsHost {
     private static final String TAG = "MainActivity";
@@ -94,11 +102,17 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
     private final FastOutSlowInInterpolator bottomNavInterpolator = new FastOutSlowInInterpolator();
 
     private OnBackPressedCallback backPressedCallback;
+    private ActivityResultLauncher<String> promoNotificationPermissionLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Logger.d(TAG + ".onCreate", "MainActivity created");
+
+        promoNotificationPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                this::handlePromoNotificationPermissionResult
+        );
 
         ScheduleRepository scheduleRepository = ScheduleRepository.getInstance(this);
 
@@ -195,10 +209,74 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
         setupBottomNavigation();
         updateSettingsUpdateBadge();
         ScheduleSyncWorker.ensurePeriodicSyncScheduled(this);
+        if (PreferencesManager.isOnlineNotificationsEnabled(this)) {
+            OnlineLessonNotificationScheduler.rescheduleNextAsync(this);
+        }
         if (savedInstanceState == null) {
             AppExecutors.runIo(() -> UpdateManager.cleanupDownloadedApks(getApplicationContext()));
+            maybeShowNotificationPromoDialog();
         }
         checkAppUpdates();
+    }
+
+    private void maybeShowNotificationPromoDialog() {
+        if (PreferencesManager.isNotificationPromoShown(this)
+                || PreferencesManager.isOnlineNotificationsEnabled(this)) {
+            return;
+        }
+        PreferencesManager.setNotificationPromoShown(this, true);
+        NotificationPromoDialog.show(this, new NotificationPromoDialog.Callback() {
+            @Override
+            public void onEnableClicked() {
+                handlePromoEnableClicked();
+            }
+
+            @Override
+            public void onDismissed() {
+                Logger.d(TAG, "Notification promo dialog dismissed, keeping reminders disabled");
+            }
+        });
+    }
+
+    private void handlePromoEnableClicked() {
+        if (OnlineLessonNotificationManager.hasNotificationPermission(this)) {
+            activateOnlineNotificationsFromPromo();
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            PreferencesManager.setNotificationPermissionRequested(this, true);
+            Logger.i(TAG, "Requesting POST_NOTIFICATIONS permission from discovery dialog");
+            promoNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            return;
+        }
+        Toast.makeText(this, R.string.settings_notifications_denied_toast, Toast.LENGTH_LONG).show();
+    }
+
+    private void handlePromoNotificationPermissionResult(boolean isGranted) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        Logger.i(TAG, "POST_NOTIFICATIONS permission result from discovery dialog: granted=" + isGranted);
+        if (isGranted && OnlineLessonNotificationManager.hasNotificationPermission(this)) {
+            activateOnlineNotificationsFromPromo();
+        } else {
+            Toast.makeText(this, R.string.settings_notifications_denied_toast, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void activateOnlineNotificationsFromPromo() {
+        PreferencesManager.setOnlineNotificationsEnabled(this, true);
+        PreferencesManager.setNotificationLeadMinutes(
+                this,
+                Collections.singletonList(OnlineLessonNotificationScheduler.DEFAULT_LEAD_MINUTES)
+        );
+        PreferencesManager.setNotificationCustomMinutes(this, null);
+        OnlineLessonNotificationManager.ensureChannel(this);
+        OnlineLessonNotificationScheduler.rescheduleNextAsync(this);
+        if (settingsFragment != null && settingsFragment.isAdded()) {
+            settingsFragment.refreshNotificationUI();
+        }
+        Toast.makeText(this, R.string.notification_promo_enabled_toast, Toast.LENGTH_LONG).show();
     }
 
     private void setupEdgeToEdgeInsets() {
@@ -685,6 +763,7 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
     public void onLanguageChanged() {
         Logger.i(TAG + ".onLanguageChanged", "Recreating MainActivity without animation to apply new locale on settings tab");
         UIHelper.setSelectedLanguage(this);
+        OnlineLessonNotificationManager.ensureChannel(this);
         if (WidgetUpdateManager.hasActiveWidgets(this)) {
             WidgetUpdateManager.updateAllWidgets(this);
         }
@@ -790,6 +869,7 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
                 .setCancelable(false)
                 .setPositiveButton(R.string.keystore_error_reset, (dialog, which) -> {
                     ScheduleSyncWorker.cancelPeriodicSync(this);
+                    OnlineLessonNotificationScheduler.cancelScheduledAlarm(this);
                     PUW.clearSession();
                     StudyPlanScraper.clearUrlCache(this);
                     ScheduleRepository.getInstance(this).invalidateCache();

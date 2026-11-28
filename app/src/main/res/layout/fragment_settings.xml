@@ -717,6 +717,242 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Notifications section -->
+        <TextView
+            android:id="@+id/notifications_section_header"
+            style="@style/WSPlanner.SectionHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="20dp"
+            android:tag="text_muted"
+            android:text="@string/settings_section_notifications" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_notifications_group"
+            style="@style/WSPlanner.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp">
+
+            <LinearLayout
+                android:id="@+id/layout_notifications_card_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Online classes reminder toggle row -->
+                <LinearLayout
+                    android:id="@+id/row_notifications_toggle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="56dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="12dp">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_notifications"
+                        android:tag="text_secondary"
+                        app:tint="?attr/text_secondary" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="10dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tv_notifications_title"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="@string/settings_notifications_online_title"
+                            android:textColor="?attr/app_text"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:id="@+id/tv_notifications_subtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:tag="text_secondary"
+                            android:text="@string/settings_notifications_online_subtitle"
+                            android:textColor="?attr/text_secondary"
+                            android:textSize="12.5sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_online_notifications"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <!-- Expandable lead-time selector -->
+                <LinearLayout
+                    android:id="@+id/layout_notifications_options"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/divider_color"
+                        android:tag="divider" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <TextView
+                            android:id="@+id/tv_notifications_lead_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:tag="text_secondary"
+                            android:text="@string/settings_notifications_lead_label"
+                            android:textColor="?attr/text_secondary"
+                            android:textSize="13sp" />
+
+                        <LinearLayout
+                            android:id="@+id/notification_lead_container"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.card.MaterialCardView
+                                android:id="@+id/card_notif_0"
+                                style="@style/WSPlanner.SelectableCard"
+                                android:layout_width="0dp"
+                                android:layout_height="38dp"
+                                android:layout_weight="1"
+                                app:cardCornerRadius="12dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:gravity="center"
+                                    android:text="0"
+                                    android:textColor="?attr/app_text"
+                                    android:textSize="13sp"
+                                    android:textStyle="bold" />
+                            </com.google.android.material.card.MaterialCardView>
+
+                            <com.google.android.material.card.MaterialCardView
+                                android:id="@+id/card_notif_5"
+                                style="@style/WSPlanner.SelectableCard"
+                                android:layout_width="0dp"
+                                android:layout_height="38dp"
+                                android:layout_marginStart="6dp"
+                                android:layout_weight="1"
+                                app:cardCornerRadius="12dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:gravity="center"
+                                    android:text="5"
+                                    android:textColor="?attr/app_text"
+                                    android:textSize="13sp"
+                                    android:textStyle="bold" />
+                            </com.google.android.material.card.MaterialCardView>
+
+                            <com.google.android.material.card.MaterialCardView
+                                android:id="@+id/card_notif_10"
+                                style="@style/WSPlanner.SelectableCard"
+                                android:layout_width="0dp"
+                                android:layout_height="38dp"
+                                android:layout_marginStart="6dp"
+                                android:layout_weight="1"
+                                app:cardCornerRadius="12dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:gravity="center"
+                                    android:text="10"
+                                    android:textColor="?attr/app_text"
+                                    android:textSize="13sp"
+                                    android:textStyle="bold" />
+                            </com.google.android.material.card.MaterialCardView>
+
+                            <com.google.android.material.card.MaterialCardView
+                                android:id="@+id/card_notif_15"
+                                style="@style/WSPlanner.SelectableCard"
+                                android:layout_width="0dp"
+                                android:layout_height="38dp"
+                                android:layout_marginStart="6dp"
+                                android:layout_weight="1"
+                                app:cardCornerRadius="12dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:gravity="center"
+                                    android:text="15"
+                                    android:textColor="?attr/app_text"
+                                    android:textSize="13sp"
+                                    android:textStyle="bold" />
+                            </com.google.android.material.card.MaterialCardView>
+
+                            <EditText
+                                android:id="@+id/edit_notif_custom"
+                                android:layout_width="0dp"
+                                android:layout_height="38dp"
+                                android:layout_marginStart="6dp"
+                                android:layout_weight="1.45"
+                                android:background="@drawable/shape_notif_custom_input"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:hint="@string/settings_notifications_custom_hint"
+                                android:imeOptions="actionDone"
+                                android:importantForAutofill="no"
+                                android:inputType="number"
+                                android:maxLength="3"
+                                android:paddingHorizontal="6dp"
+                                android:singleLine="true"
+                                android:tag="card_input"
+                                android:textColor="?attr/app_text"
+                                android:textColorHint="?attr/input_hint"
+                                android:textSize="12.5sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tv_notifications_summary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:lineSpacingExtra="2dp"
+                            android:tag="text_muted"
+                            android:textColor="?attr/text_muted"
+                            android:textSize="12sp"
+                            tools:text="Уведомление придёт в момент начала пары. Можно выбрать несколько" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- App and support section -->
         <TextView
             android:id="@+id/app_section_header"

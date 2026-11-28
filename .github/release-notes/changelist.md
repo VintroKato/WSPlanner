@@ -1,9 +1,4 @@
-- Added automatic theme for widgets and instant auto-save in widget settings
-- Widgets now show the next upcoming class when there are no classes today and highlight the active class in the daily widget
-- Reduced battery usage and improved widget reliability on newer Android versions
-- Localized lesson types
-- Added a note indicator on lesson cards when a subject has a saved note
-- Made teacher names clickable to open their WSPA profile page, with tap-to-retry for offline email loading
-- Added a "Clear cache & refresh" button in Settings
-- Improved in-app updates with download progress, clearer install permission prompts, and automatic cleanup of downloaded APK files
-- Fixed schedule parsing issues, secure storage recovery errors, and several stability bugs
+- Added reminder notifications for online classes on PUW
+- Notifications include a quick "Open in PUW" button to jump straight to the course
+- Added notification settings with flexible timing (0, 5, 10, 15 min, or a custom value) and support for multiple reminders per class
+- Added a one-time prompt on first launch to easily turn on online class reminders

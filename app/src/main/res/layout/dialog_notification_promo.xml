@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="20dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_dialog_surface"
+        android:elevation="8dp"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- Header: Icon, Title, and Close -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <FrameLayout
+                android:id="@+id/dialog_notif_icon_container"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/bg_recessed_chip">
+
+                <ImageView
+                    android:id="@+id/dialog_notif_icon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_notifications"
+                    app:tint="?attr/colorPrimary" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/dialog_notif_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="6dp"
+                android:layout_toStartOf="@+id/dialog_notif_close"
+                android:layout_toEndOf="@+id/dialog_notif_icon_container"
+                android:text="@string/notification_promo_title"
+                android:textColor="?attr/app_text"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <ImageButton
+                android:id="@+id/dialog_notif_close"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/common_close"
+                android:src="@drawable/ic_close"
+                app:tint="?attr/text_secondary" />
+        </RelativeLayout>
+
+        <!-- Description -->
+        <TextView
+            android:id="@+id/dialog_notif_desc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:lineSpacingExtra="3dp"
+            android:text="@string/notification_promo_desc"
+            android:textColor="?attr/text_secondary"
+            android:textSize="14sp" />
+
+        <!-- Action Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:orientation="vertical">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/dialog_notif_btn_enable"
+                style="@style/WSPlanner.PrimaryButton"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:minHeight="50dp"
+                android:text="@string/notification_promo_enable"
+                android:textSize="15sp"
+                app:icon="@drawable/ic_notifications"
+                app:iconGravity="textStart"
+                app:iconSize="18dp"
+                app:iconTint="?attr/button_text" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/dialog_notif_btn_later"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:layout_marginTop="4dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="@string/notification_promo_later"
+                android:textColor="?attr/text_secondary"
+                android:textSize="14sp"
+                app:cornerRadius="14dp" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

@@ -24,6 +24,7 @@ import com.vintro.wsplanner.enums.DegreeLevel;
 import com.vintro.wsplanner.enums.InputState;
 import com.vintro.wsplanner.enums.StudyMode;
 import com.vintro.wsplanner.network.StudyPlanScraper;
+import com.vintro.wsplanner.notifications.OnlineLessonNotificationScheduler;
 import com.vintro.wsplanner.services.CourseSetupService;
 import com.vintro.wsplanner.services.ScheduleSyncWorker;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
@@ -337,12 +338,14 @@ public class SetupAdditionalActivity extends AppCompatActivity {
 
         // clear cached schedule and puw url cache so new course data loads fresh
         StudyPlanScraper.clearUrlCache(this);
+        PreferencesManager.clearDeliveredNotificationKeys(this);
         ScheduleRepository.getInstance(this).invalidateCache();
         ScheduleSyncWorker.ensurePeriodicSyncScheduled(this);
         if (WidgetUpdateManager.hasActiveWidgets(this)) {
             WidgetUpdateManager.updateAllWidgets(this);
             WidgetUpdateManager.scheduleNextAlarm(this);
         }
+        OnlineLessonNotificationScheduler.rescheduleNextAsync(this);
 
         Logger.i("SetupAdditionalActivity.finishSetup", "Onboarding setup completed successfully (major=" + major + ", degree=" + degreeLevel + ", mode=" + studyMode + ", year=" + year + ", surname=" + Logger.maskSurname(enteredSurname) + "). Navigating to MainActivity.");
 

@@ -16,6 +16,7 @@ import com.vintro.wsplanner.models.Schedule;
 import com.vintro.wsplanner.models.SubjectDetails;
 import com.vintro.wsplanner.network.PUW;
 import com.vintro.wsplanner.network.StudyPlanScraper;
+import com.vintro.wsplanner.notifications.OnlineLessonNotificationScheduler;
 import com.vintro.wsplanner.parser.ParserFactory;
 import com.vintro.wsplanner.parser.ScheduleParser;
 import com.vintro.wsplanner.ui.widgets.WidgetUpdateManager;
@@ -62,7 +63,7 @@ public class ScheduleRepository {
 
     private static final long COOLDOWN_SECONDS = 30;
     private static final long BG_COOLDOWN_SECONDS = 300;
-    private static final long STALE_THRESHOLD_MINUTES = 30;
+    private static final long STALE_THRESHOLD_MINUTES = 5;
     private static final long URL_CACHE_TTL_MS = 24L * 60L * 60L * 1000L;
     public static final long AUTO_REFRESH_INTERVAL_HOURS = 6;
 
@@ -380,6 +381,20 @@ public class ScheduleRepository {
 
         ensureLocalCacheLoadedOnly();
         return createDayScheduleForDate(date);
+    }
+
+    // get all cached lessons synchronously strictly from local memory or disk without network access
+    public List<Lesson> getAllLessonsSync() {
+        if (!isConfigurationComplete()) {
+            return Collections.emptyList();
+        }
+        ensureLocalCacheLoadedOnly();
+        synchronized (cacheLock) {
+            if (cachedAllLessons == null || cachedAllLessons.isEmpty()) {
+                return Collections.emptyList();
+            }
+            return Collections.unmodifiableList(new ArrayList<>(cachedAllLessons));
+        }
     }
 
     // check if in-memory lesson cache is loaded without re-reading preferences on every swipe
@@ -937,6 +952,9 @@ public class ScheduleRepository {
             }
             if (!PreferencesManager.hasVisibleWeekdaysPref(appContext)) {
                 PreferencesManager.initRecommendedVisibleDays(appContext, parsedSnapshot, mode);
+            }
+            if (PreferencesManager.isOnlineNotificationsEnabled(appContext)) {
+                OnlineLessonNotificationScheduler.rescheduleNextAsync(appContext);
             }
         } catch (Exception e) {
             Logger.e(TAG + ".parseFile", "Error parsing schedule file: " + Logger.formatException(e), e);

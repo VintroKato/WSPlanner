@@ -309,7 +309,7 @@
 
     <!-- Widget auto theme and next class preview -->
     <string name="widget_theme_auto">Auto</string>
-    <string name="widget_next_class_header">Next class · %1$s, %2$s</string>
+    <string name="widget_next_class_header">Next class: %1$s, %2$s</string>
 
     <!-- Update progress and install permission -->
     <string name="update_dialog_downloading_progress">Downloading %1$d%% (%2$s / %3$s)</string>
@@ -317,6 +317,40 @@
 
     <!-- Teacher profile and notes badge -->
     <string name="teacher_open_profile">Open teacher profile</string>
-    <string name="teacher_email_retry_hint">No internet · Tap to retry</string>
+    <string name="teacher_email_retry_hint">No internet • Tap to retry</string>
     <string name="subject_has_note_desc">Has saved note</string>
+
+    <!-- Online class notifications -->
+    <string name="notification_channel_online_name">Online class reminders</string>
+    <string name="notification_channel_online_desc">Reminders before your online classes on PUW start</string>
+    <string name="notification_online_starts_now">Class starts now (%1$s)</string>
+    <string name="notification_online_starts_in">Starts in %1$d min (%2$s)</string>
+    <string name="notification_online_big_starts_now">Class starts now</string>
+    <string name="notification_online_big_starts_in">Starts in %1$d min</string>
+    <string name="notification_action_open_puw">Open in PUW</string>
+
+    <!-- Settings: Notifications -->
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_notifications_online_title">Online class reminders</string>
+    <string name="settings_notifications_online_subtitle">Notify about online classes on PUW start</string>
+    <string name="settings_notifications_lead_label">Remind before (min)  •  You can pick multiple</string>
+    <string name="settings_notifications_custom_hint">Custom</string>
+    <string name="settings_notifications_min_one">Keep at least one reminder time selected</string>
+    <string name="settings_notifications_summary_single_start">Notification arrives when class starts</string>
+    <string name="settings_notifications_summary_single_before">Notification arrives %1$d min before start</string>
+    <string name="settings_notifications_summary_multi">Will send %1$d notifications: %2$s</string>
+    <string name="settings_notifications_token_start">at start</string>
+    <string name="settings_notifications_token_before">%1$d min before</string>
+    <string name="settings_notifications_permission_dialog_title">Notifications are blocked</string>
+    <string name="settings_notifications_permission_dialog_desc">Enable notifications for WSPlanner in Android system settings to receive online class reminders.</string>
+    <string name="settings_notifications_open_system_settings">Open settings</string>
+    <string name="settings_notifications_cancel">Cancel</string>
+    <string name="settings_notifications_denied_toast">Permission not granted. You can enable notifications anytime in Settings</string>
+
+    <!-- First-launch notification promo dialog -->
+    <string name="notification_promo_title">Online class reminders</string>
+    <string name="notification_promo_desc">Get notified when your online classes on PUW are starting and jump straight into the course in one tap.\n\nBy default, reminders arrive right at class start (0 min). You can change the timing or disable them anytime in Settings.</string>
+    <string name="notification_promo_enable">Enable notifications</string>
+    <string name="notification_promo_later">Not now</string>
+    <string name="notification_promo_enabled_toast">Reminders enabled (at class start). You can adjust timing in Settings</string>
 </resources>

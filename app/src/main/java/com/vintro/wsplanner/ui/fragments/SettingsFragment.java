@@ -1,23 +1,39 @@
 package com.vintro.wsplanner.ui.fragments;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.transition.AutoTransition;
+import android.transition.TransitionManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import com.vintro.wsplanner.BuildConfig;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
@@ -28,6 +44,8 @@ import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.enums.StudyMode;
 import com.vintro.wsplanner.models.DaySchedule;
 import com.vintro.wsplanner.network.StudyPlanScraper;
+import com.vintro.wsplanner.notifications.OnlineLessonNotificationManager;
+import com.vintro.wsplanner.notifications.OnlineLessonNotificationScheduler;
 import com.vintro.wsplanner.services.TeacherEmailService;
 import com.vintro.wsplanner.services.UpdateManager;
 import com.vintro.wsplanner.ui.activities.StudentPanelActivity;
@@ -42,11 +60,16 @@ import com.vintro.wsplanner.utils.NetworkUtils;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.TextStyle;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 public class SettingsFragment extends Fragment {
     private static final String TAG = "SettingsFragment";
@@ -88,6 +111,23 @@ public class SettingsFragment extends Fragment {
     private View dividerWidgets;
     private View rowWidgetSettings;
 
+    private View notificationsSectionHeader;
+    private MaterialCardView cardNotificationsGroup;
+    private ViewGroup layoutNotificationsCardContent;
+    private View rowNotificationsToggle;
+    private MaterialSwitch switchOnlineNotifications;
+    private View layoutNotificationsOptions;
+    private final Map<Integer, MaterialCardView> notificationPresetCards = new LinkedHashMap<>();
+    private EditText editNotifCustom;
+    private TextView tvNotificationsSummary;
+    private final Set<Integer> selectedPresetOffsets = new TreeSet<>();
+    @Nullable
+    private Integer customLeadMinutes = null;
+    private boolean isSyncingNotificationUi = false;
+    private boolean pendingEnableAfterSystemSettings = false;
+
+    private ActivityResultLauncher<String> notificationPermissionLauncher;
+
     private View rowCheckUpdate;
     private View viewUpdateDot;
     private TextView tvAppVersion;
@@ -108,6 +148,10 @@ public class SettingsFragment extends Fragment {
         if (getArguments() != null) {
             isPreOnboarding = getArguments().getBoolean(ARG_PRE_ONBOARDING, false);
         }
+        notificationPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                this::handleNotificationPermissionResult
+        );
     }
 
     @Nullable
@@ -142,6 +186,15 @@ public class SettingsFragment extends Fragment {
         dividerWidgets = view.findViewById(R.id.divider_widgets);
         rowWidgetSettings = view.findViewById(R.id.row_widget_settings);
 
+        notificationsSectionHeader = view.findViewById(R.id.notifications_section_header);
+        cardNotificationsGroup = view.findViewById(R.id.card_notifications_group);
+        layoutNotificationsCardContent = view.findViewById(R.id.layout_notifications_card_content);
+        rowNotificationsToggle = view.findViewById(R.id.row_notifications_toggle);
+        switchOnlineNotifications = view.findViewById(R.id.switch_online_notifications);
+        layoutNotificationsOptions = view.findViewById(R.id.layout_notifications_options);
+        editNotifCustom = view.findViewById(R.id.edit_notif_custom);
+        tvNotificationsSummary = view.findViewById(R.id.tv_notifications_summary);
+
         rowCheckUpdate = view.findViewById(R.id.row_check_update);
         viewUpdateDot = view.findViewById(R.id.view_update_dot);
         tvAppVersion = view.findViewById(R.id.tv_app_version);
@@ -170,6 +223,8 @@ public class SettingsFragment extends Fragment {
             if (layoutVisibleDaysSection != null) layoutVisibleDaysSection.setVisibility(View.GONE);
             if (dividerWidgets != null) dividerWidgets.setVisibility(View.GONE);
             if (rowWidgetSettings != null) rowWidgetSettings.setVisibility(View.GONE);
+            if (notificationsSectionHeader != null) notificationsSectionHeader.setVisibility(View.GONE);
+            if (cardNotificationsGroup != null) cardNotificationsGroup.setVisibility(View.GONE);
             if (dividerClearCache != null) dividerClearCache.setVisibility(View.GONE);
             if (rowClearCache != null) rowClearCache.setVisibility(View.GONE);
         } else {
@@ -182,6 +237,7 @@ public class SettingsFragment extends Fragment {
                 populateProfileSummary();
             }
             setupVisibleWeekdaysControls(view);
+            setupNotificationControls(view);
             if (rowWidgetSettings != null) {
                 rowWidgetSettings.setOnClickListener(v -> {
                     Logger.d(TAG, "Navigating to WidgetConfigureActivity");
@@ -329,6 +385,516 @@ public class SettingsFragment extends Fragment {
         name = name.replace(".", "").trim();
         if (name.isEmpty()) return "";
         return name.substring(0, 1).toUpperCase(locale) + name.substring(1).toLowerCase(locale);
+    }
+
+    private void setupNotificationControls(View root) {
+        if (notificationsSectionHeader != null) {
+            notificationsSectionHeader.setVisibility(View.VISIBLE);
+        }
+        if (cardNotificationsGroup != null) {
+            cardNotificationsGroup.setVisibility(View.VISIBLE);
+        }
+
+        notificationPresetCards.clear();
+        bindNotificationPresetCard(root, R.id.card_notif_0, 0);
+        bindNotificationPresetCard(root, R.id.card_notif_5, 5);
+        bindNotificationPresetCard(root, R.id.card_notif_10, 10);
+        bindNotificationPresetCard(root, R.id.card_notif_15, 15);
+
+        if (rowNotificationsToggle != null && switchOnlineNotifications != null) {
+            rowNotificationsToggle.setOnClickListener(v -> switchOnlineNotifications.performClick());
+        }
+
+        if (switchOnlineNotifications != null) {
+            switchOnlineNotifications.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (isSyncingNotificationUi || !isAdded()) {
+                    return;
+                }
+                handleNotificationSwitchToggle(isChecked);
+            });
+        }
+
+        if (editNotifCustom != null) {
+            editNotifCustom.setOnFocusChangeListener((v, hasFocus) -> {
+                if (!isAdded()) {
+                    return;
+                }
+                if (hasFocus) {
+                    AnimationHelper.applySelectableInputStyle(requireContext(), editNotifCustom, true, customLeadMinutes != null, true);
+                } else {
+                    finalizeCustomNotificationInput();
+                }
+            });
+
+            editNotifCustom.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    editNotifCustom.clearFocus();
+                    hideKeyboard(editNotifCustom);
+                    return true;
+                }
+                return false;
+            });
+
+            editNotifCustom.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    if (isSyncingNotificationUi || !isAdded()) {
+                        return;
+                    }
+                    handleCustomNotificationTextChanged(s != null ? s.toString() : "");
+                }
+            });
+        }
+
+        refreshNotificationUI(false);
+    }
+
+    private void bindNotificationPresetCard(View root, int cardId, int minutes) {
+        MaterialCardView card = root.findViewById(cardId);
+        if (card == null) {
+            return;
+        }
+        notificationPresetCards.put(minutes, card);
+        card.setOnClickListener(v -> toggleNotificationPreset(minutes, card));
+    }
+
+    public void refreshNotificationUI() {
+        refreshNotificationUI(false);
+    }
+
+    private void refreshNotificationUI(boolean animateExpand) {
+        if (!isAdded() || switchOnlineNotifications == null) {
+            return;
+        }
+        Context context = requireContext();
+        boolean hasPermission = OnlineLessonNotificationManager.hasNotificationPermission(context);
+
+        if (pendingEnableAfterSystemSettings) {
+            pendingEnableAfterSystemSettings = false;
+            if (hasPermission) {
+                Logger.i(TAG, "User granted notification permission in system settings, enabling reminders");
+                enableOnlineNotifications(true);
+                return;
+            }
+        }
+
+        boolean prefEnabled = PreferencesManager.isOnlineNotificationsEnabled(context);
+        boolean effectiveEnabled = prefEnabled && hasPermission;
+        if (prefEnabled && !hasPermission) {
+            Logger.w(TAG, "Notification permission revoked externally, turning off in-app toggle");
+            PreferencesManager.setOnlineNotificationsEnabled(context, false);
+            OnlineLessonNotificationScheduler.cancelScheduledAlarm(context);
+        }
+
+        selectedPresetOffsets.clear();
+        customLeadMinutes = null;
+
+        List<Integer> savedOffsets = PreferencesManager.getNotificationLeadMinutes(context);
+        Integer savedCustom = PreferencesManager.getNotificationCustomMinutes(context);
+        for (int minutes : savedOffsets) {
+            if (notificationPresetCards.containsKey(minutes)) {
+                selectedPresetOffsets.add(minutes);
+            } else if (customLeadMinutes == null) {
+                customLeadMinutes = minutes;
+            }
+        }
+        if (customLeadMinutes == null && savedCustom != null && !notificationPresetCards.containsKey(savedCustom)
+                && savedOffsets.contains(savedCustom)) {
+            customLeadMinutes = savedCustom;
+        }
+        if (selectedPresetOffsets.isEmpty() && customLeadMinutes == null) {
+            selectedPresetOffsets.add(OnlineLessonNotificationScheduler.DEFAULT_LEAD_MINUTES);
+        }
+
+        isSyncingNotificationUi = true;
+        try {
+            switchOnlineNotifications.setChecked(effectiveEnabled);
+            for (Map.Entry<Integer, MaterialCardView> entry : notificationPresetCards.entrySet()) {
+                UIHelper.setSelectableCardChecked(context, entry.getValue(), selectedPresetOffsets.contains(entry.getKey()));
+            }
+            if (editNotifCustom != null) {
+                if (customLeadMinutes != null) {
+                    editNotifCustom.setText(String.valueOf(customLeadMinutes));
+                } else {
+                    editNotifCustom.setText("");
+                }
+                AnimationHelper.applySelectableInputStyle(
+                        context,
+                        editNotifCustom,
+                        editNotifCustom.hasFocus(),
+                        customLeadMinutes != null,
+                        false
+                );
+            }
+        } finally {
+            isSyncingNotificationUi = false;
+        }
+
+        setNotificationOptionsExpanded(effectiveEnabled, animateExpand);
+        updateNotificationsSummary();
+    }
+
+    private void handleNotificationSwitchToggle(boolean isChecked) {
+        Context context = requireContext();
+        if (!isChecked) {
+            Logger.i(TAG, "User disabled online class notifications");
+            PreferencesManager.setOnlineNotificationsEnabled(context, false);
+            PreferencesManager.clearDeliveredNotificationKeys(context);
+            if (editNotifCustom != null) {
+                editNotifCustom.clearFocus();
+                hideKeyboard(editNotifCustom);
+            }
+            setNotificationOptionsExpanded(false, true);
+            OnlineLessonNotificationScheduler.cancelScheduledAlarm(context);
+            return;
+        }
+
+        if (OnlineLessonNotificationManager.hasNotificationPermission(context)) {
+            enableOnlineNotifications(true);
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            boolean runtimeGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                    == PackageManager.PERMISSION_GRANTED;
+            if (runtimeGranted) {
+                setNotificationSwitchSilently(false);
+                showOpenNotificationSettingsDialog();
+                return;
+            }
+
+            boolean alreadyRequested = PreferencesManager.wasNotificationPermissionRequested(context);
+            boolean canShowRationale = shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS);
+            if (!alreadyRequested || canShowRationale) {
+                setNotificationSwitchSilently(false);
+                PreferencesManager.setNotificationPermissionRequested(context, true);
+                Logger.i(TAG, "Requesting POST_NOTIFICATIONS runtime permission from Settings");
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            } else {
+                setNotificationSwitchSilently(false);
+                showOpenNotificationSettingsDialog();
+            }
+            return;
+        }
+
+        setNotificationSwitchSilently(false);
+        showOpenNotificationSettingsDialog();
+    }
+
+    private void handleNotificationPermissionResult(boolean isGranted) {
+        if (!isAdded()) {
+            return;
+        }
+        Context context = requireContext();
+        Logger.i(TAG, "POST_NOTIFICATIONS permission result in Settings: granted=" + isGranted);
+        if (isGranted && OnlineLessonNotificationManager.hasNotificationPermission(context)) {
+            enableOnlineNotifications(true);
+            return;
+        }
+
+        setNotificationSwitchSilently(false);
+        setNotificationOptionsExpanded(false, true);
+
+        boolean permanentlyDenied = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS);
+        if (permanentlyDenied) {
+            showOpenNotificationSettingsDialog();
+        } else {
+            Toast.makeText(context, R.string.settings_notifications_denied_toast, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void enableOnlineNotifications(boolean animate) {
+        if (!isAdded()) {
+            return;
+        }
+        Context context = requireContext();
+        Logger.i(TAG, "Enabling online class notifications in Settings");
+        PreferencesManager.setOnlineNotificationsEnabled(context, true);
+        if (selectedPresetOffsets.isEmpty() && customLeadMinutes == null) {
+            selectedPresetOffsets.add(OnlineLessonNotificationScheduler.DEFAULT_LEAD_MINUTES);
+        }
+        persistNotificationOffsets(context);
+        OnlineLessonNotificationManager.ensureChannel(context);
+
+        setNotificationSwitchSilently(true);
+        for (Map.Entry<Integer, MaterialCardView> entry : notificationPresetCards.entrySet()) {
+            UIHelper.setSelectableCardChecked(context, entry.getValue(), selectedPresetOffsets.contains(entry.getKey()));
+        }
+        if (editNotifCustom != null) {
+            AnimationHelper.applySelectableInputStyle(
+                    context,
+                    editNotifCustom,
+                    editNotifCustom.hasFocus(),
+                    customLeadMinutes != null,
+                    false
+            );
+        }
+        setNotificationOptionsExpanded(true, animate);
+        updateNotificationsSummary();
+        OnlineLessonNotificationScheduler.rescheduleNextAsync(context);
+    }
+
+    private void setNotificationSwitchSilently(boolean checked) {
+        if (switchOnlineNotifications == null) {
+            return;
+        }
+        isSyncingNotificationUi = true;
+        try {
+            switchOnlineNotifications.setChecked(checked);
+        } finally {
+            isSyncingNotificationUi = false;
+        }
+    }
+
+    private void setNotificationOptionsExpanded(boolean expanded, boolean animate) {
+        if (layoutNotificationsOptions == null) {
+            return;
+        }
+        int targetVisibility = expanded ? View.VISIBLE : View.GONE;
+        if (layoutNotificationsOptions.getVisibility() == targetVisibility) {
+            return;
+        }
+        if (animate && settingsRoot instanceof ViewGroup) {
+            AutoTransition transition = new AutoTransition();
+            transition.setDuration(200);
+            TransitionManager.beginDelayedTransition((ViewGroup) settingsRoot, transition);
+        }
+        layoutNotificationsOptions.setVisibility(targetVisibility);
+    }
+
+    private void toggleNotificationPreset(int minutes, MaterialCardView card) {
+        if (!isAdded()) {
+            return;
+        }
+        Context context = requireContext();
+        boolean wasPresetSelected = selectedPresetOffsets.contains(minutes);
+        boolean matchedFocusedCustom = customLeadMinutes != null && customLeadMinutes == minutes;
+
+        if (editNotifCustom != null && editNotifCustom.hasFocus()) {
+            editNotifCustom.clearFocus();
+            hideKeyboard(editNotifCustom);
+        }
+
+        if (matchedFocusedCustom && !wasPresetSelected) {
+            return;
+        }
+
+        boolean isSelected = selectedPresetOffsets.contains(minutes);
+        if (isSelected) {
+            if (selectedPresetOffsets.size() <= 1 && customLeadMinutes == null) {
+                Logger.d(TAG, "Prevented unselecting last notification lead time: " + minutes);
+                Toast.makeText(context, R.string.settings_notifications_min_one, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            selectedPresetOffsets.remove(minutes);
+            AnimationHelper.animateCardSelection(context, card, false);
+        } else {
+            selectedPresetOffsets.add(minutes);
+            AnimationHelper.animateCardSelection(context, card, true);
+            if (customLeadMinutes != null && customLeadMinutes == minutes) {
+                clearCustomInputField(context);
+            }
+        }
+
+        Logger.i(TAG, "User toggled notification lead preset " + minutes + " min -> selected=" + !isSelected);
+        persistNotificationOffsets(context);
+        updateNotificationsSummary();
+        OnlineLessonNotificationScheduler.rescheduleNextAsync(context);
+    }
+
+    private void handleCustomNotificationTextChanged(String rawText) {
+        Context context = requireContext();
+        String trimmed = rawText.trim();
+        if (trimmed.isEmpty()) {
+            customLeadMinutes = null;
+            AnimationHelper.applySelectableInputStyle(context, editNotifCustom, editNotifCustom.hasFocus(), false, true);
+            if (!selectedPresetOffsets.isEmpty()) {
+                persistNotificationOffsets(context);
+                updateNotificationsSummary();
+                OnlineLessonNotificationScheduler.rescheduleNextAsync(context);
+            }
+            return;
+        }
+
+        int parsed;
+        try {
+            parsed = Integer.parseInt(trimmed);
+        } catch (NumberFormatException e) {
+            return;
+        }
+
+        if (parsed > OnlineLessonNotificationScheduler.MAX_LEAD_MINUTES) {
+            parsed = OnlineLessonNotificationScheduler.MAX_LEAD_MINUTES;
+            isSyncingNotificationUi = true;
+            try {
+                String clampedStr = String.valueOf(parsed);
+                editNotifCustom.setText(clampedStr);
+                editNotifCustom.setSelection(clampedStr.length());
+            } finally {
+                isSyncingNotificationUi = false;
+            }
+        }
+
+        customLeadMinutes = parsed;
+        AnimationHelper.applySelectableInputStyle(context, editNotifCustom, editNotifCustom.hasFocus(), true, true);
+        persistNotificationOffsets(context);
+        updateNotificationsSummary();
+        OnlineLessonNotificationScheduler.rescheduleNextAsync(context);
+    }
+
+    private void finalizeCustomNotificationInput() {
+        if (!isAdded()) {
+            return;
+        }
+        Context context = requireContext();
+        if (customLeadMinutes != null && notificationPresetCards.containsKey(customLeadMinutes)) {
+            int matchedPreset = customLeadMinutes;
+            selectedPresetOffsets.add(matchedPreset);
+            MaterialCardView presetCard = notificationPresetCards.get(matchedPreset);
+            if (presetCard != null) {
+                AnimationHelper.animateCardSelection(context, presetCard, true);
+            }
+            clearCustomInputField(context);
+        } else if (editNotifCustom != null) {
+            AnimationHelper.applySelectableInputStyle(context, editNotifCustom, false, customLeadMinutes != null, true);
+        }
+
+        if (selectedPresetOffsets.isEmpty() && customLeadMinutes == null) {
+            int fallback = OnlineLessonNotificationScheduler.DEFAULT_LEAD_MINUTES;
+            selectedPresetOffsets.add(fallback);
+            MaterialCardView defaultCard = notificationPresetCards.get(fallback);
+            if (defaultCard != null) {
+                AnimationHelper.animateCardSelection(context, defaultCard, true);
+            }
+        }
+
+        persistNotificationOffsets(context);
+        updateNotificationsSummary();
+        OnlineLessonNotificationScheduler.rescheduleNextAsync(context);
+    }
+
+    private void clearCustomInputField(Context context) {
+        customLeadMinutes = null;
+        if (editNotifCustom != null) {
+            isSyncingNotificationUi = true;
+            try {
+                editNotifCustom.setText("");
+            } finally {
+                isSyncingNotificationUi = false;
+            }
+            AnimationHelper.applySelectableInputStyle(context, editNotifCustom, editNotifCustom.hasFocus(), false, true);
+        }
+    }
+
+    private void persistNotificationOffsets(Context context) {
+        TreeSet<Integer> combined = new TreeSet<>(selectedPresetOffsets);
+        if (customLeadMinutes != null) {
+            combined.add(customLeadMinutes);
+        }
+        if (combined.isEmpty()) {
+            combined.add(OnlineLessonNotificationScheduler.DEFAULT_LEAD_MINUTES);
+        }
+        PreferencesManager.setNotificationLeadMinutes(context, combined);
+        PreferencesManager.setNotificationCustomMinutes(context, customLeadMinutes);
+    }
+
+    private void updateNotificationsSummary() {
+        if (!isAdded() || tvNotificationsSummary == null) {
+            return;
+        }
+        TreeSet<Integer> combined = new TreeSet<>(selectedPresetOffsets);
+        if (customLeadMinutes != null) {
+            combined.add(customLeadMinutes);
+        }
+        if (combined.isEmpty()) {
+            combined.add(OnlineLessonNotificationScheduler.DEFAULT_LEAD_MINUTES);
+        }
+
+        List<Integer> chronological = new ArrayList<>(combined);
+        chronological.sort(Collections.reverseOrder());
+
+        if (chronological.size() == 1) {
+            int only = chronological.get(0);
+            if (only == 0) {
+                tvNotificationsSummary.setText(R.string.settings_notifications_summary_single_start);
+            } else {
+                tvNotificationsSummary.setText(getString(R.string.settings_notifications_summary_single_before, only));
+            }
+            return;
+        }
+
+        StringBuilder tokens = new StringBuilder();
+        for (int i = 0; i < chronological.size(); i++) {
+            int minutes = chronological.get(i);
+            if (i > 0) {
+                tokens.append(", ");
+            }
+            if (minutes == 0) {
+                tokens.append(getString(R.string.settings_notifications_token_start));
+            } else {
+                tokens.append(getString(R.string.settings_notifications_token_before, minutes));
+            }
+        }
+        tvNotificationsSummary.setText(getString(
+                R.string.settings_notifications_summary_multi,
+                chronological.size(),
+                tokens.toString()
+        ));
+    }
+
+    private void showOpenNotificationSettingsDialog() {
+        if (!isAdded() || getActivity() == null) {
+            return;
+        }
+        Context context = requireContext();
+        Logger.i(TAG, "Showing dialog directing user to Android notification settings");
+        new AlertDialog.Builder(context)
+                .setTitle(R.string.settings_notifications_permission_dialog_title)
+                .setMessage(R.string.settings_notifications_permission_dialog_desc)
+                .setPositiveButton(R.string.settings_notifications_open_system_settings, (dialog, which) -> {
+                    pendingEnableAfterSystemSettings = true;
+                    openAppNotificationSettings();
+                })
+                .setNegativeButton(R.string.settings_notifications_cancel, null)
+                .show();
+    }
+
+    private void openAppNotificationSettings() {
+        if (!isAdded()) {
+            return;
+        }
+        Context context = requireContext();
+        try {
+            Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+            intent.putExtra(Settings.EXTRA_APP_PACKAGE, context.getPackageName());
+            startActivity(intent);
+        } catch (Exception e) {
+            Logger.w(TAG, "Failed opening notification settings directly, falling back to app details: " + Logger.formatException(e));
+            try {
+                Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                fallback.setData(Uri.fromParts("package", context.getPackageName(), null));
+                startActivity(fallback);
+            } catch (Exception ex) {
+                Logger.e(TAG, "Failed opening app details settings: " + Logger.formatException(ex));
+            }
+        }
+    }
+
+    private void hideKeyboard(@Nullable View view) {
+        if (!isAdded() || view == null) {
+            return;
+        }
+        InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
     }
 
     @Nullable
@@ -677,6 +1243,7 @@ public class SettingsFragment extends Fragment {
             if (!isPreOnboarding && PreferencesManager.isOnboardingCompleted(requireContext())) {
                 populateProfileSummary();
                 refreshVisibleWeekdaysSelection();
+                refreshNotificationUI(false);
             }
         }
     }
@@ -684,12 +1251,18 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onHiddenChanged(boolean hidden) {
         super.onHiddenChanged(hidden);
-        if (!hidden && isResumed()) {
+        if (hidden) {
+            if (editNotifCustom != null && editNotifCustom.hasFocus()) {
+                editNotifCustom.clearFocus();
+                hideKeyboard(editNotifCustom);
+            }
+        } else if (isResumed()) {
             currentNightMode = UIHelper.isNightMode(requireContext());
             refreshUpdateUI();
             if (!isPreOnboarding && PreferencesManager.isOnboardingCompleted(requireContext())) {
                 populateProfileSummary();
                 refreshVisibleWeekdaysSelection();
+                refreshNotificationUI(false);
             }
         }
     }
@@ -697,6 +1270,10 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onPause() {
         super.onPause();
+        if (editNotifCustom != null && editNotifCustom.hasFocus()) {
+            editNotifCustom.clearFocus();
+            hideKeyboard(editNotifCustom);
+        }
         if (themeAnimationInProgress && getActivity() != null) {
             themeAnimationInProgress = false;
             AnimationHelper.cancelActiveThemeAnimators();

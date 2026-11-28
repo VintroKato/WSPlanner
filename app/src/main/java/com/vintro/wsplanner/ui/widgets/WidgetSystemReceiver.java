@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
+import com.vintro.wsplanner.notifications.OnlineLessonNotificationScheduler;
 import com.vintro.wsplanner.services.ScheduleSyncWorker;
 import com.vintro.wsplanner.utils.AppExecutors;
 import com.vintro.wsplanner.utils.Logger;
@@ -44,6 +45,7 @@ public class WidgetSystemReceiver extends BroadcastReceiver {
                 } else {
                     WidgetUpdateManager.cancelScheduledAlarm(appContext);
                 }
+                OnlineLessonNotificationScheduler.rescheduleNext(appContext);
             } catch (Exception e) {
                 Logger.e(TAG + ".onReceive", "Error handling system event " + action + ": " + Logger.formatException(e));
             } finally {

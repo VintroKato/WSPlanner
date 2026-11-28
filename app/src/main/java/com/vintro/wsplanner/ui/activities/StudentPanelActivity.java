@@ -28,6 +28,7 @@ import com.vintro.wsplanner.enums.DegreeLevel;
 import com.vintro.wsplanner.enums.InputState;
 import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.enums.StudyMode;
+import com.vintro.wsplanner.notifications.OnlineLessonNotificationScheduler;
 import com.vintro.wsplanner.services.CourseSetupService;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
@@ -365,6 +366,7 @@ public class StudentPanelActivity extends AppCompatActivity {
         if (WidgetUpdateManager.hasActiveWidgets(this)) {
             WidgetUpdateManager.updateAllWidgets(this);
         }
+        OnlineLessonNotificationScheduler.rescheduleNextAsync(this);
 
         Toast.makeText(this, R.string.student_panel_saved_toast, Toast.LENGTH_SHORT).show();
         finish();

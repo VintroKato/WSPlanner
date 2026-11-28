@@ -21,8 +21,12 @@ import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.enums.InputState;
+
+import androidx.core.content.ContextCompat;
+import android.util.TypedValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -435,6 +439,11 @@ public class AnimationHelper {
             return;
         }
 
+        if (view instanceof MaterialSwitch) {
+            animateSwitchThemeChange(oldContext, newContext, (MaterialSwitch) view);
+            return;
+        }
+
         if (view instanceof MaterialButton) {
             MaterialButton mb = (MaterialButton) view;
             if (mb.getStrokeWidth() > 0) {
@@ -447,6 +456,11 @@ public class AnimationHelper {
 
         if (view instanceof Button) {
             animateButtonThemeChange(oldContext, newContext, (Button) view);
+            return;
+        }
+
+        if (view instanceof EditText) {
+            animateEditTextThemeChange(oldContext, newContext, (EditText) view, role);
             return;
         }
 
@@ -541,6 +555,167 @@ public class AnimationHelper {
         ValueAnimator animator = createColorAnimator(startColor, endColor, text::setTextColor);
         trackThemeAnimator(animator);
         animator.start();
+    }
+
+    private static void animateEditTextThemeChange(Context oldContext, Context newContext, EditText editText, String role) {
+        animateTextThemeChange(oldContext, newContext, editText, role);
+        int startHint = UIHelper.getThemeColor(oldContext, R.attr.input_hint);
+        int endHint = UIHelper.getThemeColor(newContext, R.attr.input_hint);
+        ValueAnimator hintAnimator = createColorAnimator(startHint, endHint, editText::setHintTextColor);
+        trackThemeAnimator(hintAnimator);
+        hintAnimator.start();
+
+        Drawable bg = editText.getBackground();
+        if (bg instanceof GradientDrawable) {
+            GradientDrawable mutable = (GradientDrawable) bg.mutate();
+            boolean isCardInput = ROLE_CARD_INPUT.equals(role);
+            boolean isFocused = editText.isFocused();
+            boolean isSelected = editText.isSelected();
+
+            int bgAttr;
+            int borderAttr;
+            float strokeDp;
+            if (isFocused) {
+                bgAttr = R.attr.input_bg_active;
+                borderAttr = R.attr.input_border_active;
+                strokeDp = 1.5f;
+            } else if (isSelected) {
+                bgAttr = R.attr.card_checked_bg;
+                borderAttr = R.attr.card_checked_border;
+                strokeDp = 1.5f;
+            } else {
+                bgAttr = isCardInput ? R.attr.surface_recessed : R.attr.input_bg;
+                borderAttr = R.attr.input_border;
+                strokeDp = 1.0f;
+            }
+
+            int startBg = UIHelper.getThemeColor(oldContext, bgAttr);
+            int endBg = UIHelper.getThemeColor(newContext, bgAttr);
+            int startBorder = UIHelper.getThemeColor(oldContext, borderAttr);
+            int endBorder = UIHelper.getThemeColor(newContext, borderAttr);
+            int strokeWidthPx = Math.max(1, Math.round(strokeDp * editText.getResources().getDisplayMetrics().density));
+
+            ValueAnimator bgAnim = createColorAnimator(startBg, endBg, mutable::setColor);
+            ValueAnimator borderAnim = createColorAnimator(startBorder, endBorder,
+                    color -> mutable.setStroke(strokeWidthPx, color));
+            trackThemeAnimator(bgAnim);
+            trackThemeAnimator(borderAnim);
+            bgAnim.start();
+            borderAnim.start();
+        }
+    }
+
+    // apply focused, filled-active, or recessed-default input visuals on a card input field
+    public static void applySelectableInputStyle(Context context, EditText input, boolean focused, boolean active, boolean animate) {
+        if (context == null || input == null) {
+            return;
+        }
+        input.setSelected(active);
+        Drawable background = input.getBackground();
+        if (!(background instanceof GradientDrawable)) {
+            return;
+        }
+        GradientDrawable drawable = (GradientDrawable) background.mutate();
+        int endBgAttr;
+        int endBorderAttr;
+        float strokeDp;
+        if (focused) {
+            endBgAttr = R.attr.input_bg_active;
+            endBorderAttr = R.attr.input_border_active;
+            strokeDp = 1.5f;
+        } else if (active) {
+            endBgAttr = R.attr.card_checked_bg;
+            endBorderAttr = R.attr.card_checked_border;
+            strokeDp = 1.5f;
+        } else {
+            endBgAttr = R.attr.surface_recessed;
+            endBorderAttr = R.attr.input_border;
+            strokeDp = 1.0f;
+        }
+
+        int endBgColor = UIHelper.getThemeColor(context, endBgAttr);
+        int endBorderColor = UIHelper.getThemeColor(context, endBorderAttr);
+        int strokeWidthPx = Math.max(1, Math.round(strokeDp * context.getResources().getDisplayMetrics().density));
+
+        if (!animate || drawable.getColor() == null) {
+            drawable.setColor(endBgColor);
+            drawable.setStroke(strokeWidthPx, endBorderColor);
+            return;
+        }
+
+        int startBgColor = drawable.getColor().getDefaultColor();
+        int startBorderColor = startBgColor == UIHelper.getThemeColor(context, R.attr.card_checked_bg)
+                ? UIHelper.getThemeColor(context, R.attr.card_checked_border)
+                : (startBgColor == UIHelper.getThemeColor(context, R.attr.input_bg_active)
+                        ? UIHelper.getThemeColor(context, R.attr.input_border_active)
+                        : UIHelper.getThemeColor(context, R.attr.input_border));
+
+        if (startBgColor == endBgColor && startBorderColor == endBorderColor) {
+            drawable.setStroke(strokeWidthPx, endBorderColor);
+            return;
+        }
+
+        animateInputColors(context, drawable, startBgColor, endBgColor, startBorderColor, endBorderColor, strokeDp);
+    }
+
+    private static void animateSwitchThemeChange(Context oldContext, Context newContext, MaterialSwitch materialSwitch) {
+        ColorStateList oldThumbCsl = resolveThemeColorStateList(oldContext, R.attr.switch_thumb_tint);
+        ColorStateList newThumbCsl = resolveThemeColorStateList(newContext, R.attr.switch_thumb_tint);
+        ColorStateList oldTrackCsl = resolveThemeColorStateList(oldContext, R.attr.switch_track_tint);
+        ColorStateList newTrackCsl = resolveThemeColorStateList(newContext, R.attr.switch_track_tint);
+
+        int[] stateSet = materialSwitch.isChecked()
+                ? new int[]{android.R.attr.state_checked}
+                : new int[]{};
+
+        if (oldThumbCsl != null && newThumbCsl != null) {
+            int startThumb = oldThumbCsl.getColorForState(stateSet, oldThumbCsl.getDefaultColor());
+            int endThumb = newThumbCsl.getColorForState(stateSet, newThumbCsl.getDefaultColor());
+            ValueAnimator thumbAnim = createColorAnimator(startThumb, endThumb,
+                    color -> materialSwitch.setThumbTintList(ColorStateList.valueOf(color)));
+            thumbAnim.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    materialSwitch.setThumbTintList(newThumbCsl);
+                }
+            });
+            trackThemeAnimator(thumbAnim);
+            thumbAnim.start();
+        } else if (newThumbCsl != null) {
+            materialSwitch.setThumbTintList(newThumbCsl);
+        }
+
+        if (oldTrackCsl != null && newTrackCsl != null) {
+            int startTrack = oldTrackCsl.getColorForState(stateSet, oldTrackCsl.getDefaultColor());
+            int endTrack = newTrackCsl.getColorForState(stateSet, newTrackCsl.getDefaultColor());
+            ValueAnimator trackAnim = createColorAnimator(startTrack, endTrack,
+                    color -> materialSwitch.setTrackTintList(ColorStateList.valueOf(color)));
+            trackAnim.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    materialSwitch.setTrackTintList(newTrackCsl);
+                }
+            });
+            trackThemeAnimator(trackAnim);
+            trackAnim.start();
+        } else if (newTrackCsl != null) {
+            materialSwitch.setTrackTintList(newTrackCsl);
+        }
+
+        if (materialSwitch.getText() != null && materialSwitch.getText().length() > 0) {
+            animateTextThemeChange(oldContext, newContext, materialSwitch, getRoleTag(materialSwitch));
+        }
+    }
+
+    private static ColorStateList resolveThemeColorStateList(Context context, int attr) {
+        TypedValue tv = new TypedValue();
+        if (!context.getTheme().resolveAttribute(attr, tv, true)) {
+            return null;
+        }
+        if (tv.resourceId != 0) {
+            return ContextCompat.getColorStateList(context, tv.resourceId);
+        }
+        return ColorStateList.valueOf(tv.data);
     }
 
     private static void animateButtonThemeChange(Context oldContext, Context newContext, Button button) {

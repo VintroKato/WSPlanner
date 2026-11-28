@@ -14,11 +14,15 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.ProviderException;
 import java.time.DayOfWeek;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.TreeSet;
 
 // preferences manager for app settings, user profiles, and secure credentials
 public class PreferencesManager {
@@ -808,5 +812,110 @@ public class PreferencesManager {
                 DayOfWeek.THURSDAY,
                 DayOfWeek.FRIDAY
         );
+    }
+
+    // online class notification preferences
+    private static final String KEY_NOTIF_ONLINE_ENABLED = "notif_online_enabled";
+    private static final String KEY_NOTIF_LEAD_MINUTES_SET = "notif_lead_minutes_set";
+    private static final String KEY_NOTIF_CUSTOM_MINUTES = "notif_custom_minutes";
+    private static final String KEY_NOTIF_PROMO_SHOWN = "notif_promo_shown";
+    private static final String KEY_NOTIF_PERMISSION_REQUESTED = "notif_permission_requested";
+    private static final String KEY_NOTIF_DELIVERED_KEYS = "notif_delivered_keys";
+
+    public static boolean isOnlineNotificationsEnabled(Context context) {
+        return getPreferences(context).getBoolean(KEY_NOTIF_ONLINE_ENABLED, false);
+    }
+
+    public static void setOnlineNotificationsEnabled(Context context, boolean enabled) {
+        Logger.i("PreferencesManager.setOnlineNotificationsEnabled", "Online notifications enabled=" + enabled);
+        getPreferences(context).edit().putBoolean(KEY_NOTIF_ONLINE_ENABLED, enabled).apply();
+    }
+
+    public static List<Integer> getNotificationLeadMinutes(Context context) {
+        Set<String> raw = getPreferences(context).getStringSet(KEY_NOTIF_LEAD_MINUTES_SET, null);
+        TreeSet<Integer> sorted = new TreeSet<>();
+        if (raw != null) {
+            for (String item : raw) {
+                try {
+                    int val = Integer.parseInt(item.trim());
+                    if (val >= 0 && val <= 120) {
+                        sorted.add(val);
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        if (sorted.isEmpty()) {
+            sorted.add(0);
+        }
+        return new ArrayList<>(sorted);
+    }
+
+    public static void setNotificationLeadMinutes(Context context, Collection<Integer> offsets) {
+        Set<String> raw = new HashSet<>();
+        if (offsets != null) {
+            for (Integer value : offsets) {
+                if (value != null && value >= 0 && value <= 120) {
+                    raw.add(String.valueOf(value));
+                }
+            }
+        }
+        if (raw.isEmpty()) {
+            raw.add("0");
+        }
+        getPreferences(context).edit().putStringSet(KEY_NOTIF_LEAD_MINUTES_SET, raw).apply();
+        Logger.i("PreferencesManager.setNotificationLeadMinutes", "Saved notification lead offsets: " + raw);
+    }
+
+    public static Integer getNotificationCustomMinutes(Context context) {
+        SharedPreferences prefs = getPreferences(context);
+        if (!prefs.contains(KEY_NOTIF_CUSTOM_MINUTES)) {
+            return null;
+        }
+        int val = prefs.getInt(KEY_NOTIF_CUSTOM_MINUTES, -1);
+        return (val >= 0 && val <= 120) ? val : null;
+    }
+
+    public static void setNotificationCustomMinutes(Context context, Integer customMinutes) {
+        SharedPreferences.Editor editor = getPreferences(context).edit();
+        if (customMinutes == null || customMinutes < 0 || customMinutes > 120) {
+            editor.remove(KEY_NOTIF_CUSTOM_MINUTES);
+        } else {
+            editor.putInt(KEY_NOTIF_CUSTOM_MINUTES, customMinutes);
+        }
+        editor.apply();
+    }
+
+    public static boolean isNotificationPromoShown(Context context) {
+        return getPreferences(context).getBoolean(KEY_NOTIF_PROMO_SHOWN, false);
+    }
+
+    public static void setNotificationPromoShown(Context context, boolean shown) {
+        getPreferences(context).edit().putBoolean(KEY_NOTIF_PROMO_SHOWN, shown).apply();
+    }
+
+    public static boolean wasNotificationPermissionRequested(Context context) {
+        return getPreferences(context).getBoolean(KEY_NOTIF_PERMISSION_REQUESTED, false);
+    }
+
+    public static void setNotificationPermissionRequested(Context context, boolean requested) {
+        getPreferences(context).edit().putBoolean(KEY_NOTIF_PERMISSION_REQUESTED, requested).apply();
+    }
+
+    public static Set<String> getDeliveredNotificationKeys(Context context) {
+        Set<String> raw = getPreferences(context).getStringSet(KEY_NOTIF_DELIVERED_KEYS, null);
+        if (raw == null || raw.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return new HashSet<>(raw);
+    }
+
+    public static void setDeliveredNotificationKeys(Context context, Set<String> keys) {
+        Set<String> copy = keys != null ? new HashSet<>(keys) : new HashSet<>();
+        getPreferences(context).edit().putStringSet(KEY_NOTIF_DELIVERED_KEYS, copy).apply();
+    }
+
+    public static void clearDeliveredNotificationKeys(Context context) {
+        getPreferences(context).edit().remove(KEY_NOTIF_DELIVERED_KEYS).apply();
     }
 }
