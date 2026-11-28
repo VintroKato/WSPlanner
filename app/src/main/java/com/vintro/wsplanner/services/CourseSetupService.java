@@ -1,9 +1,11 @@
 package com.vintro.wsplanner.services;
 
 import android.content.Context;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.DegreeLevel;
 import com.vintro.wsplanner.enums.StudyMode;
@@ -11,13 +13,18 @@ import com.vintro.wsplanner.models.ParsedCourse;
 import com.vintro.wsplanner.network.PUW;
 import com.vintro.wsplanner.network.StudyPlanScraper;
 import com.vintro.wsplanner.parser.ParserUtils;
+import com.vintro.wsplanner.utils.AppExecutors;
 import com.vintro.wsplanner.utils.Logger;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import okhttp3.OkHttpClient;
@@ -28,12 +35,13 @@ import okhttp3.Response;
 public class CourseSetupService {
     private static CourseSetupService instance;
 
-    private List<ParsedCourse> cachedCourses;
-    private Integer cachedEnglishGroup;
-    private String cachedStudentFullName;
-    private String cachedSeminarTeacher;
+    private volatile List<ParsedCourse> cachedCourses;
+    private volatile Integer cachedEnglishGroup;
+    private volatile String cachedStudentFullName;
+    private volatile String cachedSeminarTeacher;
 
-    private CourseSetupService() {}
+    private CourseSetupService() {
+    }
 
     public static synchronized CourseSetupService getInstance() {
         if (instance == null) {
@@ -56,31 +64,36 @@ public class CourseSetupService {
 
     public interface OnSetupDataLoadedCallback {
         void onSuccess(@NonNull List<ParsedCourse> courses, @Nullable Integer englishGroup, @Nullable String studentFullName, @Nullable String seminarTeacher);
+
         void onError(@NonNull Exception e);
     }
 
     public interface OnSpecialtiesLoadedCallback {
         void onSuccess(@NonNull List<String> specialties);
+
         void onError(@NonNull Exception e);
     }
 
     public interface OnAdditionalDataLoadedCallback {
         void onSuccess(@Nullable Integer englishGroup, @Nullable String studentFullName, @Nullable String seminarTeacher);
+
         void onError(@NonNull Exception e);
     }
 
-    // load course setup data asynchronously
+    // load course setup data asynchronously using application context
     public void loadCourseSetupData(@NonNull Context context, @NonNull OnSetupDataLoadedCallback callback) {
-        if (cachedCourses != null && !cachedCourses.isEmpty()) {
-            Logger.d("CourseSetupService.loadCourseSetupData", "Reusing cached course setup data (" + cachedCourses.size() + " courses)");
-            callback.onSuccess(cachedCourses, cachedEnglishGroup, cachedStudentFullName, cachedSeminarTeacher);
+        List<ParsedCourse> currentCached = cachedCourses;
+        if (currentCached != null && !currentCached.isEmpty()) {
+            Logger.d("CourseSetupService.loadCourseSetupData", "Reusing cached course setup data (" + currentCached.size() + " courses)");
+            callback.onSuccess(currentCached, cachedEnglishGroup, cachedStudentFullName, cachedSeminarTeacher);
             return;
         }
 
+        final Context appContext = context.getApplicationContext();
         Logger.d("CourseSetupService.loadCourseSetupData", "Fetching course setup data from PUW");
-        new Thread(() -> {
+        AppExecutors.runIo(() -> {
             try {
-                OkHttpClient client = PUW.globalLogin(context);
+                OkHttpClient client = PUW.globalLogin(appContext);
                 if (client == null) {
                     throw new IllegalStateException("Failed to login to PUW");
                 }
@@ -90,33 +103,33 @@ public class CourseSetupService {
                 String studentFullName = PUW.getStudentFullName(client);
                 String seminarTeacher = StudyPlanScraper.getSeminarTeacher(client);
 
-                cachedCourses = courses != null ? courses : new ArrayList<>();
+                List<ParsedCourse> safeCourses = courses != null ? courses : new ArrayList<>();
+                cachedCourses = safeCourses;
                 cachedEnglishGroup = englishGroup;
                 cachedStudentFullName = studentFullName;
                 cachedSeminarTeacher = seminarTeacher;
 
-                // Persist detected information for resilience across activity and process restarts
                 if (englishGroup != null) {
-                    PreferencesManager.setDetectedEnglishGroup(context, englishGroup);
+                    PreferencesManager.setDetectedEnglishGroup(appContext, englishGroup);
                 }
                 if (studentFullName != null) {
-                    PreferencesManager.setDetectedStudentName(context, studentFullName);
+                    PreferencesManager.setDetectedStudentName(appContext, studentFullName);
                     String[] parts = studentFullName.trim().split("\\s+");
                     if (parts.length > 0) {
-                        PreferencesManager.setDetectedStudentSurname(context, parts[parts.length - 1]);
+                        PreferencesManager.setDetectedStudentSurname(appContext, parts[parts.length - 1]);
                     }
                 }
                 if (seminarTeacher != null) {
-                    PreferencesManager.setDetectedSeminarTeacher(context, seminarTeacher);
+                    PreferencesManager.setDetectedSeminarTeacher(appContext, seminarTeacher);
                 }
 
-                Logger.i("CourseSetupService.loadCourseSetupData", "Course setup data loaded successfully: " + cachedCourses.size() + " courses, EnglishGroup=" + englishGroup + ", StudentName='" + Logger.maskName(studentFullName) + "', SeminarTeacher='" + seminarTeacher + "'");
-                callback.onSuccess(cachedCourses, cachedEnglishGroup, cachedStudentFullName, cachedSeminarTeacher);
+                Logger.i("CourseSetupService.loadCourseSetupData", "Course setup data loaded successfully: " + safeCourses.size() + " courses, EnglishGroup=" + englishGroup + ", StudentName='" + Logger.maskName(studentFullName) + "', SeminarTeacher='" + seminarTeacher + "'");
+                callback.onSuccess(safeCourses, englishGroup, studentFullName, seminarTeacher);
             } catch (Exception e) {
                 Logger.e("CourseSetupService.loadCourseSetupData", "Error loading course setup data: " + Logger.formatException(e));
                 callback.onError(e);
             }
-        }).start();
+        });
     }
 
     // load additional data (english group, seminar, student name) if missing after process restart
@@ -127,9 +140,10 @@ public class CourseSetupService {
             return;
         }
 
-        Integer detectedEnglish = PreferencesManager.getDetectedEnglishGroup(context);
-        String detectedSeminar = PreferencesManager.getDetectedSeminarTeacher(context);
-        String detectedFullName = PreferencesManager.getDetectedStudentName(context);
+        final Context appContext = context.getApplicationContext();
+        Integer detectedEnglish = PreferencesManager.getDetectedEnglishGroup(appContext);
+        String detectedSeminar = PreferencesManager.getDetectedSeminarTeacher(appContext);
+        String detectedFullName = PreferencesManager.getDetectedStudentName(appContext);
 
         if (detectedEnglish != null || detectedSeminar != null || detectedFullName != null) {
             Logger.d("CourseSetupService.loadAdditionalSetupData", "Reusing persisted detected additional setup data");
@@ -141,9 +155,9 @@ public class CourseSetupService {
         }
 
         Logger.d("CourseSetupService.loadAdditionalSetupData", "Fetching missing additional data from PUW");
-        new Thread(() -> {
+        AppExecutors.runIo(() -> {
             try {
-                OkHttpClient client = PUW.globalLogin(context);
+                OkHttpClient client = PUW.globalLogin(appContext);
                 if (client == null) {
                     throw new IllegalStateException("Failed to login to PUW");
                 }
@@ -156,17 +170,17 @@ public class CourseSetupService {
                 cachedSeminarTeacher = seminarTeacher;
 
                 if (englishGroup != null) {
-                    PreferencesManager.setDetectedEnglishGroup(context, englishGroup);
+                    PreferencesManager.setDetectedEnglishGroup(appContext, englishGroup);
                 }
                 if (studentFullName != null) {
-                    PreferencesManager.setDetectedStudentName(context, studentFullName);
+                    PreferencesManager.setDetectedStudentName(appContext, studentFullName);
                     String[] parts = studentFullName.trim().split("\\s+");
                     if (parts.length > 0) {
-                        PreferencesManager.setDetectedStudentSurname(context, parts[parts.length - 1]);
+                        PreferencesManager.setDetectedStudentSurname(appContext, parts[parts.length - 1]);
                     }
                 }
                 if (seminarTeacher != null) {
-                    PreferencesManager.setDetectedSeminarTeacher(context, seminarTeacher);
+                    PreferencesManager.setDetectedSeminarTeacher(appContext, seminarTeacher);
                 }
 
                 Logger.i("CourseSetupService.loadAdditionalSetupData", "Additional setup data fetched: English=" + englishGroup + ", FullName='" + Logger.maskName(studentFullName) + "', Seminar='" + seminarTeacher + "'");
@@ -175,7 +189,7 @@ public class CourseSetupService {
                 Logger.e("CourseSetupService.loadAdditionalSetupData", "Error loading additional setup data: " + Logger.formatException(e));
                 callback.onError(e);
             }
-        }).start();
+        });
     }
 
     // get default or first matching course
@@ -265,14 +279,16 @@ public class CourseSetupService {
         return sorted;
     }
 
-    // load specializations for selected configuration
+    // load specializations and seed the verified xlsx into ScheduleRepository to avoid downloading twice
     public void loadSpecialties(@NonNull Context context, @NonNull OnSpecialtiesLoadedCallback callback) {
-        new Thread(() -> {
+        final Context appContext = context.getApplicationContext();
+        AppExecutors.runIo(() -> {
+            File tempFile = null;
             try {
-                String major = PreferencesManager.getGlobalMajorPref(context);
-                DegreeLevel degreeLevel = PreferencesManager.getGlobalDegreeLevelPref(context);
-                StudyMode studyMode = PreferencesManager.getGlobalStudyModePref(context);
-                int year = PreferencesManager.getGlobalYearPref(context);
+                String major = PreferencesManager.getGlobalMajorPref(appContext);
+                DegreeLevel degreeLevel = PreferencesManager.getGlobalDegreeLevelPref(appContext);
+                StudyMode studyMode = PreferencesManager.getGlobalStudyModePref(appContext);
+                int year = PreferencesManager.getGlobalYearPref(appContext);
 
                 Logger.d("CourseSetupService.loadSpecialties", "Loading specializations for " + major + ", " + degreeLevel + ", " + studyMode + ", year " + year);
 
@@ -286,7 +302,7 @@ public class CourseSetupService {
                     throw new IllegalStateException("Missing course configuration");
                 }
 
-                OkHttpClient client = PUW.globalLogin(context);
+                OkHttpClient client = PUW.globalLogin(appContext);
                 if (client == null) {
                     throw new IllegalStateException("Login failed while fetching specialties");
                 }
@@ -296,11 +312,27 @@ public class CourseSetupService {
                 Logger.d("CourseSetupService.loadSpecialties", "Fetched schedule file url for specialties: " + fileUrl);
 
                 if (fileUrl != null) {
+                    tempFile = new File(appContext.getCacheDir(), "specialties_probe_" + System.currentTimeMillis() + ".xlsx");
                     Request request = new Request.Builder().url(fileUrl).build();
                     try (Response response = client.newCall(request).execute()) {
-                        if (response.isSuccessful() && response.body() != null) {
-                            InputStream is = response.body().byteStream();
-                            specializations = ParserUtils.extractSpecializations(is);
+                        String finalUrl = response.request().url().toString().toLowerCase(Locale.ROOT);
+                        if (response.isSuccessful() && response.body() != null && !finalUrl.contains("/login/")) {
+                            try (InputStream is = response.body().byteStream();
+                                 FileOutputStream out = new FileOutputStream(tempFile)) {
+                                byte[] buffer = new byte[8192];
+                                int read;
+                                while ((read = is.read(buffer)) != -1) {
+                                    out.write(buffer, 0, read);
+                                }
+                            }
+                            if (ScheduleRepository.isValidZipFile(tempFile)) {
+                                try (InputStream fileIn = new FileInputStream(tempFile)) {
+                                    specializations = ParserUtils.extractSpecializations(fileIn);
+                                }
+                                ScheduleRepository.getInstance(appContext).seedScheduleFileFromDownload(tempFile);
+                            } else {
+                                Logger.w("CourseSetupService.loadSpecialties", "Downloaded specialty file failed ZIP header verification");
+                            }
                         }
                     }
                 }
@@ -310,8 +342,12 @@ public class CourseSetupService {
             } catch (Exception e) {
                 Logger.e("CourseSetupService.loadSpecialties", "Error loading specialties: " + Logger.formatException(e));
                 callback.onError(e);
+            } finally {
+                if (tempFile != null && tempFile.exists()) {
+                    tempFile.delete();
+                }
             }
-        }).start();
+        });
     }
 
     // clear in-memory cache

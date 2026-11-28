@@ -20,20 +20,27 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.vintro.wsplanner.BuildConfig;
 import com.vintro.wsplanner.R;
+import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.AppTheme;
 import com.vintro.wsplanner.enums.DegreeLevel;
 import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.enums.StudyMode;
+import com.vintro.wsplanner.models.DaySchedule;
+import com.vintro.wsplanner.network.StudyPlanScraper;
+import com.vintro.wsplanner.services.TeacherEmailService;
 import com.vintro.wsplanner.services.UpdateManager;
 import com.vintro.wsplanner.ui.activities.StudentPanelActivity;
 import com.vintro.wsplanner.ui.activities.WidgetConfigureActivity;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
+import com.vintro.wsplanner.ui.widgets.WidgetUpdateManager;
+import com.vintro.wsplanner.utils.AppExecutors;
 import com.vintro.wsplanner.utils.Logger;
 import com.vintro.wsplanner.utils.NetworkUtils;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.format.TextStyle;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -84,6 +91,8 @@ public class SettingsFragment extends Fragment {
     private View rowCheckUpdate;
     private View viewUpdateDot;
     private TextView tvAppVersion;
+    private View dividerClearCache;
+    private View rowClearCache;
 
     public static SettingsFragment newInstance(boolean preOnboarding) {
         SettingsFragment fragment = new SettingsFragment();
@@ -136,6 +145,8 @@ public class SettingsFragment extends Fragment {
         rowCheckUpdate = view.findViewById(R.id.row_check_update);
         viewUpdateDot = view.findViewById(R.id.view_update_dot);
         tvAppVersion = view.findViewById(R.id.tv_app_version);
+        dividerClearCache = view.findViewById(R.id.divider_clear_cache);
+        rowClearCache = view.findViewById(R.id.row_clear_cache);
 
         boolean hidePostOnboardingSections = isPreOnboarding || !PreferencesManager.isOnboardingCompleted(context);
 
@@ -159,6 +170,8 @@ public class SettingsFragment extends Fragment {
             if (layoutVisibleDaysSection != null) layoutVisibleDaysSection.setVisibility(View.GONE);
             if (dividerWidgets != null) dividerWidgets.setVisibility(View.GONE);
             if (rowWidgetSettings != null) rowWidgetSettings.setVisibility(View.GONE);
+            if (dividerClearCache != null) dividerClearCache.setVisibility(View.GONE);
+            if (rowClearCache != null) rowClearCache.setVisibility(View.GONE);
         } else {
             if (cardStudentProfile != null) {
                 cardStudentProfile.setVisibility(View.VISIBLE);
@@ -174,6 +187,11 @@ public class SettingsFragment extends Fragment {
                     Logger.d(TAG, "Navigating to WidgetConfigureActivity");
                     startActivity(new Intent(requireContext(), WidgetConfigureActivity.class));
                 });
+            }
+            if (dividerClearCache != null) dividerClearCache.setVisibility(View.VISIBLE);
+            if (rowClearCache != null) {
+                rowClearCache.setVisibility(View.VISIBLE);
+                rowClearCache.setOnClickListener(v -> handleClearCacheClick());
             }
         }
 
@@ -549,6 +567,54 @@ public class SettingsFragment extends Fragment {
                 }
             }
         });
+    }
+
+    private void handleClearCacheClick() {
+        if (!isAdded()) return;
+        Context context = requireContext();
+        Context appContext = context.getApplicationContext();
+        Logger.i(TAG, "User tapped Clear cache and refresh row in Settings");
+
+        if (rowClearCache != null) {
+            rowClearCache.setEnabled(false);
+        }
+
+        ScheduleRepository repo = ScheduleRepository.getInstance(appContext);
+        repo.invalidateCache();
+        TeacherEmailService.getInstance(appContext).clearCache();
+        StudyPlanScraper.clearUrlCache(appContext);
+
+        if (NetworkUtils.isNetworkAvailable(appContext) && repo.isConfigurationComplete()) {
+            Toast.makeText(context, R.string.settings_cache_cleared_toast, Toast.LENGTH_SHORT).show();
+            repo.getScheduleForDate(LocalDate.now(), true, new ScheduleRepository.ScheduleCallback<DaySchedule>() {
+                @Override
+                public void onSuccess(DaySchedule result) {
+                    AppExecutors.runOnMain(() -> {
+                        if (isAdded() && rowClearCache != null) {
+                            rowClearCache.setEnabled(true);
+                        }
+                    });
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    Logger.w(TAG, "Schedule refresh after cache clear failed: " + Logger.formatException(e));
+                    AppExecutors.runOnMain(() -> {
+                        if (isAdded() && rowClearCache != null) {
+                            rowClearCache.setEnabled(true);
+                        }
+                    });
+                }
+            });
+        } else {
+            if (WidgetUpdateManager.hasActiveWidgets(appContext)) {
+                WidgetUpdateManager.updateAllWidgets(appContext);
+            }
+            Toast.makeText(context, R.string.settings_cache_cleared_offline_toast, Toast.LENGTH_SHORT).show();
+            if (rowClearCache != null) {
+                rowClearCache.setEnabled(true);
+            }
+        }
     }
 
     private void openTelegramContact() {

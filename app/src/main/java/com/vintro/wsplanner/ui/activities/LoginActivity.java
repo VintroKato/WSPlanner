@@ -35,11 +35,16 @@ import com.vintro.wsplanner.enums.InputState;
 import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.network.MoodleAutologinManager;
 import com.vintro.wsplanner.network.PUW;
+import com.vintro.wsplanner.network.StudyPlanScraper;
 import com.vintro.wsplanner.services.CourseSetupService;
+import com.vintro.wsplanner.services.ScheduleSyncWorker;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
+import com.vintro.wsplanner.utils.AppExecutors;
 import com.vintro.wsplanner.utils.Logger;
 import com.vintro.wsplanner.utils.NetworkUtils;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class LoginActivity extends AppCompatActivity {
     public static final String EXTRA_FROM_STUDENT_PANEL = "extra_from_student_panel";
@@ -61,6 +66,7 @@ public class LoginActivity extends AppCompatActivity {
     private AppTheme currentTheme;
     private boolean isPasswordVisible = false;
     private boolean isFromStudentPanel = false;
+    private final AtomicInteger loginCheckGeneration = new AtomicInteger(0);
 
     @Override
     public void onCreate(Bundle icicle) {
@@ -169,6 +175,13 @@ public class LoginActivity extends AppCompatActivity {
         super.onPause();
     }
 
+    @Override
+    protected void onDestroy() {
+        loginCheckGeneration.incrementAndGet();
+        handler.removeCallbacksAndMessages(null);
+        super.onDestroy();
+    }
+
     private void updateLoginState() {
         setLoginState(InputState.NORMAL);
     }
@@ -187,6 +200,9 @@ public class LoginActivity extends AppCompatActivity {
         String password = passwordInput.getText().toString();
 
         Logger.i("LoginActivity.handleBtnClick", "Saving global login credentials for user: " + Logger.maskSensitiveData(login) + ", advancing to SetupCourseActivity");
+        PUW.clearSession();
+        StudyPlanScraper.clearUrlCache(this);
+        ScheduleSyncWorker.cancelPeriodicSync(this);
         CourseSetupService.getInstance().clearCache();
         ScheduleRepository.getInstance(this).invalidateCache();
         PreferencesManager.clearVisibleWeekdaysPref(this);
@@ -207,6 +223,7 @@ public class LoginActivity extends AppCompatActivity {
         return new TextWatcher() {
             @Override
             public void afterTextChanged(Editable editable) {
+                loginCheckGeneration.incrementAndGet();
                 setConfirmButtonEnabled(false);
                 handler.removeCallbacksAndMessages(null);
                 resetFields();
@@ -250,12 +267,16 @@ public class LoginActivity extends AppCompatActivity {
         errorLabel.setText(R.string.configure_status_checking);
         errorLabel.setTextColor(UIHelper.getThemeColor(this, R.attr.text_secondary));
 
-        new Thread(() -> {
+        final int requestToken = loginCheckGeneration.incrementAndGet();
+        AppExecutors.runIo(() -> {
             int result = PUW.checkLogin(login, password);
-            Logger.d("LoginActivity.checkData", "Checking data in thread, result: " + result);
+            Logger.d("LoginActivity.checkData", "Checking data in worker, result: " + result);
 
             runOnUiThread(() -> {
-                if (isFinishing() || isDestroyed()) return;
+                if (isFinishing() || isDestroyed() || requestToken != loginCheckGeneration.get()) {
+                    Logger.d("LoginActivity.checkData", "Discarding stale login check response");
+                    return;
+                }
                 Logger.d("LoginActivity.checkData", "Checking data in UI thread, result: " + result);
 
                 if (result == -1) {
@@ -266,7 +287,7 @@ public class LoginActivity extends AppCompatActivity {
                     setCheckingOk();
                 }
             });
-        }).start();
+        });
     }
 
     private void setCheckingNetworkError() {

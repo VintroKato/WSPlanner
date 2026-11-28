@@ -1,6 +1,9 @@
-- Added a sliding animation to bottom navigation bar
-- Added color and border morphing animations when switching selected days in the weekly calendar strip
-- Added long-press tooltips to the PUW portal buttons
-- Added localized Russian and Ukrainian changelogs to the in-app update dialog
-- Fixed an issue where changing visible schedule days in Settings left the current week strip dimmed
-- Improved update checks to refresh from GitHub when an older update is cached, preventing skipped releases
+- Added automatic theme for widgets and instant auto-save in widget settings
+- Widgets now show the next upcoming class when there are no classes today and highlight the active class in the daily widget
+- Reduced battery usage and improved widget reliability on newer Android versions
+- Localized lesson types
+- Added a note indicator on lesson cards when a subject has a saved note
+- Made teacher names clickable to open their WSPA profile page, with tap-to-retry for offline email loading
+- Added a "Clear cache & refresh" button in Settings
+- Improved in-app updates with download progress, clearer install permission prompts, and automatic cleanup of downloaded APK files
+- Fixed schedule parsing issues, secure storage recovery errors, and several stability bugs

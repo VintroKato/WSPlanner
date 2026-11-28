@@ -5,8 +5,10 @@ import org.junit.Test;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 // unit tests for release changelog extraction and localized comment parsing
 public class UpdateManagerChangelogTest {
@@ -83,5 +85,13 @@ public class UpdateManagerChangelogTest {
         String legacyBody = "## What's changed\n### Legacy release\n\n- Old bullet\n\n---\n## Build info\n";
         assertNull(UpdateManager.extractLocalizedChangelog(legacyBody, "ru"));
         assertNull(UpdateManager.extractLocalizedChangelog(legacyBody, "uk"));
+    }
+
+    @Test
+    public void stableReleaseFilterRejectsDraftsAndPrereleases() {
+        assertTrue(UpdateManager.isStableRelease(false, false));
+        assertFalse(UpdateManager.isStableRelease(true, false));
+        assertFalse(UpdateManager.isStableRelease(false, true));
+        assertFalse(UpdateManager.isStableRelease(true, true));
     }
 }

@@ -64,6 +64,17 @@
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
+                <ImageView
+                    android:id="@+id/icon_has_note"
+                    android:layout_width="15dp"
+                    android:layout_height="15dp"
+                    android:layout_marginStart="6dp"
+                    android:layout_marginTop="4dp"
+                    android:contentDescription="@string/subject_has_note_desc"
+                    android:src="@drawable/ic_edit_note"
+                    android:visibility="gone"
+                    app:tint="?attr/colorPrimary" />
+
                 <TextView
                     android:id="@+id/badge_lesson_type"
                     android:layout_width="wrap_content"
@@ -140,9 +151,10 @@
 
                         <TextView
                             android:id="@+id/text_location"
-                            android:layout_width="wrap_content"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
+                            android:layout_weight="1"
                             android:ellipsize="end"
                             android:maxLines="1"
                             android:text="Sala 204"
@@ -153,7 +165,7 @@
                             android:id="@+id/offsite_arrow_icon"
                             android:layout_width="13dp"
                             android:layout_height="13dp"
-                            android:layout_marginStart="4dp"
+                            android:layout_marginStart="6dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_arrow_outward"
                             android:visibility="gone"

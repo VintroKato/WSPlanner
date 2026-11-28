@@ -208,12 +208,15 @@
 
                                 <TextView
                                     android:id="@+id/hero_teacher_name"
-                                    android:layout_width="match_parent"
+                                    android:layout_width="0dp"
                                     android:layout_height="wrap_content"
                                     android:layout_marginStart="8dp"
+                                    android:layout_weight="1"
+                                    android:background="?attr/selectableItemBackground"
                                     android:ellipsize="end"
                                     android:fontFamily="sans-serif-medium"
                                     android:maxLines="1"
+                                    android:paddingVertical="2dp"
                                     android:text=""
                                     android:textColor="?attr/app_text"
                                     android:textSize="14sp" />
@@ -293,22 +296,15 @@
 
                             <TextView
                                 android:id="@+id/hero_room_text"
-                                android:layout_width="wrap_content"
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="8dp"
+                                android:layout_weight="1"
+                                android:ellipsize="end"
+                                android:maxLines="2"
                                 android:text=""
                                 android:textColor="?attr/text_secondary"
                                 android:textSize="13sp" />
-
-                            <ImageView
-                                android:id="@+id/hero_location_arrow_icon"
-                                android:layout_width="14dp"
-                                android:layout_height="14dp"
-                                android:layout_marginStart="4dp"
-                                android:contentDescription="@null"
-                                android:src="@drawable/ic_arrow_outward"
-                                android:visibility="gone"
-                                app:tint="?attr/text_muted" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>

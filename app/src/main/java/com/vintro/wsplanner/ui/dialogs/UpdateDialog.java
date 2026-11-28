@@ -36,17 +36,26 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class UpdateDialog {
     private static final String TAG = "UpdateDialog";
+
+    private static boolean isContextDestroyed(@NonNull Context context) {
+        if (context instanceof Activity) {
+            Activity activity = (Activity) context;
+            return activity.isFinishing() || activity.isDestroyed();
+        }
+        return false;
+    }
 
     public static void show(@NonNull Context context, @Nullable String newVersion, @Nullable String releaseUrl) {
         show(context, newVersion, releaseUrl, UpdateManager.getSavedApkUrl(context));
     }
 
     public static void show(@NonNull Context context, @Nullable String newVersion, @Nullable String releaseUrl, @Nullable String apkUrl) {
-        if (context instanceof Activity && ((Activity) context).isFinishing()) {
-            Logger.w(TAG, "Activity is finishing, cannot show update dialog");
+        if (isContextDestroyed(context)) {
+            Logger.w(TAG, "Activity is finishing or destroyed, cannot show update dialog");
             return;
         }
 
@@ -68,8 +77,13 @@ public class UpdateDialog {
             window.setDimAmount(0.60f);
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
-                window.getAttributes().setBlurBehindRadius(24);
+                WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+                if (wm != null && wm.isCrossWindowBlurEnabled()) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
+                    WindowManager.LayoutParams lp = window.getAttributes();
+                    lp.setBlurBehindRadius(24);
+                    window.setAttributes(lp);
+                }
             }
         }
 
@@ -78,6 +92,7 @@ public class UpdateDialog {
         ImageButton btnClose = view.findViewById(R.id.dialog_update_close);
         MaterialButton btnAutoUpdate = view.findViewById(R.id.dialog_btn_auto_update);
         ProgressBar progressAutoUpdate = view.findViewById(R.id.dialog_auto_update_progress);
+        ProgressBar progressBarHorizontal = view.findViewById(R.id.dialog_auto_update_bar);
         LinearLayout errorCard = view.findViewById(R.id.dialog_update_error_card);
         MaterialButton btnOpenGithub = view.findViewById(R.id.dialog_btn_open_github);
         MaterialButton btnLater = view.findViewById(R.id.dialog_btn_later);
@@ -125,6 +140,21 @@ public class UpdateDialog {
 
         // Auto update action
         if (btnAutoUpdate != null) {
+            Runnable resetDownloadUi = () -> {
+                if (progressAutoUpdate != null) {
+                    progressAutoUpdate.setVisibility(View.GONE);
+                }
+                if (progressBarHorizontal != null) {
+                    progressBarHorizontal.setVisibility(View.GONE);
+                }
+                btnAutoUpdate.setText(R.string.update_dialog_button_auto);
+                btnAutoUpdate.setEnabled(true);
+                if (btnOpenGithub != null) btnOpenGithub.setEnabled(true);
+                if (btnLater != null) btnLater.setEnabled(true);
+                if (btnClose != null) btnClose.setEnabled(true);
+                dialog.setCancelable(true);
+            };
+
             btnAutoUpdate.setOnClickListener(v -> {
                 Logger.i(TAG, "Update dialog: user clicked 'Update automatically' button for version: " + newVersion);
                 if (errorCard != null) {
@@ -134,6 +164,10 @@ public class UpdateDialog {
                 btnAutoUpdate.setText(R.string.update_dialog_downloading);
                 if (progressAutoUpdate != null) {
                     progressAutoUpdate.setVisibility(View.VISIBLE);
+                }
+                if (progressBarHorizontal != null) {
+                    progressBarHorizontal.setIndeterminate(true);
+                    progressBarHorizontal.setVisibility(View.VISIBLE);
                 }
                 if (btnOpenGithub != null) btnOpenGithub.setEnabled(false);
                 if (btnLater != null) btnLater.setEnabled(false);
@@ -149,29 +183,56 @@ public class UpdateDialog {
                     }
 
                     @Override
+                    public void onProgress(int percent, long downloadedBytes, long totalBytes) {
+                        if (isContextDestroyed(context) || !dialog.isShowing()) return;
+                        if (percent >= 0 && totalBytes > 0) {
+                            String dlMb = formatMegabytes(downloadedBytes);
+                            String totalMb = formatMegabytes(totalBytes);
+                            btnAutoUpdate.setText(context.getString(R.string.update_dialog_downloading_progress, percent, dlMb, totalMb));
+                            if (progressBarHorizontal != null) {
+                                progressBarHorizontal.setIndeterminate(false);
+                                progressBarHorizontal.setProgress(percent);
+                                progressBarHorizontal.setVisibility(View.VISIBLE);
+                            }
+                        } else {
+                            btnAutoUpdate.setText(R.string.update_dialog_downloading);
+                            if (progressBarHorizontal != null) {
+                                progressBarHorizontal.setIndeterminate(true);
+                                progressBarHorizontal.setVisibility(View.VISIBLE);
+                            }
+                        }
+                    }
+
+                    @Override
                     public void onVerifyingHash() {
                         Logger.d(TAG, "Auto-update switching UI state to verifying hash");
+                        if (isContextDestroyed(context) || !dialog.isShowing()) return;
                         btnAutoUpdate.setText(R.string.update_dialog_verifying_hash);
+                        if (progressBarHorizontal != null) {
+                            progressBarHorizontal.setIndeterminate(true);
+                        }
+                    }
+
+                    @Override
+                    public void onInstallPermissionRequired() {
+                        Logger.i(TAG, "Auto-update paused while user grants unknown sources permission");
+                        if (isContextDestroyed(context) || !dialog.isShowing()) return;
+                        resetDownloadUi.run();
                     }
 
                     @Override
                     public void onSuccess() {
                         Logger.i(TAG, "Auto-update succeeded: installer dispatched. Dismissing update dialog");
-                        dialog.dismiss();
+                        if (!isContextDestroyed(context) && dialog.isShowing()) {
+                            dialog.dismiss();
+                        }
                     }
 
                     @Override
                     public void onFailure(Exception e) {
                         Logger.w(TAG, "Auto-update failed: " + Logger.formatException(e));
-                        if (progressAutoUpdate != null) {
-                            progressAutoUpdate.setVisibility(View.GONE);
-                        }
-                        btnAutoUpdate.setText(R.string.update_dialog_button_auto);
-                        btnAutoUpdate.setEnabled(true);
-                        if (btnOpenGithub != null) btnOpenGithub.setEnabled(true);
-                        if (btnLater != null) btnLater.setEnabled(true);
-                        if (btnClose != null) btnClose.setEnabled(true);
-                        dialog.setCancelable(true);
+                        if (isContextDestroyed(context) || !dialog.isShowing()) return;
+                        resetDownloadUi.run();
                         if (errorCard != null) {
                             errorCard.setVisibility(View.VISIBLE);
                         }
@@ -352,6 +413,11 @@ public class UpdateDialog {
             return localizedItems;
         }
         return readNonEmptyStrings(verObj.optJSONArray("items"));
+    }
+
+    private static String formatMegabytes(long bytes) {
+        double mb = Math.max(0L, bytes) / (1024.0 * 1024.0);
+        return String.format(Locale.US, "%.1f MB", mb);
     }
 
     private static List<String> readNonEmptyStrings(@Nullable JSONArray array) {

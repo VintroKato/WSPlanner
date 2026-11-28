@@ -223,6 +223,18 @@
                     android:visibility="gone" />
             </FrameLayout>
 
+            <ProgressBar
+                android:id="@+id/dialog_auto_update_bar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="6dp"
+                android:layout_marginTop="8dp"
+                android:max="100"
+                android:progress="0"
+                android:progressTint="?attr/colorPrimary"
+                android:indeterminateTint="?attr/colorPrimary"
+                android:visibility="gone" />
+
             <!-- Secondary Action: Open GitHub Release Page -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/dialog_btn_open_github"

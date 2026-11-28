@@ -10,7 +10,7 @@ android {
         applicationId "com.vintro.wsplanner"
         minSdk 29
         targetSdk 36
-        def appVersion = "1.4.1"
+        def appVersion = "1.4.2"
         versionName appVersion
 
         def versionParts = appVersion.tokenize('.').collect { it.toInteger() }
@@ -49,7 +49,6 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     buildFeatures {
-        viewBinding true
         buildConfig true
     }
     packaging {
@@ -77,6 +76,7 @@ dependencies {
     androidTestImplementation libs.espresso.core
     implementation libs.okhttp
     implementation libs.jsoup
+    implementation libs.work.runtime
 }
 
 tasks.withType(Test) {

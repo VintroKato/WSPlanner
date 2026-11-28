@@ -197,9 +197,25 @@ public class AnimationHelper {
     }
 
     private static synchronized void trackThemeAnimator(ValueAnimator animator) {
-        if (animator != null) {
-            activeThemeAnimators.add(animator);
+        if (animator == null) {
+            return;
         }
+        activeThemeAnimators.add(animator);
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                untrackThemeAnimator(animator);
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                untrackThemeAnimator(animator);
+            }
+        });
+    }
+
+    private static synchronized void untrackThemeAnimator(ValueAnimator animator) {
+        activeThemeAnimators.remove(animator);
     }
 
     public static void animateInputState(Context context, EditText input, InputState state, InputState oldState) {

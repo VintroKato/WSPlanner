@@ -1,10 +1,9 @@
 package com.vintro.wsplanner.services;
 
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Patterns;
 
+import com.vintro.wsplanner.utils.AppExecutors;
 import com.vintro.wsplanner.utils.Logger;
 import com.vintro.wsplanner.utils.NetworkUtils;
 
@@ -16,20 +15,25 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,23 +42,25 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
-// service to fetch, parse, and cache teacher emails
+// service to fetch, parse, and cache teacher emails with ttl and synchronized disk access
 public class TeacherEmailService {
     private static final String TAG = "TeacherEmailService";
     private static final String DIRECTORY_URL = "https://wspa.pl/student/dziekanat/strony-wykladowcow/";
     private static final String CACHE_FILE_NAME = "teachers_cache.json";
     private static final String DIRECTORY_CACHE_NAME = "teachers_directory.json";
-    private static final long DIRECTORY_CACHE_MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000; // 7 days
+    private static final long DIRECTORY_CACHE_MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000;
+    private static final long POSITIVE_CACHE_MAX_AGE_MS = 30L * 24 * 60 * 60 * 1000;
+    private static final long NEGATIVE_CACHE_MAX_AGE_MS = 24L * 60 * 60 * 1000;
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
     private static TeacherEmailService instance;
 
     private final Context appContext;
-    private final Handler mainHandler;
-    private final ExecutorService executor;
     private final OkHttpClient httpClient;
+    private final Object diskCacheLock = new Object();
 
     private final Map<String, TeacherEmailResult> memoryCache = new ConcurrentHashMap<>();
+    private volatile boolean diskCacheLoaded = false;
     private List<TeacherDirectoryEntry> cachedDirectory = null;
     private long directoryLastLoadedTimestamp = 0;
 
@@ -144,12 +150,9 @@ public class TeacherEmailService {
 
     private TeacherEmailService(Context context) {
         this.appContext = context.getApplicationContext();
-        this.mainHandler = new Handler(Looper.getMainLooper());
-        this.executor = Executors.newFixedThreadPool(2);
-        this.httpClient = new OkHttpClient.Builder().build();
-
-        loadDiskCache();
-        loadDirectoryCacheFromDisk();
+        this.httpClient = NetworkUtils.getSharedHttpClient().newBuilder().build();
+        // warm disk cache off the main thread so construction never blocks ui
+        AppExecutors.runIo(this::ensureDiskCachesLoaded);
     }
 
     public static synchronized TeacherEmailService getInstance(Context context) {
@@ -159,7 +162,26 @@ public class TeacherEmailService {
         return instance;
     }
 
-    // check if teacher email is already cached
+    // clear memory and disk teacher caches
+    public void clearCache() {
+        synchronized (diskCacheLock) {
+            memoryCache.clear();
+            cachedDirectory = null;
+            directoryLastLoadedTimestamp = 0;
+            diskCacheLoaded = false;
+            deleteQuietly(getCacheFile(CACHE_FILE_NAME));
+            deleteQuietly(getCacheFile(DIRECTORY_CACHE_NAME));
+        }
+        Logger.i(TAG + ".clearCache", "Cleared teacher email and directory caches");
+    }
+
+    private static void deleteQuietly(File file) {
+        if (file != null && file.exists()) {
+            file.delete();
+        }
+    }
+
+    // check if teacher email is already cached in memory
     public TeacherEmailResult getCachedEmail(String teacherQuery) {
         if (teacherQuery == null || teacherQuery.trim().isEmpty() || teacherQuery.equals("—") || teacherQuery.equalsIgnoreCase("Unknown Teacher")) {
             return TeacherEmailResult.notFoundOnWebsite();
@@ -170,7 +192,7 @@ public class TeacherEmailService {
         }
         TeacherEmailResult cached = memoryCache.get(normalizedKey);
         if (cached != null) {
-            Logger.d("TeacherEmailService.getCachedEmail", "Memory cache HIT for teacher [" + teacherQuery + "] -> " + (cached.hasEmail ? Logger.maskSensitiveData(cached.email) : "no email"));
+            Logger.d(TAG + ".getCachedEmail", "Memory cache HIT for teacher [" + teacherQuery + "] -> " + (cached.hasEmail ? Logger.maskSensitiveData(cached.email) : "no email"));
             return cached;
         }
         return null;
@@ -189,30 +211,35 @@ public class TeacherEmailService {
             return;
         }
 
-        // check in-memory cache
         TeacherEmailResult cachedResult = memoryCache.get(normalizedKey);
         if (cachedResult != null) {
-            Logger.d("TeacherEmailService.getTeacherEmail", "Cache HIT for [" + teacherQuery + "] -> " + Logger.maskSensitiveData(cachedResult.email));
+            Logger.d(TAG + ".getTeacherEmail", "Memory cache HIT for [" + teacherQuery + "] -> " + Logger.maskSensitiveData(cachedResult.email));
             deliverResult(callback, cachedResult);
             return;
         }
 
-        // check network connection
-        if (!NetworkUtils.isNetworkAvailable(appContext)) {
-            Logger.w("TeacherEmailService.getTeacherEmail", "No network available for fetching teacher email [" + teacherQuery + "]");
-            deliverResult(callback, TeacherEmailResult.networkError());
-            return;
-        }
-
-        Logger.d("TeacherEmailService.getTeacherEmail", "Cache MISS for [" + teacherQuery + "], starting background search");
-
-        // fetch in background
-        executor.execute(() -> {
+        AppExecutors.runIo(() -> {
             try {
-                // ensure directory is loaded
+                ensureDiskCachesLoaded();
+
+                TeacherEmailResult diskHit = memoryCache.get(normalizedKey);
+                if (diskHit != null) {
+                    Logger.d(TAG + ".getTeacherEmail", "Disk cache HIT for [" + teacherQuery + "]");
+                    deliverResult(callback, diskHit);
+                    return;
+                }
+
+                if (!NetworkUtils.isNetworkAvailable(appContext)) {
+                    Logger.w(TAG + ".getTeacherEmail", "No network available for fetching teacher email [" + teacherQuery + "]");
+                    deliverResult(callback, TeacherEmailResult.networkError());
+                    return;
+                }
+
+                Logger.d(TAG + ".getTeacherEmail", "Cache MISS for [" + teacherQuery + "], starting background search");
+
                 List<TeacherDirectoryEntry> directory = getOrFetchDirectory();
                 if (directory == null || directory.isEmpty()) {
-                    Logger.e("TeacherEmailService.getTeacherEmail", "Teacher directory is empty or failed to load");
+                    Logger.e(TAG + ".getTeacherEmail", "Teacher directory is empty or failed to load");
                     boolean isNetworkIssue = !NetworkUtils.isNetworkAvailable(appContext);
                     TeacherEmailResult fallback = isNetworkIssue ? TeacherEmailResult.networkError() : TeacherEmailResult.notFoundOnWebsite();
                     if (!isNetworkIssue) {
@@ -222,38 +249,36 @@ public class TeacherEmailService {
                     return;
                 }
 
-                // match teacher
                 TeacherDirectoryEntry matchedEntry = findBestDirectoryMatch(teacherQuery, directory);
                 if (matchedEntry == null || matchedEntry.profileUrl.isEmpty()) {
-                    Logger.d("TeacherEmailService.getTeacherEmail", "Teacher not found in directory: " + teacherQuery);
+                    Logger.d(TAG + ".getTeacherEmail", "Teacher not found in directory: " + teacherQuery);
                     TeacherEmailResult notFound = TeacherEmailResult.notFoundOnWebsite();
                     saveResultToCache(normalizedKey, notFound);
                     deliverResult(callback, notFound);
                     return;
                 }
 
-                Logger.d("TeacherEmailService.getTeacherEmail", "Matched teacher [" + teacherQuery + "] -> [" + matchedEntry.name + "] (" + matchedEntry.profileUrl + ")");
+                Logger.d(TAG + ".getTeacherEmail", "Matched teacher [" + teacherQuery + "] -> [" + matchedEntry.name + "] (" + matchedEntry.profileUrl + ")");
 
-                // scrape profile page for email
                 String email = scrapeTeacherEmail(matchedEntry.profileUrl);
                 TeacherEmailResult finalResult;
                 if (email != null && !email.isEmpty()) {
                     finalResult = TeacherEmailResult.found(email, matchedEntry.profileUrl, matchedEntry.name);
-                    Logger.i("TeacherEmailService.getTeacherEmail", "Found email for [" + teacherQuery + "]: " + Logger.maskSensitiveData(email));
+                    Logger.i(TAG + ".getTeacherEmail", "Found email for [" + teacherQuery + "]: " + Logger.maskSensitiveData(email));
                 } else {
                     finalResult = TeacherEmailResult.noEmail(matchedEntry.profileUrl, matchedEntry.name);
-                    Logger.d("TeacherEmailService.getTeacherEmail", "No email found on profile page for [" + teacherQuery + "]");
+                    Logger.d(TAG + ".getTeacherEmail", "No email found on profile page for [" + teacherQuery + "]");
                 }
 
                 saveResultToCache(normalizedKey, finalResult);
                 deliverResult(callback, finalResult);
 
             } catch (Exception e) {
-                Logger.e("TeacherEmailService.getTeacherEmail", "Error fetching teacher email for: " + teacherQuery + ", " + Logger.formatException(e));
-                boolean isNetworkIssue = !NetworkUtils.isNetworkAvailable(appContext) ||
-                        (e instanceof java.io.IOException) ||
-                        (e instanceof java.net.UnknownHostException) ||
-                        (e instanceof java.net.SocketTimeoutException);
+                Logger.e(TAG + ".getTeacherEmail", "Error fetching teacher email for: " + teacherQuery + ", " + Logger.formatException(e));
+                boolean isNetworkIssue = !NetworkUtils.isNetworkAvailable(appContext)
+                        || (e instanceof java.io.IOException)
+                        || (e instanceof java.net.UnknownHostException)
+                        || (e instanceof java.net.SocketTimeoutException);
                 TeacherEmailResult errorResult = isNetworkIssue ? TeacherEmailResult.networkError() : TeacherEmailResult.notFoundOnWebsite();
                 if (!isNetworkIssue) {
                     saveResultToCache(normalizedKey, errorResult);
@@ -263,9 +288,19 @@ public class TeacherEmailService {
         });
     }
 
+    private void ensureDiskCachesLoaded() {
+        if (diskCacheLoaded) return;
+        synchronized (diskCacheLock) {
+            if (diskCacheLoaded) return;
+            loadDiskCacheLocked();
+            loadDirectoryCacheFromDiskLocked();
+            diskCacheLoaded = true;
+        }
+    }
+
     private void deliverResult(TeacherEmailCallback callback, TeacherEmailResult result) {
         if (callback == null) return;
-        mainHandler.post(() -> callback.onResult(result));
+        AppExecutors.runOnMain(() -> callback.onResult(result));
     }
 
     // scrape teacher profile page for email
@@ -279,7 +314,7 @@ public class TeacherEmailService {
 
             try (Response response = httpClient.newCall(request).execute()) {
                 if (!response.isSuccessful()) {
-                    Logger.e("TeacherEmailService.scrapeTeacherEmail", "Profile request failed: HTTP " + response.code());
+                    Logger.e(TAG + ".scrapeTeacherEmail", "Profile request failed: HTTP " + response.code());
                     return null;
                 }
                 ResponseBody body = response.body();
@@ -288,7 +323,6 @@ public class TeacherEmailService {
                 String html = body.string();
                 Document doc = Jsoup.parse(html, profileUrl);
 
-                // remove footers and headers to avoid generic contact emails
                 doc.select("footer, header, .kingster-footer-wrapper, .kingster-header-wrap, #footer, nav, .widget, .kingster-top-bar, .ibif-top-bar, #block-21, #block-22").remove();
 
                 Element searchRoot = doc.selectFirst(".kingster-page-wrapper, .gdlr-core-personnel-single, .gdlr-core-page-builder-body, .gdlr-core-pbf-wrapper");
@@ -297,14 +331,12 @@ public class TeacherEmailService {
                 }
                 if (searchRoot == null) return null;
 
-                // search elements containing email label
                 Elements elementsWithMail = searchRoot.select("p, li, div.gdlr-core-personnel-info-list, div, span");
                 Pattern pMail = Pattern.compile("(?i)e-?mail:\\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})");
                 for (Element el : elementsWithMail) {
                     String text = el.text();
                     String lower = text.toLowerCase(Locale.ROOT);
                     if (lower.contains("e-mail:") || lower.contains("email:") || lower.contains("e-mail :") || lower.contains("email :")) {
-                        // check for mailto link
                         Elements mailtoLinks = el.select("a[href^=mailto:]");
                         for (Element a : mailtoLinks) {
                             String email = cleanMailto(a.attr("href"));
@@ -313,7 +345,6 @@ public class TeacherEmailService {
                             }
                         }
 
-                        // parse from text
                         Matcher m = pMail.matcher(text);
                         if (m.find()) {
                             String email = m.group(1).trim().toLowerCase(Locale.ROOT);
@@ -324,7 +355,6 @@ public class TeacherEmailService {
                     }
                 }
 
-                // check for mailto link in personnel card
                 Elements personnelMailtos = searchRoot.select(".gdlr-core-personnel-single a[href^=mailto:], .gdlr-core-personnel-list-content-wrap a[href^=mailto:], .gdlr-core-personnel-info-list a[href^=mailto:]");
                 for (Element a : personnelMailtos) {
                     String email = cleanMailto(a.attr("href"));
@@ -334,7 +364,7 @@ public class TeacherEmailService {
                 }
             }
         } catch (Exception e) {
-            Logger.e("TeacherEmailService.scrapeTeacherEmail", "Error scraping profile " + profileUrl + ": " + Logger.formatException(e));
+            Logger.e(TAG + ".scrapeTeacherEmail", "Error scraping profile " + profileUrl + ": " + Logger.formatException(e));
         }
         return null;
     }
@@ -347,23 +377,20 @@ public class TeacherEmailService {
         return cleaned.toLowerCase(Locale.ROOT);
     }
 
-    // load directory from memory, cache, or web
-    private synchronized List<TeacherDirectoryEntry> getOrFetchDirectory() {
-        if (cachedDirectory != null && !cachedDirectory.isEmpty()) {
-            // use recent memory cache
-            if (System.currentTimeMillis() - directoryLastLoadedTimestamp < DIRECTORY_CACHE_MAX_AGE_MS) {
+    // load directory from memory, disk cache, or web
+    private List<TeacherDirectoryEntry> getOrFetchDirectory() {
+        synchronized (diskCacheLock) {
+            if (cachedDirectory != null && !cachedDirectory.isEmpty()
+                    && System.currentTimeMillis() - directoryLastLoadedTimestamp < DIRECTORY_CACHE_MAX_AGE_MS) {
+                return cachedDirectory;
+            }
+            if (loadDirectoryCacheFromDiskLocked()) {
                 return cachedDirectory;
             }
         }
 
-        // try disk cache
-        if (loadDirectoryCacheFromDisk()) {
-            return cachedDirectory;
-        }
-
-        // download directory page
         try {
-            Logger.d("TeacherEmailService.getOrFetchDirectory", "Downloading teacher directory from " + DIRECTORY_URL);
+            Logger.d(TAG + ".getOrFetchDirectory", "Downloading teacher directory from " + DIRECTORY_URL);
             Request request = new Request.Builder()
                     .url(DIRECTORY_URL)
                     .header("User-Agent", USER_AGENT)
@@ -371,8 +398,10 @@ public class TeacherEmailService {
 
             try (Response response = httpClient.newCall(request).execute()) {
                 if (!response.isSuccessful()) {
-                    Logger.e("TeacherEmailService.getOrFetchDirectory", "Failed to download directory: HTTP " + response.code());
-                    return cachedDirectory != null ? cachedDirectory : Collections.emptyList();
+                    Logger.e(TAG + ".getOrFetchDirectory", "Failed to download directory: HTTP " + response.code());
+                    synchronized (diskCacheLock) {
+                        return cachedDirectory != null ? cachedDirectory : Collections.emptyList();
+                    }
                 }
 
                 ResponseBody body = response.body();
@@ -380,9 +409,6 @@ public class TeacherEmailService {
 
                 String html = body.string();
                 Document doc = Jsoup.parse(html, DIRECTORY_URL);
-
-                // Selector based on Python scraper & site inspect:
-                // Personnel items have links: a[href*="personnel"]
                 Elements links = doc.select(".gdlr-core-personnel-list-content-wrap a, .gdlr-core-personnel-item a[href*=/personnel/], a[href*=/personnel/]");
 
                 List<TeacherDirectoryEntry> entries = new ArrayList<>();
@@ -400,17 +426,21 @@ public class TeacherEmailService {
                     entries.add(new TeacherDirectoryEntry(name, url));
                 }
 
-                Logger.d("TeacherEmailService.getOrFetchDirectory", "Parsed " + entries.size() + " teachers from directory");
+                Logger.d(TAG + ".getOrFetchDirectory", "Parsed " + entries.size() + " teachers from directory");
                 if (!entries.isEmpty()) {
-                    cachedDirectory = entries;
-                    directoryLastLoadedTimestamp = System.currentTimeMillis();
-                    saveDirectoryCacheToDisk(entries);
+                    synchronized (diskCacheLock) {
+                        cachedDirectory = entries;
+                        directoryLastLoadedTimestamp = System.currentTimeMillis();
+                        saveDirectoryCacheToDiskLocked(entries);
+                    }
                 }
                 return entries;
             }
         } catch (Exception e) {
-            Logger.e("TeacherEmailService.getOrFetchDirectory", "Error downloading teacher directory: " + Logger.formatException(e));
-            return cachedDirectory != null ? cachedDirectory : Collections.emptyList();
+            Logger.e(TAG + ".getOrFetchDirectory", "Error downloading teacher directory: " + Logger.formatException(e));
+            synchronized (diskCacheLock) {
+                return cachedDirectory != null ? cachedDirectory : Collections.emptyList();
+            }
         }
     }
 
@@ -432,7 +462,6 @@ public class TeacherEmailService {
             }
         }
 
-        // minimum score threshold
         return bestScore >= 60 ? bestMatch : null;
     }
 
@@ -441,7 +470,6 @@ public class TeacherEmailService {
             return 100;
         }
 
-        // check if all query tokens match target
         boolean allQueryInTarget = true;
         for (String qt : qTokens) {
             if (!tTokens.contains(qt)) {
@@ -453,7 +481,6 @@ public class TeacherEmailService {
             return 90;
         }
 
-        // check if all target tokens match query
         boolean allTargetInQuery = true;
         for (String tt : tTokens) {
             if (!qTokens.contains(tt)) {
@@ -465,12 +492,10 @@ public class TeacherEmailService {
             return 90;
         }
 
-        // surname and initial match
         String qSurname = qTokens.get(qTokens.size() - 1);
         String tSurname = tTokens.get(tTokens.size() - 1);
 
         if (qSurname.equals(tSurname) && qSurname.length() >= 3) {
-            // check first name or initial
             if (qTokens.size() > 1 && tTokens.size() > 1) {
                 String qFirst = qTokens.get(0);
                 String tFirst = tTokens.get(0);
@@ -527,35 +552,55 @@ public class TeacherEmailService {
         return Patterns.EMAIL_ADDRESS.matcher(email).matches() && email.contains(".");
     }
 
-    // disk caching
-
     private File getCacheFile(String filename) {
         File cacheFile = new File(appContext.getCacheDir(), filename);
-        // migrate old cache file if needed
         try {
             File filesDirFile = new File(appContext.getFilesDir(), filename);
             if (!cacheFile.exists() && filesDirFile.exists()) {
                 filesDirFile.renameTo(cacheFile);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return cacheFile;
+    }
+
+    private static String readUtf8File(File file) throws Exception {
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+        }
+        return sb.toString();
+    }
+
+    private static void writeUtf8FileAtomically(File targetFile, String content) throws Exception {
+        File tempFile = new File(targetFile.getParentFile(), targetFile.getName() + ".tmp");
+        try (BufferedWriter writer = new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(tempFile, false), StandardCharsets.UTF_8))) {
+            writer.write(content);
+        }
+        if (!tempFile.renameTo(targetFile)) {
+            Files.move(tempFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 
     private void saveResultToCache(String normalizedKey, TeacherEmailResult result) {
         if (result == null || result.isNetworkError) return;
         memoryCache.put(normalizedKey, result);
 
-        executor.execute(() -> {
+        synchronized (diskCacheLock) {
             try {
                 File file = getCacheFile(CACHE_FILE_NAME);
                 JSONObject rootJson = new JSONObject();
                 if (file.exists()) {
-                    try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-                        StringBuilder sb = new StringBuilder();
-                        String line;
-                        while ((line = reader.readLine()) != null) sb.append(line);
-                        if (sb.length() > 0) rootJson = new JSONObject(sb.toString());
-                    } catch (Exception ignored) {}
+                    try {
+                        String raw = readUtf8File(file);
+                        if (!raw.isEmpty()) rootJson = new JSONObject(raw);
+                    } catch (Exception ignored) {
+                    }
                 }
 
                 JSONObject entry = new JSONObject();
@@ -572,36 +617,40 @@ public class TeacherEmailService {
                 entry.put("timestamp", System.currentTimeMillis());
 
                 rootJson.put(normalizedKey, entry);
-
-                try (FileWriter writer = new FileWriter(file)) {
-                    writer.write(rootJson.toString());
-                }
-                Logger.d("TeacherEmailService.saveResultToCache", "Saved teacher email result to cache for [" + normalizedKey + "] (email=" + Logger.maskSensitiveData(result.email) + ")");
+                writeUtf8FileAtomically(file, rootJson.toString());
+                Logger.d(TAG + ".saveResultToCache", "Saved teacher email result to cache for [" + normalizedKey + "] (email=" + Logger.maskSensitiveData(result.email) + ")");
             } catch (Exception e) {
-                Logger.e("TeacherEmailService.saveResultToCache", "Failed to save teacher result to disk cache: " + Logger.formatException(e));
+                Logger.e(TAG + ".saveResultToCache", "Failed to save teacher result to disk cache: " + Logger.formatException(e));
             }
-        });
+        }
     }
 
-    private void loadDiskCache() {
+    private void loadDiskCacheLocked() {
         try {
             File file = getCacheFile(CACHE_FILE_NAME);
             if (!file.exists()) return;
 
-            StringBuilder sb = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-                String line;
-                while ((line = reader.readLine()) != null) sb.append(line);
-            }
+            String raw = readUtf8File(file);
+            if (raw.isEmpty()) return;
 
-            if (sb.length() == 0) return;
             boolean cacheModified = false;
-            JSONObject root = new JSONObject(sb.toString());
-            var keys = root.keys();
+            long now = System.currentTimeMillis();
+            JSONObject root = new JSONObject(raw);
+            List<String> expiredKeys = new ArrayList<>();
+            Iterator<String> keys = root.keys();
             while (keys.hasNext()) {
                 String key = keys.next();
                 JSONObject obj = root.optJSONObject(key);
                 if (obj != null) {
+                    boolean found = obj.optBoolean("isFoundOnWebsite", false);
+                    long ts = obj.optLong("timestamp", 0L);
+                    long maxAge = found ? POSITIVE_CACHE_MAX_AGE_MS : NEGATIVE_CACHE_MAX_AGE_MS;
+                    if (ts > 0L && (now - ts) > maxAge) {
+                        expiredKeys.add(key);
+                        cacheModified = true;
+                        continue;
+                    }
+
                     String email = obj.optString("email", null);
                     if ("null".equalsIgnoreCase(email) || (email != null && email.isEmpty())) email = null;
                     if (email != null && isGenericUniversityEmail(email)) {
@@ -609,7 +658,6 @@ public class TeacherEmailService {
                         obj.put("email", JSONObject.NULL);
                         cacheModified = true;
                     }
-                    boolean found = obj.optBoolean("isFoundOnWebsite", false);
                     String profileUrl = obj.optString("profileUrl", null);
                     if ("null".equalsIgnoreCase(profileUrl) || (profileUrl != null && profileUrl.isEmpty())) profileUrl = null;
                     String matchedName = obj.optString("matchedName", null);
@@ -617,34 +665,30 @@ public class TeacherEmailService {
                     memoryCache.put(key, new TeacherEmailResult(email, found, profileUrl, matchedName));
                 }
             }
-            if (cacheModified) {
-                try (FileWriter writer = new FileWriter(file)) {
-                    writer.write(root.toString());
-                }
-                Logger.d("TeacherEmailService.loadDiskCache", "Sanitized generic emails from disk cache");
+            for (String expiredKey : expiredKeys) {
+                root.remove(expiredKey);
             }
-            Logger.d("TeacherEmailService.loadDiskCache", "Loaded " + memoryCache.size() + " teacher records from disk cache");
+            if (cacheModified) {
+                writeUtf8FileAtomically(file, root.toString());
+                Logger.d(TAG + ".loadDiskCacheLocked", "Cleaned expired or generic entries from teacher disk cache");
+            }
+            Logger.d(TAG + ".loadDiskCacheLocked", "Loaded " + memoryCache.size() + " teacher records from disk cache");
         } catch (Exception e) {
-            Logger.e("TeacherEmailService.loadDiskCache", "Error reading disk cache: " + Logger.formatException(e));
+            Logger.e(TAG + ".loadDiskCacheLocked", "Error reading disk cache: " + Logger.formatException(e));
         }
     }
 
-    private boolean loadDirectoryCacheFromDisk() {
+    private boolean loadDirectoryCacheFromDiskLocked() {
         try {
             File file = getCacheFile(DIRECTORY_CACHE_NAME);
             if (!file.exists()) return false;
 
-            StringBuilder sb = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-                String line;
-                while ((line = reader.readLine()) != null) sb.append(line);
-            }
-
-            if (sb.length() == 0) return false;
-            JSONObject root = new JSONObject(sb.toString());
+            String raw = readUtf8File(file);
+            if (raw.isEmpty()) return false;
+            JSONObject root = new JSONObject(raw);
             long timestamp = root.optLong("timestamp", 0);
             if (System.currentTimeMillis() - timestamp > DIRECTORY_CACHE_MAX_AGE_MS) {
-                return false; // cache expired
+                return false;
             }
 
             JSONArray arr = root.optJSONArray("teachers");
@@ -658,37 +702,33 @@ public class TeacherEmailService {
 
             cachedDirectory = entries;
             directoryLastLoadedTimestamp = timestamp;
-            Logger.d("TeacherEmailService.loadDirectoryCacheFromDisk", "Loaded " + entries.size() + " teachers from directory disk cache");
+            Logger.d(TAG + ".loadDirectoryCacheFromDiskLocked", "Loaded " + entries.size() + " teachers from directory disk cache");
             return true;
         } catch (Exception e) {
-            Logger.e("TeacherEmailService.loadDirectoryCacheFromDisk", "Error loading directory cache: " + Logger.formatException(e));
+            Logger.e(TAG + ".loadDirectoryCacheFromDiskLocked", "Error loading directory cache: " + Logger.formatException(e));
             return false;
         }
     }
 
-    private void saveDirectoryCacheToDisk(List<TeacherDirectoryEntry> entries) {
-        executor.execute(() -> {
-            try {
-                File file = getCacheFile(DIRECTORY_CACHE_NAME);
-                JSONObject root = new JSONObject();
-                root.put("timestamp", System.currentTimeMillis());
+    private void saveDirectoryCacheToDiskLocked(List<TeacherDirectoryEntry> entries) {
+        try {
+            File file = getCacheFile(DIRECTORY_CACHE_NAME);
+            JSONObject root = new JSONObject();
+            root.put("timestamp", System.currentTimeMillis());
 
-                JSONArray arr = new JSONArray();
-                for (TeacherDirectoryEntry entry : entries) {
-                    JSONObject item = new JSONObject();
-                    item.put("name", entry.name);
-                    item.put("url", entry.profileUrl);
-                    arr.put(item);
-                }
-                root.put("teachers", arr);
-
-                try (FileWriter writer = new FileWriter(file)) {
-                    writer.write(root.toString());
-                }
-                Logger.d("TeacherEmailService.saveDirectoryCacheToDisk", "Directory cache written to disk (" + entries.size() + " items)");
-            } catch (Exception e) {
-                Logger.e("TeacherEmailService.saveDirectoryCacheToDisk", "Failed to save directory cache: " + Logger.formatException(e));
+            JSONArray arr = new JSONArray();
+            for (TeacherDirectoryEntry entry : entries) {
+                JSONObject item = new JSONObject();
+                item.put("name", entry.name);
+                item.put("url", entry.profileUrl);
+                arr.put(item);
             }
-        });
+            root.put("teachers", arr);
+
+            writeUtf8FileAtomically(file, root.toString());
+            Logger.d(TAG + ".saveDirectoryCacheToDiskLocked", "Directory cache written to disk (" + entries.size() + " items)");
+        } catch (Exception e) {
+            Logger.e(TAG + ".saveDirectoryCacheToDiskLocked", "Failed to save directory cache: " + Logger.formatException(e));
+        }
     }
 }

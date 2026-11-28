@@ -192,6 +192,7 @@ public class ExcelWorkbook implements Closeable {
         @Override
         public void startElement(String uri, String localName, String qName, Attributes attributes) {
             if ("row".equals(qName)) {
+                currentCol = -1;
                 String rAttr = attributes.getValue("r");
                 if (rAttr != null) {
                     currentRow = Integer.parseInt(rAttr) - 1;

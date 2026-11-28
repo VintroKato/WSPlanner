@@ -131,7 +131,7 @@
     <string name="subject_course_not_found">Nie znaleziono kursu. Otwieranie PUW…</string>
     <string name="maps_hint_format">(Google Maps: %1$s ↗)</string>
     <string name="maps_hint_wspa">(Google Maps: WSPA Lublin, ul. Bursaki 12 ↗)</string>
-    <string name="timeline_item_header_format">%1$d. %2$s, %3$s</string>
+    <string name="timeline_item_header_format">%1$s, %2$s</string>
     <string name="timeline_time_room_format">%1$s – %2$s · %3$s</string>
     <string name="common_loading">Ładowanie…</string>
 
@@ -273,4 +273,38 @@
     <string name="schedule_opening_puw">Otwieranie PUW…</string>
     <string name="schedule_open_puw_tooltip">Otwórz ekran główny PUW</string>
     <string name="subject_open_puw_course_tooltip">Otwórz stronę kursu w PUW</string>
+
+    <!-- Localized lesson types -->
+    <string name="lesson_type_wyklad">Wykład</string>
+    <string name="lesson_type_cwiczenia">Ćwiczenia</string>
+    <string name="lesson_type_laboratorium">Laboratorium</string>
+    <string name="lesson_type_warsztat">Warsztat</string>
+    <string name="lesson_type_lektorat">Lektorat</string>
+    <string name="lesson_type_projekt">Projekt</string>
+    <string name="lesson_type_seminarium">Seminarium</string>
+    <string name="lesson_type_inne">Inne</string>
+
+    <!-- Keystore recovery -->
+    <string name="keystore_error_title">Błąd bezpiecznej pamięci</string>
+    <string name="keystore_error_message">Urządzenie nie mogło odszyfrować zapisanych danych logowania (zdarza się po aktualizacji systemu lub zmianie blokady ekranu).\n\nZresetować zapisane ustawienia i zalogować się ponownie?</string>
+    <string name="keystore_error_reset">Zresetuj i zaloguj</string>
+    <string name="keystore_error_exit">Wyjdź</string>
+
+    <!-- Onboarding and settings helpers -->
+    <string name="onboarding_select_all_fields">Wybierz wszystkie opcje studiów</string>
+    <string name="onboarding_load_courses_error">Nie udało się pobrać kierunków</string>
+    <string name="settings_clear_cache_refresh">Wyczyść pamięć i odśwież</string>
+    <string name="settings_cache_cleared_toast">Wyczyszczono pamięć, pobieranie planu…</string>
+    <string name="settings_cache_cleared_offline_toast">Pamięć podręczna wyczyszczona</string>
+    <string name="widget_theme_auto">Auto</string>
+    <string name="widget_next_class_header">Następne zajęcia · %1$s, %2$s</string>
+
+    <!-- Update progress and install permission -->
+    <string name="update_dialog_downloading_progress">Pobieranie %1$d%% (%2$s / %3$s)</string>
+    <string name="update_install_permission_toast">Zezwól na instalację aktualizacji z WSPlanner w ustawieniach i spróbuj ponownie</string>
+
+    <!-- Teacher profile and notes badge -->
+    <string name="teacher_open_profile">Otwórz profil wykładowcy</string>
+    <string name="teacher_email_retry_hint">Brak internetu · Dotknij, aby ponowić</string>
+    <string name="subject_has_note_desc">Zapisana notatka</string>
 </resources>

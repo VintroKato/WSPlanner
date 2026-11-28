@@ -1,31 +1,22 @@
 package com.vintro.wsplanner.services;
 
-import android.app.Dialog;
+import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.method.ScrollingMovementMethod;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
-import android.widget.ImageButton;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
+import android.provider.Settings;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.FileProvider;
 
-import com.google.android.material.button.MaterialButton;
 import com.vintro.wsplanner.BuildConfig;
 import com.vintro.wsplanner.R;
+import com.vintro.wsplanner.utils.AppExecutors;
 import com.vintro.wsplanner.utils.Logger;
 import com.vintro.wsplanner.utils.NetworkUtils;
 
@@ -37,11 +28,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +38,6 @@ import java.util.regex.Pattern;
 
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.Dns;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -61,7 +48,6 @@ public class UpdateManager {
 
     public static final String GITHUB_REPO_URL = "https://github.com/VintroKato/WSPlanner";
     public static final String GITHUB_RELEASES_URL = "https://github.com/VintroKato/WSPlanner/releases";
-    private static final String GITHUB_API_LATEST_RELEASE = "https://api.github.com/repos/VintroKato/WSPlanner/releases/latest";
     private static final String GITHUB_API_RELEASES = "https://api.github.com/repos/VintroKato/WSPlanner/releases?per_page=15";
 
     private static final String PREFS_NAME = "wsplanner_update_prefs";
@@ -71,44 +57,17 @@ public class UpdateManager {
     private static final String KEY_LATEST_APK_URL = "latest_apk_download_url";
     private static final String KEY_LATEST_SHA256_URL = "latest_sha256_download_url";
     private static final String KEY_LATEST_CHANGELOG = "latest_release_changelog";
-    private static final String KEY_CHANGELOG_PARSER_VERSION = "changelog_parser_version";
-    private static final int CHANGELOG_PARSER_VERSION = 3;
 
     public static final long COOLDOWN_MS = 120_000L;
     public static final long AUTO_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000L; // 24 hours
     public static final long PENDING_UPDATE_RECHECK_INTERVAL_MS = 6 * 60 * 60 * 1000L; // 6 hours when update is pending
 
     private static long lastManualCheckTimestamp = 0L;
-    private static final OkHttpClient httpClient = new OkHttpClient.Builder()
+    private static final OkHttpClient httpClient = NetworkUtils.getSharedHttpClient().newBuilder()
             .followRedirects(true)
             .followSslRedirects(true)
             .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
-            .dns(new Dns() {
-                @NonNull
-                @Override
-                public List<InetAddress> lookup(@NonNull String hostname) throws UnknownHostException {
-                    try {
-                        return Dns.SYSTEM.lookup(hostname);
-                    } catch (UnknownHostException e) {
-                        String lower = hostname.toLowerCase(Locale.ROOT);
-                        if (lower.equals("api.github.com")) {
-                            Logger.w(TAG, "System DNS resolution failed for " + hostname + ", using fallback IP");
-                            return Arrays.asList(
-                                    InetAddress.getByAddress(hostname, new byte[]{(byte) 140, (byte) 82, (byte) 121, 6}),
-                                    InetAddress.getByAddress(hostname, new byte[]{(byte) 140, (byte) 82, (byte) 121, 5})
-                            );
-                        } else if (lower.equals("github.com")) {
-                            Logger.w(TAG, "System DNS resolution failed for " + hostname + ", using fallback IP");
-                            return Arrays.asList(
-                                    InetAddress.getByAddress(hostname, new byte[]{(byte) 140, (byte) 82, (byte) 121, 3}),
-                                    InetAddress.getByAddress(hostname, new byte[]{(byte) 140, (byte) 82, (byte) 121, 4})
-                            );
-                        }
-                        throw e;
-                    }
-                }
-            })
+            .readTimeout(30, TimeUnit.SECONDS)
             .build();
     private static Handler mainHandler;
 
@@ -218,13 +177,21 @@ public class UpdateManager {
         return isNewerVersion(BuildConfig.VERSION_NAME, savedVersion);
     }
 
+    // clear cached changelog and auto-check timer after an app upgrade so new releases are parsed fresh
+    public static void clearChangelogCacheOnUpgrade(Context context) {
+        if (context == null) return;
+        getPrefs(context).edit()
+                .remove(KEY_LAST_AUTO_CHECK_TIME)
+                .remove(KEY_LATEST_CHANGELOG)
+                .remove("last_checked_app_version")
+                .remove("changelog_parser_version")
+                .apply();
+        Logger.d(TAG, "Cleared cached changelog and auto-check timer after app upgrade");
+    }
+
     // Automatic update check
     public static void checkAutoUpdate(Context context, UpdateCheckCallback callback) {
         Logger.d(TAG, "checkAutoUpdate triggered");
-        if (context != null) {
-            Context appCtx = context.getApplicationContext();
-            new Thread(() -> cleanupDownloadedApks(appCtx)).start();
-        }
         if (!NetworkUtils.isNetworkAvailable(context)) {
             Logger.d(TAG, "Device is offline, skipping auto update check");
             if (callback != null) {
@@ -239,21 +206,6 @@ public class UpdateManager {
                 }
             }
             return;
-        }
-
-        String lastCheckedVer = getPrefs(context).getString("last_checked_app_version", null);
-        String currentAppVer = BuildConfig.VERSION_NAME;
-        String cachedChangelog = getPrefs(context).getString(KEY_LATEST_CHANGELOG, "");
-        boolean hasEmptyTitlesInCache = cachedChangelog.contains("\"title\":\"\"") || cachedChangelog.contains("\"title\": \"\"");
-        int cachedParserVersion = getPrefs(context).getInt(KEY_CHANGELOG_PARSER_VERSION, 0);
-
-        if (lastCheckedVer == null || !lastCheckedVer.equals(currentAppVer) || hasEmptyTitlesInCache || cachedParserVersion < CHANGELOG_PARSER_VERSION) {
-            getPrefs(context).edit()
-                    .putString("last_checked_app_version", currentAppVer)
-                    .putInt(KEY_CHANGELOG_PARSER_VERSION, CHANGELOG_PARSER_VERSION)
-                    .remove(KEY_LAST_AUTO_CHECK_TIME)
-                    .remove(KEY_LATEST_CHANGELOG)
-                    .apply();
         }
 
         long lastCheck = getPrefs(context).getLong(KEY_LAST_AUTO_CHECK_TIME, 0L);
@@ -366,7 +318,27 @@ public class UpdateManager {
         });
     }
 
+    // check whether a GitHub release entry is a stable published release
+    public static boolean isStableRelease(boolean isDraft, boolean isPrerelease) {
+        return !isDraft && !isPrerelease;
+    }
+
+    // pick the newest non-draft, non-prerelease entry from GitHub releases array
+    public static JSONObject findLatestStableRelease(JSONArray releasesArray) {
+        if (releasesArray == null) return null;
+        for (int i = 0; i < releasesArray.length(); i++) {
+            JSONObject candidate = releasesArray.optJSONObject(i);
+            if (candidate == null) continue;
+            if (!isStableRelease(candidate.optBoolean("draft", false), candidate.optBoolean("prerelease", false))) {
+                continue;
+            }
+            return candidate;
+        }
+        return null;
+    }
+
     private static void executeGitHubCheck(Context context, UpdateCheckCallback callback) {
+        final Context appContext = context.getApplicationContext();
         Logger.d(TAG, "Executing GitHub API request -> " + GITHUB_API_RELEASES);
         Request request = new Request.Builder()
                 .url(GITHUB_API_RELEASES)
@@ -409,15 +381,15 @@ public class UpdateManager {
                         throw new IOException("Unexpected API response format");
                     }
 
-                    if (releasesArray.length() == 0) {
-                        Logger.w(TAG, "GitHub releases array is empty");
+                    JSONObject latestRelease = findLatestStableRelease(releasesArray);
+                    if (latestRelease == null) {
+                        Logger.w(TAG, "No stable non-prerelease GitHub release found");
                         postToMain(() -> {
                             if (callback != null) callback.onUpToDate(BuildConfig.VERSION_NAME);
                         });
                         return;
                     }
 
-                    JSONObject latestRelease = releasesArray.getJSONObject(0);
                     String tagName = latestRelease.optString("tag_name", "");
                     String htmlUrl = latestRelease.optString("html_url", GITHUB_RELEASES_URL);
                     String currentVersion = BuildConfig.VERSION_NAME;
@@ -458,7 +430,10 @@ public class UpdateManager {
                     JSONArray multiVersionChangelog = new JSONArray();
                     if (hasUpdate) {
                         for (int i = 0; i < releasesArray.length(); i++) {
-                            JSONObject rel = releasesArray.getJSONObject(i);
+                            JSONObject rel = releasesArray.optJSONObject(i);
+                            if (rel == null || rel.optBoolean("draft", false) || rel.optBoolean("prerelease", false)) {
+                                continue;
+                            }
                             String relTag = rel.optString("tag_name", "");
                             if (!isNewerVersion(currentVersion, relTag)) {
                                 break;
@@ -503,7 +478,7 @@ public class UpdateManager {
                             + ", missedVersionsCount=" + multiVersionChangelog.length());
 
                     if (hasUpdate) {
-                        SharedPreferences.Editor editor = getPrefs(context).edit()
+                        SharedPreferences.Editor editor = getPrefs(appContext).edit()
                                 .putString(KEY_LATEST_APK_URL, apkUrl)
                                 .putString(KEY_LATEST_SHA256_URL, sha256Url);
                         if (multiVersionChangelog.length() > 0) {
@@ -513,7 +488,7 @@ public class UpdateManager {
                         }
                         editor.apply();
                     } else {
-                        getPrefs(context).edit()
+                        getPrefs(appContext).edit()
                                 .remove(KEY_LATEST_APK_URL)
                                 .remove(KEY_LATEST_SHA256_URL)
                                 .remove(KEY_LATEST_CHANGELOG)
@@ -782,20 +757,65 @@ public class UpdateManager {
 
     public interface DownloadInstallCallback {
         void onDownloadStarted();
+        default void onProgress(int percent, long downloadedBytes, long totalBytes) {}
         default void onVerifyingHash() {}
+        default void onInstallPermissionRequired() {}
         void onSuccess();
         void onFailure(Exception e);
     }
 
+    private static boolean openUnknownSourcesSettings(Context context) {
+        if (context == null) return false;
+        try {
+            Intent settingsIntent = new Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + context.getPackageName())
+            );
+            if (!(context instanceof Activity)) {
+                settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            }
+            context.startActivity(settingsIntent);
+            return true;
+        } catch (ActivityNotFoundException e) {
+            Logger.w(TAG, "ACTION_MANAGE_UNKNOWN_APP_SOURCES unavailable on this ROM: " + Logger.formatException(e));
+            return false;
+        } catch (Exception e) {
+            Logger.w(TAG, "Failed opening unknown app sources settings: " + Logger.formatException(e));
+            return false;
+        }
+    }
+
     public static void downloadAndInstallApk(Context context, String version, String directApkUrl, DownloadInstallCallback callback) {
         Logger.i(TAG, "downloadAndInstallApk initiated for version: " + version + " | directApkUrl: " + directApkUrl);
+        if (context == null) {
+            if (callback != null) {
+                callback.onFailure(new IllegalArgumentException("Context is null"));
+            }
+            return;
+        }
 
-        if (!NetworkUtils.isNetworkAvailable(context)) {
+        final Context appContext = context.getApplicationContext();
+
+        if (!NetworkUtils.isNetworkAvailable(appContext)) {
             Logger.w(TAG, "Cannot download update APK: device is offline");
             if (callback != null) {
                 callback.onFailure(new IOException("No network connection"));
             }
             return;
+        }
+
+        // check install permission up front so the user does not waste mobile data before granting access
+        if (!appContext.getPackageManager().canRequestPackageInstalls()) {
+            Logger.w(TAG, "REQUEST_INSTALL_PACKAGES not yet granted; prompting user via system settings");
+            if (openUnknownSourcesSettings(context)) {
+                postToMain(() -> {
+                    Toast.makeText(appContext, R.string.update_install_permission_toast, Toast.LENGTH_LONG).show();
+                    if (callback != null) {
+                        callback.onInstallPermissionRequired();
+                    }
+                });
+                return;
+            }
         }
 
         String cleanVer = version != null ? version.trim() : "";
@@ -810,7 +830,7 @@ public class UpdateManager {
             Logger.d(TAG, "Using computed download URL: " + targetUrl);
         }
 
-        String savedSha256Url = getSavedSha256Url(context);
+        String savedSha256Url = getSavedSha256Url(appContext);
         if (savedSha256Url == null || savedSha256Url.trim().isEmpty()) {
             int lastSlash = targetUrl.lastIndexOf('/');
             if (lastSlash > 0) {
@@ -828,10 +848,10 @@ public class UpdateManager {
             callback.onDownloadStarted();
         }
 
-        new Thread(() -> {
+        AppExecutors.runIo(() -> {
             File destFile = null;
             try {
-                cleanupDownloadedApks(context);
+                cleanupDownloadedApks(appContext);
 
                 Request request = new Request.Builder()
                         .url(finalUrl)
@@ -848,11 +868,8 @@ public class UpdateManager {
                         throw new IOException("Response body is null");
                     }
 
-                    File cacheDir = context.getExternalCacheDir();
-                    if (cacheDir == null) {
-                        cacheDir = context.getCacheDir();
-                    }
-                    File updateDir = new File(cacheDir, "updates");
+                    // store apk in private internal cache so other apps cannot modify it before verification
+                    File updateDir = new File(appContext.getCacheDir(), "updates");
                     if (!updateDir.exists()) {
                         boolean created = updateDir.mkdirs();
                         Logger.d(TAG, "Created update cache directory: " + updateDir.getAbsolutePath() + " (success: " + created + ")");
@@ -871,9 +888,35 @@ public class UpdateManager {
                         byte[] buffer = new byte[8192];
                         int bytesRead;
                         long downloadedBytes = 0;
+                        int lastReportedPercent = -1;
+                        long lastReportTimeMs = 0L;
                         while ((bytesRead = in.read(buffer)) != -1) {
                             out.write(buffer, 0, bytesRead);
                             downloadedBytes += bytesRead;
+
+                            long nowMs = System.currentTimeMillis();
+                            if (totalBytes > 0) {
+                                int percent = (int) Math.min(100L, (downloadedBytes * 100L) / totalBytes);
+                                if (percent != lastReportedPercent && (nowMs - lastReportTimeMs >= 120L || percent == 100)) {
+                                    lastReportedPercent = percent;
+                                    lastReportTimeMs = nowMs;
+                                    final int reportedPercent = percent;
+                                    final long reportedBytes = downloadedBytes;
+                                    postToMain(() -> {
+                                        if (callback != null) {
+                                            callback.onProgress(reportedPercent, reportedBytes, totalBytes);
+                                        }
+                                    });
+                                }
+                            } else if (nowMs - lastReportTimeMs >= 250L) {
+                                lastReportTimeMs = nowMs;
+                                final long reportedBytes = downloadedBytes;
+                                postToMain(() -> {
+                                    if (callback != null) {
+                                        callback.onProgress(-1, reportedBytes, -1L);
+                                    }
+                                });
+                            }
                         }
                         out.flush();
                         Logger.i(TAG, "Download finished. Total bytes written: " + downloadedBytes);
@@ -884,7 +927,7 @@ public class UpdateManager {
                     throw new IOException("Downloaded file is empty or missing");
                 }
 
-                Logger.i(TAG, "APK downloaded (" + destFile.length() + " bytes). Starting SHA-256 verification…");
+                Logger.i(TAG, "APK downloaded (" + destFile.length() + " bytes). Starting SHA-256 verification");
                 postToMain(() -> {
                     if (callback != null) {
                         callback.onVerifyingHash();
@@ -892,28 +935,40 @@ public class UpdateManager {
                 });
 
                 verifyApkSha256(destFile, fileName, finalSha256Url);
-                Logger.i(TAG, "SHA-256 verification passed! Generating FileProvider URI…");
+                Logger.i(TAG, "SHA-256 verification passed! Generating FileProvider URI");
 
                 Uri apkUri = FileProvider.getUriForFile(
-                        context.getApplicationContext(),
-                        context.getPackageName() + ".provider",
+                        appContext,
+                        appContext.getPackageName() + ".provider",
                         destFile
                 );
                 Logger.i(TAG, "FileProvider content URI created: " + apkUri);
 
                 Intent installIntent = new Intent(Intent.ACTION_VIEW);
                 installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
-                installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                if (!(context instanceof android.app.Activity)) {
-                    installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                }
+                installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
 
-                Logger.i(TAG, "Dispatching system package installer intent for: " + fileName);
-                context.startActivity(installIntent);
-
+                final File verifiedFile = destFile;
                 postToMain(() -> {
-                    if (callback != null) {
-                        callback.onSuccess();
+                    if (!appContext.getPackageManager().canRequestPackageInstalls()
+                            && openUnknownSourcesSettings(appContext)) {
+                        Toast.makeText(appContext, R.string.update_install_permission_toast, Toast.LENGTH_LONG).show();
+                        if (callback != null) {
+                            callback.onInstallPermissionRequired();
+                        }
+                        return;
+                    }
+                    try {
+                        Logger.i(TAG, "Dispatching system package installer intent for: " + fileName);
+                        appContext.startActivity(installIntent);
+                        if (callback != null) {
+                            callback.onSuccess();
+                        }
+                    } catch (Exception launchError) {
+                        Logger.e(TAG, "Failed to launch system package installer for " + verifiedFile.getName() + ": " + Logger.formatException(launchError), launchError);
+                        if (callback != null) {
+                            callback.onFailure(launchError);
+                        }
                     }
                 });
 
@@ -929,7 +984,7 @@ public class UpdateManager {
                     }
                 });
             }
-        }).start();
+        });
     }
 
     private static void verifyApkSha256(File apkFile, String apkFileName, String sha256Url) throws Exception {

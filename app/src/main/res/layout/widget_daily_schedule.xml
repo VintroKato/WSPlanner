@@ -87,6 +87,16 @@
                     android:indeterminateTint="#FFFFFF"
                     android:visibility="gone" />
 
+                <ProgressBar
+                    android:id="@+id/widget_daily_refresh_progress_light"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:indeterminate="true"
+                    android:indeterminateTint="@color/widget_text_light_primary"
+                    android:visibility="gone" />
+
                 <ImageView
                     android:id="@+id/widget_daily_refresh_check"
                     android:layout_width="match_parent"
@@ -126,33 +136,7 @@
         android:divider="@android:color/transparent"
         android:dividerHeight="6dp" />
 
-    <!-- Empty State -->
-    <LinearLayout
-        android:id="@+id/widget_daily_empty"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:visibility="gone">
-
-        <TextView
-            android:id="@+id/widget_daily_empty_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/widget_no_classes_today"
-            android:textColor="@color/widget_text_dark_primary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_daily_empty_subtext"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textColor="@color/widget_text_dark_secondary"
-            android:textSize="12sp"
-            android:visibility="gone" />
-    </LinearLayout>
+    <!-- Empty State (shared with CurrentLessonWidget) -->
+    <include layout="@layout/widget_empty_state" />
 
 </LinearLayout>

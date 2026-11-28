@@ -1,14 +1,10 @@
 package com.vintro.wsplanner.network;
 
 import android.content.Context;
-import android.content.Intent;
-import android.appwidget.AppWidgetManager;
 
 import androidx.annotation.NonNull;
 
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
-import com.vintro.wsplanner.enums.DegreeLevel;
-import com.vintro.wsplanner.enums.StudyMode;
 import com.vintro.wsplanner.utils.Logger;
 import com.vintro.wsplanner.utils.NetworkUtils;
 
@@ -16,9 +12,13 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
-import java.util.HashMap;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import okhttp3.Cookie;
 import okhttp3.CookieJar;
@@ -28,77 +28,59 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import okhttp3.ResponseBody;
 
+// manages authenticated moodle web sessions and credential verification against puw
 public class PUW {
     public static final String baseUrl = "https://puw.wspa.pl/";
     public static final String loginUrl = baseUrl + "login/index.php";
     public static final String homeUrl = baseUrl + "my/";
     public static final String privateFilesUrl = baseUrl + "user/files.php";
-    public static String getFileUrl(Context context, Intent intent, OkHttpClient client) {
-        int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
-        String major = PreferencesManager.getMajorPref(context, widgetId);
-        DegreeLevel degreeLevel = PreferencesManager.getDegreeLevelPref(context, widgetId);
-        StudyMode studyMode = PreferencesManager.getStudyModePref(context, widgetId);
-        int year = PreferencesManager.getYearPref(context, widgetId);
 
-        if (major == null || degreeLevel == null || studyMode == null) {
-            Logger.w("PUW.getFileUrl", "Missing preferences for widget " + widgetId);
-            return null;
-        }
-
-        if (degreeLevel == DegreeLevel.ZERO_YEAR) {
-            Logger.i("PUW.getFileUrl", "Fetching Rok Zerowy schedule file URL for widget " + widgetId);
-        }
-
-        String url = StudyPlanScraper.getScheduleFileUrl(client, major, degreeLevel, studyMode, year);
-        Logger.d("PUW.getFileUrl", "Getting dynamic file url for widget " + widgetId + ", major=" + major + ", degree=" + degreeLevel + ", mode=" + studyMode + ", year=" + year + ", url: " + url);
-        return url;
-    }
-
-    private static final Map<String, List<Cookie>> globalCookieStore = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<String, List<Cookie>> globalCookieStore = new ConcurrentHashMap<>();
     private static volatile OkHttpClient sharedClient;
     private static volatile OkHttpClient sharedApiClient;
     private static volatile String activeSessionUser = null;
+    private static volatile String activeSessionFingerprint = null;
     private static volatile long lastLoginTime = 0;
-    private static final long SESSION_MAX_AGE_MS = 60 * 60 * 1000; // 1 hour
+    private static final long SESSION_MAX_AGE_MS = 60 * 60 * 1000;
+
+    private static CookieJar createMemoryCookieJar(Map<String, List<Cookie>> store) {
+        return new CookieJar() {
+            @Override
+            public void saveFromResponse(@NonNull HttpUrl url, @NonNull List<Cookie> cookies) {
+                List<Cookie> existing = store.computeIfAbsent(
+                        url.host(), k -> new CopyOnWriteArrayList<>()
+                );
+                for (Cookie newCookie : cookies) {
+                    existing.removeIf(c -> c.name().equalsIgnoreCase(newCookie.name()));
+                    existing.add(newCookie);
+                }
+            }
+
+            @NonNull
+            @Override
+            public List<Cookie> loadForRequest(@NonNull HttpUrl url) {
+                List<Cookie> cookies = store.get(url.host());
+                if (cookies == null || cookies.isEmpty()) {
+                    return List.of();
+                }
+                long now = System.currentTimeMillis();
+                cookies.removeIf(c -> c.expiresAt() < now);
+                List<Cookie> validCookies = new ArrayList<>();
+                for (Cookie c : cookies) {
+                    if (c.expiresAt() >= now && c.matches(url)) {
+                        validCookies.add(c);
+                    }
+                }
+                return validCookies;
+            }
+        };
+    }
 
     private static synchronized OkHttpClient getClient() {
         if (sharedClient == null) {
-            sharedClient = new OkHttpClient.Builder()
-                    .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
-                    .writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                    .cookieJar(new CookieJar() {
-                        @Override
-                        public void saveFromResponse(@NonNull HttpUrl url, @NonNull List<Cookie> cookies) {
-                            List<Cookie> existing = globalCookieStore.computeIfAbsent(
-                                    url.host(), k -> new java.util.concurrent.CopyOnWriteArrayList<>()
-                            );
-                            for (Cookie newCookie : cookies) {
-                                existing.removeIf(c -> c.name().equalsIgnoreCase(newCookie.name()));
-                                existing.add(newCookie);
-                            }
-                        }
-
-                        @NonNull
-                        @Override
-                        public List<Cookie> loadForRequest(@NonNull HttpUrl url) {
-                            List<Cookie> cookies = globalCookieStore.get(url.host());
-                            if (cookies == null || cookies.isEmpty()) {
-                                return List.of();
-                            }
-                            long now = System.currentTimeMillis();
-                            cookies.removeIf(c -> c.expiresAt() < now);
-                            List<Cookie> validCookies = new java.util.ArrayList<>();
-                            for (Cookie c : cookies) {
-                                if (c.expiresAt() >= now && c.matches(url)) {
-                                    validCookies.add(c);
-                                }
-                            }
-                            return validCookies;
-                        }
-                    })
+            sharedClient = NetworkUtils.getSharedHttpClient().newBuilder()
+                    .cookieJar(createMemoryCookieJar(globalCookieStore))
                     .build();
         }
         return sharedClient;
@@ -107,7 +89,7 @@ public class PUW {
     // stateless okhttp client sharing connection pool and dispatcher for moodle rest calls
     public static synchronized OkHttpClient getApiClient() {
         if (sharedApiClient == null) {
-            sharedApiClient = getClient().newBuilder()
+            sharedApiClient = NetworkUtils.getSharedHttpClient().newBuilder()
                     .cookieJar(CookieJar.NO_COOKIES)
                     .build();
         }
@@ -127,10 +109,25 @@ public class PUW {
         return false;
     }
 
+    private static String computeCredentialFingerprint(String login, String password) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = digest.digest((login + "\0" + password).getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return String.valueOf((login + "\0" + password).hashCode());
+        }
+    }
+
     public static synchronized void clearSession() {
         Logger.d("PUW.clearSession", "Clearing global session and cookie store");
         globalCookieStore.clear();
         activeSessionUser = null;
+        activeSessionFingerprint = null;
         lastLoginTime = 0;
     }
 
@@ -146,21 +143,6 @@ public class PUW {
         return getAuthenticatedClient(login, password);
     }
 
-    // authenticate for widget instance using widget-specific credentials
-    public static OkHttpClient login(Intent intent, Context context) {
-        if (!NetworkUtils.isNetworkAvailable(context)) {
-            Logger.w("PUW.login", "Cannot perform widget login: device is offline");
-            return null;
-        }
-        int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
-        Logger.d("PUW.login", "Executing login for widget " + widgetId);
-
-        String login = PreferencesManager.getLoginPref(context, widgetId);
-        String password = PreferencesManager.getPasswordPref(context, widgetId);
-
-        return getAuthenticatedClient(login, password);
-    }
-
     public static synchronized OkHttpClient getAuthenticatedClient(String login, String password) {
         if (login == null || password == null) {
             Logger.w("PUW.getAuthenticatedClient", "Credentials missing (login=" + (login != null) + ", password=" + (password != null) + ")");
@@ -169,29 +151,43 @@ public class PUW {
 
         OkHttpClient client = getClient();
         long now = System.currentTimeMillis();
+        String fingerprint = computeCredentialFingerprint(login, password);
 
-        // If session is still fresh (under 1 hour) and we have valid session cookies for this user, reuse session
-        if (login.equals(activeSessionUser) && (now - lastLoginTime < SESSION_MAX_AGE_MS) && hasMoodleSessionCookie()) {
+        // reuse active session only if both username and password fingerprint match
+        if (login.equals(activeSessionUser)
+                && fingerprint.equals(activeSessionFingerprint)
+                && (now - lastLoginTime < SESSION_MAX_AGE_MS)
+                && hasMoodleSessionCookie()) {
             Logger.d("PUW.getAuthenticatedClient", "Reusing active session for user: " + Logger.maskSensitiveData(login));
             return client;
         }
 
+        // clear stale cookies before authenticating so an old session cannot interfere
+        globalCookieStore.clear();
         Logger.d("PUW.getAuthenticatedClient", "Session invalid or expired, performing full authentication for: " + Logger.maskSensitiveData(login));
         int response = loginWithClient(client, login, password);
         if (response == 1) {
             activeSessionUser = login;
+            activeSessionFingerprint = fingerprint;
             lastLoginTime = now;
             Logger.i("PUW.getAuthenticatedClient", "Authentication successful for user: " + Logger.maskSensitiveData(login));
             return client;
         }
+        activeSessionUser = null;
+        activeSessionFingerprint = null;
+        lastLoginTime = 0;
         Logger.w("PUW.getAuthenticatedClient", "Authentication failed for user: " + Logger.maskSensitiveData(login) + ", response code: " + response);
         return null;
     }
 
+    // verify credentials using an isolated cookie jar so existing app sessions are not polluted
     public static int checkLogin(String login, String password) {
         Logger.d("PUW.checkLogin", "Checking credentials for user: " + Logger.maskSensitiveData(login));
-        OkHttpClient client = getClient();
-        return loginWithClient(client, login, password);
+        Map<String, List<Cookie>> isolatedStore = new ConcurrentHashMap<>();
+        OkHttpClient isolatedClient = NetworkUtils.getSharedHttpClient().newBuilder()
+                .cookieJar(createMemoryCookieJar(isolatedStore))
+                .build();
+        return loginWithClient(isolatedClient, login, password);
     }
 
     private static int loginWithClient(OkHttpClient client, String login, String password) {
@@ -230,56 +226,6 @@ public class PUW {
         }
     }
 
-    // download schedule excel file from moodle portal
-    public static ResponseBody downloadFile(Intent workIntent, Context context) {
-        Logger.d("PUW.downloadFile", "Starting schedule file download");
-        if (!NetworkUtils.isNetworkAvailable(context)) {
-            Logger.w("PUW.downloadFile", "Schedule download aborted: device is offline");
-            return null;
-        }
-        OkHttpClient client = PUW.login(workIntent, context);
-        if (client == null) {
-            Logger.e("PUW.downloadFile", "Download aborted: could not authenticate with PUW");
-            return null;
-        }
-
-        String fileUrl = PUW.getFileUrl(context, workIntent, client);
-        if (fileUrl == null) {
-            Logger.e("PUW.downloadFile", "Download aborted: schedule file URL could not be resolved");
-            return null;
-        }
-
-        Request fileRequest = new Request.Builder()
-                .url(fileUrl)
-                .build();
-
-        try {
-            Logger.d("PUW.downloadFile", "Executing HTTP GET for schedule file: " + fileUrl);
-            Response fileResponse = client.newCall(fileRequest).execute();
-
-            if (!fileResponse.isSuccessful()) {
-                Logger.e("PUW.downloadFile", "Download failed with HTTP code: " + fileResponse.code());
-                fileResponse.close();
-                return null;
-            }
-
-            ResponseBody file = fileResponse.body();
-
-            if (file == null || file.contentLength() == 0) {
-                Logger.e("PUW.downloadFile", "Downloaded file body is null or empty");
-                fileResponse.close();
-                return null;
-            }
-
-            Logger.d("PUW.downloadFile", "Schedule file downloaded successfully, size: " + file.contentLength() + " bytes");
-            return file;
-
-        } catch (Exception e) {
-            Logger.e("PUW.downloadFile", "Exception during file download: " + Logger.formatException(e), e);
-            return null;
-        }
-    }
-
     // scrape student full name from puw dashboard or files page
     public static String getStudentFullName(OkHttpClient client) {
         if (client == null) {
@@ -287,15 +233,14 @@ public class PUW {
             return null;
         }
 
-        // option 1: 'aria-label' from dashboard
         Request homeRequest = new Request.Builder()
                 .url(PUW.homeUrl)
                 .build();
 
         try (Response response = client.newCall(homeRequest).execute()) {
-            if (response.isSuccessful()) {
+            if (response.isSuccessful() && response.body() != null) {
                 String html = response.body().string();
-                Document doc = Jsoup.parse(html);
+                Document doc = Jsoup.parse(html, PUW.baseUrl);
 
                 Element userDropdown = doc.selectFirst("a.dropdown-toggle.icon-no-margin");
 
@@ -311,15 +256,14 @@ public class PUW {
             Logger.e("PUW.getStudentFullName", "Error fetching home page: " + Logger.formatException(e), e);
         }
 
-        // option 2: if aria-label not found
         Request filesRequest = new Request.Builder()
                 .url(privateFilesUrl)
                 .build();
 
         try (Response response = client.newCall(filesRequest).execute()) {
-            if (response.isSuccessful()) {
+            if (response.isSuccessful() && response.body() != null) {
                 String html = response.body().string();
-                Document doc = Jsoup.parse(html);
+                Document doc = Jsoup.parse(html, PUW.baseUrl);
 
                 Element h1Element = doc.selectFirst("div.page-header-headings h1");
 

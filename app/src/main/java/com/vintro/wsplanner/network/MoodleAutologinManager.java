@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
+import com.vintro.wsplanner.utils.AppExecutors;
 import com.vintro.wsplanner.utils.Logger;
 import com.vintro.wsplanner.utils.NetworkUtils;
 
@@ -20,7 +21,6 @@ import org.json.JSONObject;
 
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import okhttp3.FormBody;
 import okhttp3.OkHttpClient;
@@ -47,8 +47,8 @@ public class MoodleAutologinManager {
     private static final String ERROR_INVALID_TOKEN = "invalidtoken";
     private static final String ERROR_ACCESS_EXCEPTION = "accessexception";
 
-    private static final ExecutorService executor = Executors.newFixedThreadPool(2);
-    private static final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private static final ExecutorService executor = AppExecutors.io();
+    private static final Handler mainHandler = AppExecutors.mainHandler();
     private static final Object tokenLock = new Object();
 
     private static final class TokenPair {

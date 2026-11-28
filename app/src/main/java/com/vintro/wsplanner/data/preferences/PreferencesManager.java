@@ -3,15 +3,16 @@ package com.vintro.wsplanner.data.preferences;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.enums.AppTheme;
 import com.vintro.wsplanner.enums.DegreeLevel;
+import com.vintro.wsplanner.enums.Language;
 import com.vintro.wsplanner.enums.StudyMode;
 import com.vintro.wsplanner.models.Lesson;
 import com.vintro.wsplanner.utils.Logger;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.security.ProviderException;
 import java.time.DayOfWeek;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -64,17 +65,23 @@ public class PreferencesManager {
         try {
             encryptedPrefsInstance = SecurePreferences.create(context, secure_prefs_name);
             return encryptedPrefsInstance;
-        } catch (GeneralSecurityException | IOException e) {
+        } catch (GeneralSecurityException | IOException | ProviderException e) {
             Logger.e("PreferencesManager.getEncryptedPreferences", "Failed to initialize encrypted preferences: " + Logger.formatException(e));
-            // do not fall back to unencrypted preferences for credentials
             throw new IllegalStateException("Secure storage unavailable", e);
         }
     }
 
-    // check keystore availability
+    // check keystore availability with an active encrypt and decrypt round trip
     public static boolean checkKeystoreHealth(Context context) {
         try {
-            getEncryptedPreferences(context);
+            SharedPreferences prefs = getEncryptedPreferences(context);
+            if (prefs instanceof SecurePreferences) {
+                boolean healthy = ((SecurePreferences) prefs).verifyRoundTrip();
+                if (!healthy) {
+                    Logger.e("PreferencesManager.checkKeystoreHealth", "Keystore round-trip verification failed");
+                }
+                return healthy;
+            }
             return true;
         } catch (Exception e) {
             Logger.e("PreferencesManager.checkKeystoreHealth", "Keystore health check failed: " + Logger.formatException(e));
@@ -82,14 +89,15 @@ public class PreferencesManager {
         }
     }
 
-    // reset corrupted storage in emergency recovery
+    // reset corrupted storage and remove the keystore master key alias so recovery can regenerate it
     public static void resetCorruptedStorage(Context context) {
         try {
             encryptedPrefsInstance = null;
-            SecurePreferences.clearKeyCache();
+            SecurePreferences.deleteMasterKey();
             context.deleteSharedPreferences(prefs_name);
             context.deleteSharedPreferences(secure_prefs_name);
-            Logger.i("PreferencesManager.resetCorruptedStorage", "Corrupted storage reset successfully");
+            context.deleteSharedPreferences("schedule_repo_prefs");
+            Logger.i("PreferencesManager.resetCorruptedStorage", "Corrupted storage and keystore alias reset successfully");
         } catch (Exception e) {
             Logger.e("PreferencesManager.resetCorruptedStorage", "Failed to reset corrupted storage: " + Logger.formatException(e));
         }
@@ -97,7 +105,7 @@ public class PreferencesManager {
 
     // standard unencrypted preferences for non-sensitive data
     private static SharedPreferences getPreferences(Context context) {
-        return context.getSharedPreferences(prefs_name, Context.MODE_PRIVATE);
+        return context.getApplicationContext().getSharedPreferences(prefs_name, Context.MODE_PRIVATE);
     }
 
     public static int getLastRunVersionCode(Context context) {
@@ -116,7 +124,7 @@ public class PreferencesManager {
         getPreferences(context).edit().putBoolean("logs_sanitized", sanitized).apply();
     }
 
-    // one-time migration hook executed exclusively by AppUpgradeManager during version upgrades
+    // one-time migration hook executed by AppUpgradeManager during upgrades
     public static void migrateLegacyStudentData(Context context) {
         try {
             SharedPreferences plainPrefs = getPreferences(context);
@@ -152,204 +160,260 @@ public class PreferencesManager {
         }
     }
 
+    // one-time migration moving non-sensitive course config from secure preferences to plain preferences
+    public static void migrateCourseConfigToPlainPrefs(Context context) {
+        try {
+            SharedPreferences securePrefs = getEncryptedPreferences(context);
+            SharedPreferences plainPrefs = getPreferences(context);
+
+            String majorKey = key_major + GLOBAL_ID;
+            String degreeKey = key_degree_level + GLOBAL_ID;
+            String modeKey = key_study_mode + GLOBAL_ID;
+            String yearKey = key_year + GLOBAL_ID;
+            String specKey = key_specialty + GLOBAL_ID;
+            String englishKey = key_english_group + GLOBAL_ID;
+            String seminarKey = key_seminar_teacher + GLOBAL_ID;
+
+            boolean hasAnyLegacyKey = securePrefs.contains(majorKey)
+                    || securePrefs.contains(degreeKey)
+                    || securePrefs.contains(modeKey)
+                    || securePrefs.contains(yearKey)
+                    || securePrefs.contains(specKey)
+                    || securePrefs.contains(englishKey)
+                    || securePrefs.contains(seminarKey);
+
+            if (!hasAnyLegacyKey) {
+                return;
+            }
+
+            Logger.i("PreferencesManager.migrateCourseConfigToPlainPrefs", "Migrating non-sensitive course config out of secure storage");
+            SharedPreferences.Editor plainEditor = plainPrefs.edit();
+            SharedPreferences.Editor secureEditor = securePrefs.edit();
+
+            copyStringIfMissing(securePrefs, plainPrefs, plainEditor, secureEditor, majorKey);
+            copyStringIfMissing(securePrefs, plainPrefs, plainEditor, secureEditor, degreeKey);
+            copyStringIfMissing(securePrefs, plainPrefs, plainEditor, secureEditor, modeKey);
+            copyStringIfMissing(securePrefs, plainPrefs, plainEditor, secureEditor, specKey);
+            copyStringIfMissing(securePrefs, plainPrefs, plainEditor, secureEditor, englishKey);
+            copyStringIfMissing(securePrefs, plainPrefs, plainEditor, secureEditor, seminarKey);
+
+            if (securePrefs.contains(yearKey)) {
+                int yearVal = securePrefs.getInt(yearKey, -1);
+                if (yearVal > 0 && !plainPrefs.contains(yearKey)) {
+                    plainEditor.putInt(yearKey, yearVal);
+                }
+                secureEditor.remove(yearKey);
+            }
+
+            plainEditor.apply();
+            secureEditor.apply();
+            Logger.d("PreferencesManager.migrateCourseConfigToPlainPrefs", "Non-sensitive course config migration completed");
+        } catch (Throwable t) {
+            Logger.w("PreferencesManager.migrateCourseConfigToPlainPrefs", "Non-fatal error migrating course config: " + Logger.formatException(t));
+        }
+    }
+
+    private static void copyStringIfMissing(
+            SharedPreferences securePrefs,
+            SharedPreferences plainPrefs,
+            SharedPreferences.Editor plainEditor,
+            SharedPreferences.Editor secureEditor,
+            String key
+    ) {
+        if (securePrefs.contains(key)) {
+            String value = securePrefs.getString(key, null);
+            if (value != null && !plainPrefs.contains(key)) {
+                plainEditor.putString(key, value);
+            }
+            secureEditor.remove(key);
+        }
+    }
+
     // save global user profile preferences
     public static void saveGlobalPrefs(Context context, String login, String password, String major, DegreeLevel degreeLevel, StudyMode studyMode, int year, String specialty, String englishGroup) {
-        savePrefs(context, GLOBAL_ID, login, password, major, degreeLevel, studyMode, year, specialty, englishGroup);
+        Logger.d("PreferencesManager.saveGlobalPrefs", "Saving global preferences: login=" + Logger.maskSensitiveData(login) + ", major=" + major + ", degree=" + degreeLevel + ", mode=" + studyMode + ", year=" + year + ", specialty=" + specialty + ", englishGroup=" + englishGroup);
+
+        SharedPreferences securePrefs = getEncryptedPreferences(context);
+        securePrefs.edit()
+                .putString(key_login + GLOBAL_ID, login)
+                .putString(key_password + GLOBAL_ID, password)
+                .apply();
+
+        SharedPreferences plainPrefs = getPreferences(context);
+        plainPrefs.edit()
+                .putString(key_major + GLOBAL_ID, major)
+                .putString(key_degree_level + GLOBAL_ID, degreeLevel != null ? degreeLevel.name() : null)
+                .putString(key_study_mode + GLOBAL_ID, studyMode != null ? studyMode.name() : null)
+                .putInt(key_year + GLOBAL_ID, year)
+                .putString(key_specialty + GLOBAL_ID, specialty)
+                .putString(key_english_group + GLOBAL_ID, englishGroup)
+                .apply();
     }
 
     public static String getGlobalLoginPref(Context context) {
-        return getLoginPref(context, GLOBAL_ID);
+        try {
+            SharedPreferences prefs = getEncryptedPreferences(context);
+            String login = prefs.getString(key_login + GLOBAL_ID, null);
+            Logger.d("PreferencesManager.getGlobalLoginPref", "Retrieved login: " + Logger.maskSensitiveData(login));
+            return login;
+        } catch (Exception e) {
+            Logger.w("PreferencesManager.getGlobalLoginPref", "Unable to read login from secure storage: " + Logger.formatException(e));
+            return null;
+        }
     }
 
     public static String getGlobalPasswordPref(Context context) {
-        return getPasswordPref(context, GLOBAL_ID);
+        try {
+            SharedPreferences prefs = getEncryptedPreferences(context);
+            return prefs.getString(key_password + GLOBAL_ID, null);
+        } catch (Exception e) {
+            Logger.w("PreferencesManager.getGlobalPasswordPref", "Unable to read password from secure storage: " + Logger.formatException(e));
+            return null;
+        }
     }
 
     public static String getGlobalMajorPref(Context context) {
-        return getMajorPref(context, GLOBAL_ID);
+        return getPreferences(context).getString(key_major + GLOBAL_ID, null);
     }
 
     public static DegreeLevel getGlobalDegreeLevelPref(Context context) {
-        return getDegreeLevelPref(context, GLOBAL_ID);
+        String level = getPreferences(context).getString(key_degree_level + GLOBAL_ID, null);
+        if (level == null || level.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return DegreeLevel.valueOf(level);
+        } catch (IllegalArgumentException e) {
+            Logger.w("PreferencesManager.getGlobalDegreeLevelPref", "Unknown degree level stored: " + level);
+            return null;
+        }
     }
 
     public static StudyMode getGlobalStudyModePref(Context context) {
-        return getStudyModePref(context, GLOBAL_ID);
+        String mode = getPreferences(context).getString(key_study_mode + GLOBAL_ID, null);
+        if (mode == null || mode.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return StudyMode.valueOf(mode);
+        } catch (IllegalArgumentException e) {
+            Logger.w("PreferencesManager.getGlobalStudyModePref", "Unknown study mode stored: " + mode);
+            return null;
+        }
     }
 
     public static int getGlobalYearPref(Context context) {
-        return getYearPref(context, GLOBAL_ID);
+        int year = getPreferences(context).getInt(key_year + GLOBAL_ID, 1);
+        Logger.d("PreferencesManager.getGlobalYearPref", "Getting global year: " + year);
+        return year;
     }
 
     public static String getGlobalSpecialtyPref(Context context) {
-        return getSpecialtyPref(context, GLOBAL_ID);
+        return getPreferences(context).getString(key_specialty + GLOBAL_ID, null);
     }
 
     public static void setGlobalSpecialtyPref(Context context, String specialty) {
         Logger.d("PreferencesManager.setGlobalSpecialtyPref", "Setting global specialty: " + specialty);
-        getEncryptedPreferences(context).edit()
+        getPreferences(context).edit()
                 .putString(key_specialty + GLOBAL_ID, specialty)
                 .apply();
     }
 
     public static String getGlobalEnglishGroupPref(Context context) {
-        return getEnglishGroupPref(context, GLOBAL_ID);
+        return getPreferences(context).getString(key_english_group + GLOBAL_ID, null);
     }
 
     public static void setGlobalEnglishGroupPref(Context context, String englishGroup) {
         Logger.d("PreferencesManager.setGlobalEnglishGroupPref", "Setting global English group: " + englishGroup);
-        getEncryptedPreferences(context).edit()
+        getPreferences(context).edit()
                 .putString(key_english_group + GLOBAL_ID, englishGroup)
                 .apply();
     }
 
     public static String getGlobalSeminarTeacherPref(Context context) {
-        return getSeminarTeacherPref(context, GLOBAL_ID);
+        return getPreferences(context).getString(key_seminar_teacher + GLOBAL_ID, null);
     }
 
     public static void setGlobalSeminarTeacherPref(Context context, String teacher) {
         Logger.d("PreferencesManager.setGlobalSeminarTeacherPref", "Setting global seminar teacher: " + teacher);
-        setSeminarTeacherPref(context, GLOBAL_ID, teacher);
+        getPreferences(context).edit()
+                .putString(key_seminar_teacher + GLOBAL_ID, teacher)
+                .apply();
     }
 
     public static String getGlobalStudentNamePref(Context context) {
-        return getStudentNamePref(context, GLOBAL_ID);
+        try {
+            return getEncryptedPreferences(context).getString(key_student_name + GLOBAL_ID, null);
+        } catch (Exception e) {
+            Logger.w("PreferencesManager.getGlobalStudentNamePref", "Unable to read student name from secure storage: " + Logger.formatException(e));
+            return null;
+        }
     }
 
     public static void setGlobalStudentNamePref(Context context, String studentName) {
         Logger.d("PreferencesManager.setGlobalStudentNamePref", "Setting global student name: " + Logger.maskName(studentName));
-        setStudentNamePref(context, GLOBAL_ID, studentName);
+        getEncryptedPreferences(context).edit()
+                .putString(key_student_name + GLOBAL_ID, studentName)
+                .apply();
     }
 
     public static String getGlobalStudentSurnamePref(Context context) {
-        return getStudentSurnamePref(context, GLOBAL_ID);
+        try {
+            return getEncryptedPreferences(context).getString(key_student_surname + GLOBAL_ID, null);
+        } catch (Exception e) {
+            Logger.w("PreferencesManager.getGlobalStudentSurnamePref", "Unable to read student surname from secure storage: " + Logger.formatException(e));
+            return null;
+        }
     }
 
     public static void setGlobalStudentSurnamePref(Context context, String studentSurname) {
         Logger.d("PreferencesManager.setGlobalStudentSurnamePref", "Setting global student surname: " + Logger.maskSurname(studentSurname));
-        setStudentSurnamePref(context, GLOBAL_ID, studentSurname);
+        getEncryptedPreferences(context).edit()
+                .putString(key_student_surname + GLOBAL_ID, studentSurname)
+                .apply();
     }
 
     public static void deleteGlobalPrefs(Context context) {
-        deletePrefs(context, GLOBAL_ID);
-    }
+        Logger.d("PreferencesManager.deleteGlobalPrefs", "Deleting global preferences");
 
-    public static void savePrefs(Context context, int widgetId, String login, String password, String major, DegreeLevel degreeLevel, StudyMode studyMode, int year, String specialty, String englishGroup) {
-        Logger.d("PreferencesManager.savePrefs", "Saving preferences for id " + widgetId + ": login=" + Logger.maskSensitiveData(login) + ", major=" + major + ", degree=" + degreeLevel + ", mode=" + studyMode + ", year=" + year + ", specialty=" + specialty + ", englishGroup=" + englishGroup);
-
-        SharedPreferences prefs = getEncryptedPreferences(context);
-        prefs.edit()
-                .putString(key_login + widgetId, login)
-                .putString(key_password + widgetId, password)
-                .putString(key_major + widgetId, major)
-                .putString(key_degree_level + widgetId, degreeLevel != null ? degreeLevel.name() : null)
-                .putString(key_study_mode + widgetId, studyMode != null ? studyMode.name() : null)
-                .putInt(key_year + widgetId, year)
-                .putString(key_specialty + widgetId, specialty)
-                .putString(key_english_group + widgetId, englishGroup)
-                .apply();
-    }
-
-    public static String getLoginPref(Context context, int widgetId) {
-        SharedPreferences prefs = getEncryptedPreferences(context);
-        String login = prefs.getString(key_login + widgetId, null);
-        Logger.d("PreferencesManager.getLoginPref", "Retrieved login for id " + widgetId + ": " + Logger.maskSensitiveData(login));
-        return login;
-    }
-
-    public static String getPasswordPref(Context context, int widgetId) {
-        SharedPreferences prefs = getEncryptedPreferences(context);
-        return prefs.getString(key_password + widgetId, null);
-    }
-
-    public static String getMajorPref(Context context, int widgetId) {
-        return getEncryptedPreferences(context).getString(key_major + widgetId, null);
-    }
-
-    public static DegreeLevel getDegreeLevelPref(Context context, int widgetId) {
-        String level = getEncryptedPreferences(context).getString(key_degree_level + widgetId, null);
-        return level != null ? DegreeLevel.valueOf(level) : null;
-    }
-
-    public static StudyMode getStudyModePref(Context context, int widgetId) {
-        String mode = getEncryptedPreferences(context).getString(key_study_mode + widgetId, null);
-        return mode != null ? StudyMode.valueOf(mode) : null;
-    }
-
-    public static int getYearPref(Context context, int widgetId) {
-        int year = getEncryptedPreferences(context).getInt(key_year + widgetId, 1);
-        Logger.d("PreferencesManager.getYearPref", "Getting year for widget " + widgetId + ", year: " + year);
-        return year;
-    }
-
-    public static String getSpecialtyPref(Context context, int widgetId) {
-        return getEncryptedPreferences(context).getString(key_specialty + widgetId, null);
-    }
-
-    public static String getEnglishGroupPref(Context context, int widgetId) {
-        return getEncryptedPreferences(context).getString(key_english_group + widgetId, null);
-    }
-
-    public static String getSeminarTeacherPref(Context context, int widgetId) {
-        return getEncryptedPreferences(context).getString(key_seminar_teacher + widgetId, null);
-    }
-
-    public static void setSeminarTeacherPref(Context context, int widgetId, String teacher) {
-        getEncryptedPreferences(context).edit()
-                .putString(key_seminar_teacher + widgetId, teacher)
-                .apply();
-    }
-
-    public static String getStudentNamePref(Context context, int widgetId) {
-        return getEncryptedPreferences(context).getString(key_student_name + widgetId, null);
-    }
-
-    public static void setStudentNamePref(Context context, int widgetId, String studentName) {
-        getEncryptedPreferences(context).edit()
-                .putString(key_student_name + widgetId, studentName)
-                .apply();
-    }
-
-    public static String getStudentSurnamePref(Context context, int widgetId) {
-        return getEncryptedPreferences(context).getString(key_student_surname + widgetId, null);
-    }
-
-    public static void setStudentSurnamePref(Context context, int widgetId, String studentSurname) {
-        getEncryptedPreferences(context).edit()
-                .putString(key_student_surname + widgetId, studentSurname)
-                .apply();
-    }
-
-    public static void deletePrefs(Context context, int widgetId) {
-        Logger.d("PreferencesManager.deletePrefs", "Deleting prefs for widget " + widgetId);
-
-        SharedPreferences prefs = getEncryptedPreferences(context);
-        prefs.edit()
-                .remove(key_login + widgetId)
-                .remove(key_password + widgetId)
-                .remove(key_major + widgetId)
-                .remove(key_degree_level + widgetId)
-                .remove(key_study_mode + widgetId)
-                .remove(key_year + widgetId)
-                .remove(key_specialty + widgetId)
-                .remove(key_english_group + widgetId)
-                .remove(key_seminar_teacher + widgetId)
-                .remove(key_student_name + widgetId)
-                .remove(key_student_surname + widgetId)
-                .remove(key_specialty_configured + widgetId)
-                .remove(widgetId == GLOBAL_ID ? key_detected_student_name : "")
-                .remove(widgetId == GLOBAL_ID ? key_detected_student_surname : "")
-                .apply();
-        if (widgetId == GLOBAL_ID) {
-            clearMoodleAuthTokens(context);
-            getPreferences(context).edit()
-                    .remove(key_detected_english)
-                    .remove(key_detected_seminar)
+        try {
+            SharedPreferences securePrefs = getEncryptedPreferences(context);
+            securePrefs.edit()
+                    .remove(key_login + GLOBAL_ID)
+                    .remove(key_password + GLOBAL_ID)
+                    .remove(key_major + GLOBAL_ID)
+                    .remove(key_degree_level + GLOBAL_ID)
+                    .remove(key_study_mode + GLOBAL_ID)
+                    .remove(key_year + GLOBAL_ID)
+                    .remove(key_specialty + GLOBAL_ID)
+                    .remove(key_english_group + GLOBAL_ID)
+                    .remove(key_seminar_teacher + GLOBAL_ID)
+                    .remove(key_student_name + GLOBAL_ID)
+                    .remove(key_student_surname + GLOBAL_ID)
+                    .remove(key_specialty_configured + GLOBAL_ID)
                     .remove(key_detected_student_name)
                     .remove(key_detected_student_surname)
                     .apply();
-            setOnboardingStage(context, ONBOARDING_STAGE_LOGIN);
+        } catch (Exception e) {
+            Logger.w("PreferencesManager.deleteGlobalPrefs", "Error clearing secure prefs: " + Logger.formatException(e));
         }
+
+        clearMoodleAuthTokens(context);
+        getPreferences(context).edit()
+                .remove(key_major + GLOBAL_ID)
+                .remove(key_degree_level + GLOBAL_ID)
+                .remove(key_study_mode + GLOBAL_ID)
+                .remove(key_year + GLOBAL_ID)
+                .remove(key_specialty + GLOBAL_ID)
+                .remove(key_english_group + GLOBAL_ID)
+                .remove(key_seminar_teacher + GLOBAL_ID)
+                .remove(key_specialty_configured + GLOBAL_ID)
+                .remove(key_detected_english)
+                .remove(key_detected_seminar)
+                .remove(key_detected_student_name)
+                .remove(key_detected_student_surname)
+                .apply();
+        setOnboardingStage(context, ONBOARDING_STAGE_LOGIN);
     }
 
     // store moodle mobile webservice tokens in encrypted preferences only
@@ -362,11 +426,21 @@ public class PreferencesManager {
     }
 
     public static String getMoodleToken(Context context) {
-        return getEncryptedPreferences(context).getString(key_moodle_token, null);
+        try {
+            return getEncryptedPreferences(context).getString(key_moodle_token, null);
+        } catch (Exception e) {
+            Logger.w("PreferencesManager.getMoodleToken", "Unable to read Moodle token: " + Logger.formatException(e));
+            return null;
+        }
     }
 
     public static String getMoodlePrivateToken(Context context) {
-        return getEncryptedPreferences(context).getString(key_moodle_private_token, null);
+        try {
+            return getEncryptedPreferences(context).getString(key_moodle_private_token, null);
+        } catch (Exception e) {
+            Logger.w("PreferencesManager.getMoodlePrivateToken", "Unable to read Moodle private token: " + Logger.formatException(e));
+            return null;
+        }
     }
 
     public static void setMoodleUserId(Context context, long userId) {
@@ -377,16 +451,25 @@ public class PreferencesManager {
     }
 
     public static long getMoodleUserId(Context context) {
-        return getEncryptedPreferences(context).getLong(key_moodle_user_id, -1L);
+        try {
+            return getEncryptedPreferences(context).getLong(key_moodle_user_id, -1L);
+        } catch (Exception e) {
+            Logger.w("PreferencesManager.getMoodleUserId", "Unable to read Moodle userId: " + Logger.formatException(e));
+            return -1L;
+        }
     }
 
     public static void clearMoodleAuthTokens(Context context) {
         Logger.i("PreferencesManager.clearMoodleAuthTokens", "Clearing encrypted Moodle mobile tokens and userId");
-        getEncryptedPreferences(context).edit()
-                .remove(key_moodle_token)
-                .remove(key_moodle_private_token)
-                .remove(key_moodle_user_id)
-                .apply();
+        try {
+            getEncryptedPreferences(context).edit()
+                    .remove(key_moodle_token)
+                    .remove(key_moodle_private_token)
+                    .remove(key_moodle_user_id)
+                    .apply();
+        } catch (Exception e) {
+            Logger.w("PreferencesManager.clearMoodleAuthTokens", "Unable to clear Moodle tokens: " + Logger.formatException(e));
+        }
     }
 
     public static Integer getDetectedEnglishGroup(Context context) {
@@ -394,7 +477,8 @@ public class PreferencesManager {
         if (val != null) {
             try {
                 return Integer.parseInt(val);
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
         return null;
     }
@@ -420,7 +504,12 @@ public class PreferencesManager {
     }
 
     public static String getDetectedStudentName(Context context) {
-        return getEncryptedPreferences(context).getString(key_detected_student_name, null);
+        try {
+            return getEncryptedPreferences(context).getString(key_detected_student_name, null);
+        } catch (Exception e) {
+            Logger.w("PreferencesManager.getDetectedStudentName", "Unable to read detected student name: " + Logger.formatException(e));
+            return null;
+        }
     }
 
     public static void setDetectedStudentName(Context context, String name) {
@@ -432,7 +521,12 @@ public class PreferencesManager {
     }
 
     public static String getDetectedStudentSurname(Context context) {
-        return getEncryptedPreferences(context).getString(key_detected_student_surname, null);
+        try {
+            return getEncryptedPreferences(context).getString(key_detected_student_surname, null);
+        } catch (Exception e) {
+            Logger.w("PreferencesManager.getDetectedStudentSurname", "Unable to read detected student surname: " + Logger.formatException(e));
+            return null;
+        }
     }
 
     public static void setDetectedStudentSurname(Context context, String surname) {
@@ -460,22 +554,14 @@ public class PreferencesManager {
     }
 
     // course specialty configuration flag
-    public static boolean isSpecialtyConfigured(Context context, int widgetId) {
-        return getPreferences(context).getBoolean(key_specialty_configured + widgetId, false);
-    }
-
-    public static void setSpecialtyConfigured(Context context, int widgetId, boolean configured) {
-        getPreferences(context).edit()
-                .putBoolean(key_specialty_configured + widgetId, configured)
-                .apply();
-    }
-
     public static boolean isGlobalSpecialtyConfigured(Context context) {
-        return isSpecialtyConfigured(context, GLOBAL_ID);
+        return getPreferences(context).getBoolean(key_specialty_configured + GLOBAL_ID, false);
     }
 
     public static void setGlobalSpecialtyConfigured(Context context, boolean configured) {
-        setSpecialtyConfigured(context, GLOBAL_ID, configured);
+        getPreferences(context).edit()
+                .putBoolean(key_specialty_configured + GLOBAL_ID, configured)
+                .apply();
     }
 
     // theme and language preferences
@@ -507,7 +593,6 @@ public class PreferencesManager {
         if (saved != null) {
             return Language.getEnum(saved);
         }
-        // fallback to system language
         String systemLang = Locale.getDefault().getLanguage();
         return Language.getEnum(systemLang);
     }
@@ -520,11 +605,10 @@ public class PreferencesManager {
                 .apply();
     }
 
-    // Widget Preferences
+    // widget preferences
     public static final String WIDGET_THEME_SYSTEM = "SYSTEM";
     public static final String WIDGET_THEME_DARK = "DARK";
     public static final String WIDGET_THEME_LIGHT = "LIGHT";
-    public static final String WIDGET_THEME_TRANSPARENT = "TRANSPARENT";
 
     public static final String WIDGET_CLICK_OPEN_DETAILS = "OPEN_DETAILS";
     public static final String WIDGET_CLICK_TOGGLE = "TOGGLE";
@@ -626,6 +710,11 @@ public class PreferencesManager {
         getPreferences(context).edit().putBoolean(KEY_WIDGET_FORCED_NEXT + widgetId, next).apply();
     }
 
+    // remove per-widget toggle state when a widget instance is deleted
+    public static void clearWidgetForcedNext(Context context, int widgetId) {
+        getPreferences(context).edit().remove(KEY_WIDGET_FORCED_NEXT + widgetId).apply();
+    }
+
     private static final String KEY_PIN_WIDGET_REQUEST_TIMESTAMP = "pin_widget_request_timestamp";
     private static final long PIN_WIDGET_TIMEOUT_MS = 20_000L;
 
@@ -634,7 +723,7 @@ public class PreferencesManager {
         getPreferences(context).edit().putLong(KEY_PIN_WIDGET_REQUEST_TIMESTAMP, System.currentTimeMillis()).apply();
     }
 
-    // check if a widget pin request was initiated within the last minute
+    // check if a widget pin request was initiated within the recent timeout window
     public static boolean wasPinWidgetRequestedRecently(Context context) {
         long timestamp = getPreferences(context).getLong(KEY_PIN_WIDGET_REQUEST_TIMESTAMP, 0L);
         return (System.currentTimeMillis() - timestamp) <= PIN_WIDGET_TIMEOUT_MS;

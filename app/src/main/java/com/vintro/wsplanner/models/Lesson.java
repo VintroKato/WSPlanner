@@ -52,9 +52,9 @@ public class Lesson implements Serializable {
             }
         }
         this.lessonType = cleanedType;
-        this.resolvedLessonType = this.lessonType != null 
-                ? LessonType.fromString(this.lessonType) 
-                : (this.subjectName != null ? LessonType.fromString(this.subjectName) : LessonType.INNE);
+        this.resolvedLessonType = this.lessonType != null
+                ? LessonType.fromString(this.lessonType)
+                : (this.subjectName != null ? LessonType.fromSubjectName(this.subjectName) : LessonType.INNE);
         this.teacherName = teacherName != null ? teacherName.trim() : "";
         this.location = location != null ? location : new Location("");
         this.date = date;
@@ -80,18 +80,18 @@ public class Lesson implements Serializable {
         return sub + "_" + type;
     }
 
-    // status checks
+    // status checks using half-open [startTime, endTime) interval
     public boolean isPast(LocalDateTime now) {
         if (date == null || endTime == null) return false;
         return now.toLocalDate().isAfter(date) ||
-                (now.toLocalDate().isEqual(date) && now.toLocalTime().isAfter(endTime));
+                (now.toLocalDate().isEqual(date) && !now.toLocalTime().isBefore(endTime));
     }
 
     public boolean isCurrent(LocalDateTime now) {
         if (date == null || startTime == null || endTime == null) return false;
         return now.toLocalDate().isEqual(date) &&
                 !now.toLocalTime().isBefore(startTime) &&
-                !now.toLocalTime().isAfter(endTime);
+                now.toLocalTime().isBefore(endTime);
     }
 
     // minutes until lesson ends

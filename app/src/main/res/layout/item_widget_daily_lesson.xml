@@ -15,13 +15,13 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <TextView
+        <ImageView
             android:id="@+id/item_daily_status_indicator"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="4dp"
-            android:text="🟢"
-            android:textSize="8sp"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginEnd="5dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_widget_now_dot"
             android:visibility="gone" />
 
         <TextView

@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
 
 import com.vintro.wsplanner.R;
@@ -19,15 +20,19 @@ public class ScheduleFileOpener {
 
     // request cached schedule file and open with external excel viewer
     public static void openExcelSchedule(Context context) {
+        openExcelSchedule(context, null);
+    }
+
+    // request cached schedule file, open viewer, and invoke optional completion callback on main thread
+    public static void openExcelSchedule(Context context, @Nullable Runnable onComplete) {
         Logger.d("ScheduleFileOpener.openExcelSchedule", "Requesting schedule file to open");
 
         if (!ScheduleRepository.getInstance(context).isConfigurationComplete()) {
             Logger.d("ScheduleFileOpener.openExcelSchedule", "Student configuration not completed, aborting file open");
-            runOnMainThread(context, () -> Toast.makeText(
-                    context,
-                    R.string.widget_setup_required_title,
-                    Toast.LENGTH_SHORT
-            ).show());
+            runOnMainThread(context, () -> {
+                Toast.makeText(context, R.string.widget_setup_required_title, Toast.LENGTH_SHORT).show();
+                if (onComplete != null) onComplete.run();
+            });
             return;
         }
 
@@ -35,18 +40,22 @@ public class ScheduleFileOpener {
             @Override
             public void onFileReady(File file) {
                 Logger.i("ScheduleFileOpener.openExcelSchedule", "Schedule file ready: " + file.getAbsolutePath());
-                runOnMainThread(context, () -> openFileWithChooserFallback(context, file));
+                runOnMainThread(context, () -> {
+                    openFileWithChooserFallback(context, file);
+                    if (onComplete != null) onComplete.run();
+                });
             }
 
             @Override
             public void onError(Exception e) {
-                String errorMsg = Logger.formatException(e);
-                Logger.e("ScheduleFileOpener.openExcelSchedule", "Failed to get schedule file: " + errorMsg);
-                runOnMainThread(context, () -> Toast.makeText(
-                        context,
-                        context.getString(R.string.schedule_open_file_error) + (!errorMsg.isEmpty() ? ": " + errorMsg : ""),
-                        Toast.LENGTH_SHORT
-                ).show());
+                Logger.e("ScheduleFileOpener.openExcelSchedule", "Failed to get schedule file: " + Logger.formatException(e));
+                int messageRes = !NetworkUtils.isNetworkAvailable(context)
+                        ? R.string.no_internet_connection
+                        : R.string.schedule_open_file_error;
+                runOnMainThread(context, () -> {
+                    Toast.makeText(context, messageRes, Toast.LENGTH_SHORT).show();
+                    if (onComplete != null) onComplete.run();
+                });
             }
         });
     }
@@ -89,10 +98,14 @@ public class ScheduleFileOpener {
 
     private static void runOnMainThread(Context context, Runnable runnable) {
         if (context instanceof Activity) {
-            ((Activity) context).runOnUiThread(runnable);
+            Activity activity = (Activity) context;
+            if (!activity.isFinishing() && !activity.isDestroyed()) {
+                activity.runOnUiThread(runnable);
+            } else {
+                AppExecutors.runOnMain(runnable);
+            }
         } else {
-            android.os.Handler mainHandler = new android.os.Handler(context.getMainLooper());
-            mainHandler.post(runnable);
+            AppExecutors.runOnMain(runnable);
         }
     }
 }

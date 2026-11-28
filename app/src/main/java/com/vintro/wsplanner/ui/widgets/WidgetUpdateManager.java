@@ -13,6 +13,7 @@ import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.models.DaySchedule;
 import com.vintro.wsplanner.models.Lesson;
+import com.vintro.wsplanner.utils.AppExecutors;
 import com.vintro.wsplanner.utils.Logger;
 
 import java.time.LocalDate;
@@ -20,70 +21,150 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 
-// receiver and coordinator scheduling exact alarms and updating all active widget instances
+// coordinates widget updates and schedules non-wakeup alarms strictly on lesson transitions
 public class WidgetUpdateManager extends BroadcastReceiver {
     public static final String ACTION_SCHEDULE_ALARM_TICK = "com.vintro.wsplanner.ACTION_SCHEDULE_ALARM_TICK";
     public static final String ACTION_REFRESH_WIDGETS = "com.vintro.wsplanner.ACTION_REFRESH_WIDGETS";
 
-    // trigger widget update and schedule the next alarm on wake
+    private static final int ALARM_REQUEST_CODE = 1001;
+    private static final long INEXACT_WINDOW_MILLIS = 60_000L;
+
+    // run cold-start disk parsing and widget refresh off the main thread using goAsync
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent != null ? intent.getAction() : null;
         Logger.d("WidgetUpdateManager.onReceive", "onReceive triggered with action: " + action);
 
-        // Update all widget instances
-        updateAllWidgets(context);
-
-        // Schedule next exact alarm based on upcoming lesson boundaries
-        scheduleNextAlarm(context);
+        final Context appContext = context.getApplicationContext();
+        final PendingResult pendingResult = goAsync();
+        AppExecutors.runIo(() -> {
+            try {
+                if (!hasActiveWidgets(appContext)) {
+                    cancelScheduledAlarm(appContext);
+                    return;
+                }
+                updateAllWidgetsSync(appContext);
+                scheduleNextAlarm(appContext);
+            } catch (Exception e) {
+                Logger.e("WidgetUpdateManager.onReceive", "Error processing widget tick: " + Logger.formatException(e));
+            } finally {
+                try {
+                    pendingResult.finish();
+                } catch (Exception ignored) {
+                }
+            }
+        });
     }
 
-    // broadcast update intents to all active widget providers
+    // check whether at least one home screen widget of either provider is active
+    public static boolean hasActiveWidgets(Context context) {
+        if (context == null) return false;
+        try {
+            AppWidgetManager manager = AppWidgetManager.getInstance(context);
+            int[] currentIds = manager.getAppWidgetIds(new ComponentName(context, CurrentLessonWidget.class));
+            if (currentIds != null && currentIds.length > 0) {
+                return true;
+            }
+            int[] dailyIds = manager.getAppWidgetIds(new ComponentName(context, DailyScheduleWidget.class));
+            return dailyIds != null && dailyIds.length > 0;
+        } catch (Exception e) {
+            Logger.w("WidgetUpdateManager.hasActiveWidgets", "Failed checking active widgets: " + Logger.formatException(e));
+            return false;
+        }
+    }
+
+    // cancel the pending widget transition alarm
+    public static void cancelScheduledAlarm(Context context) {
+        if (context == null) return;
+        try {
+            AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            if (alarmManager == null) return;
+            PendingIntent pendingIntent = createAlarmPendingIntent(context, PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
+            if (pendingIntent != null) {
+                alarmManager.cancel(pendingIntent);
+                pendingIntent.cancel();
+                Logger.d("WidgetUpdateManager.cancelScheduledAlarm", "Cancelled scheduled widget alarm");
+            }
+        } catch (Exception e) {
+            Logger.w("WidgetUpdateManager.cancelScheduledAlarm", "Failed cancelling widget alarm: " + Logger.formatException(e));
+        }
+    }
+
+    // update all active widget instances asynchronously off the main thread
     public static void updateAllWidgets(Context context) {
-        AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+        if (context == null) return;
+        final Context appContext = context.getApplicationContext();
+        AppExecutors.runIo(() -> updateAllWidgetsSync(appContext));
+    }
 
-        // Update CurrentLessonWidget
-        ComponentName currentLessonComponent = new ComponentName(context, CurrentLessonWidget.class);
-        int[] currentWidgetIds = appWidgetManager.getAppWidgetIds(currentLessonComponent);
-        if (currentWidgetIds != null && currentWidgetIds.length > 0) {
-            Logger.d("WidgetUpdateManager.updateAllWidgets", "Broadcasting update to " + currentWidgetIds.length + " CurrentLessonWidget instances");
-            Intent updateIntent = new Intent(context, CurrentLessonWidget.class);
-            updateIntent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-            updateIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, currentWidgetIds);
-            context.sendBroadcast(updateIntent);
-        }
+    // update all active widget instances synchronously on a background thread without triggering extra alarm loops
+    public static void updateAllWidgetsSync(Context context) {
+        if (context == null) return;
+        try {
+            AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
 
-        // Update DailyScheduleWidget
-        ComponentName dailyScheduleComponent = new ComponentName(context, DailyScheduleWidget.class);
-        int[] dailyWidgetIds = appWidgetManager.getAppWidgetIds(dailyScheduleComponent);
-        if (dailyWidgetIds != null && dailyWidgetIds.length > 0) {
-            Logger.d("WidgetUpdateManager.updateAllWidgets", "Broadcasting update to " + dailyWidgetIds.length + " DailyScheduleWidget instances");
-            Intent updateIntent = new Intent(context, DailyScheduleWidget.class);
-            updateIntent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-            updateIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, dailyWidgetIds);
-            context.sendBroadcast(updateIntent);
+            int[] currentWidgetIds = appWidgetManager.getAppWidgetIds(new ComponentName(context, CurrentLessonWidget.class));
+            if (currentWidgetIds != null && currentWidgetIds.length > 0) {
+                Logger.d("WidgetUpdateManager.updateAllWidgetsSync", "Updating " + currentWidgetIds.length + " CurrentLessonWidget instances");
+                for (int widgetId : currentWidgetIds) {
+                    CurrentLessonWidget.updateWidget(context, appWidgetManager, widgetId);
+                }
+            }
+
+            int[] dailyWidgetIds = appWidgetManager.getAppWidgetIds(new ComponentName(context, DailyScheduleWidget.class));
+            if (dailyWidgetIds != null && dailyWidgetIds.length > 0) {
+                Logger.d("WidgetUpdateManager.updateAllWidgetsSync", "Updating " + dailyWidgetIds.length + " DailyScheduleWidget instances");
+                for (int widgetId : dailyWidgetIds) {
+                    DailyScheduleWidget.updateWidget(context, appWidgetManager, widgetId);
+                }
+            }
+        } catch (Exception e) {
+            Logger.e("WidgetUpdateManager.updateAllWidgetsSync", "Error updating active widgets: " + Logger.formatException(e));
         }
     }
 
-    // schedule exact alarm at lesson start/end boundary or morning rollover
+    // schedule next alarm asynchronously off the calling thread
+    public static void scheduleNextAlarmAsync(Context context) {
+        if (context == null) return;
+        final Context appContext = context.getApplicationContext();
+        AppExecutors.runIo(() -> scheduleNextAlarm(appContext));
+    }
+
+    // schedule a non-wakeup rtc alarm at the next real lesson boundary or midnight rollover
     public static void scheduleNextAlarm(Context context) {
-        if (!PreferencesManager.isOnboardingCompleted(context)
-                || !ScheduleRepository.getInstance(context).isConfigurationComplete()) {
-            Logger.d("WidgetUpdateManager.scheduleNextAlarm", "Skipping alarm scheduling: student configuration not completed");
+        if (context == null) return;
+        Context appContext = context.getApplicationContext();
+
+        if (!hasActiveWidgets(appContext)) {
+            cancelScheduledAlarm(appContext);
             return;
         }
 
-        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        boolean configured;
+        try {
+            configured = PreferencesManager.isOnboardingCompleted(appContext)
+                    && ScheduleRepository.getInstance(appContext).isConfigurationComplete();
+        } catch (Exception e) {
+            Logger.w("WidgetUpdateManager.scheduleNextAlarm", "Unable to inspect configuration state: " + Logger.formatException(e));
+            cancelScheduledAlarm(appContext);
+            return;
+        }
+
+        if (!configured) {
+            Logger.d("WidgetUpdateManager.scheduleNextAlarm", "Skipping alarm scheduling: student configuration not completed");
+            cancelScheduledAlarm(appContext);
+            return;
+        }
+
+        AlarmManager alarmManager = (AlarmManager) appContext.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager == null) return;
 
         LocalDate today = LocalDate.now();
         LocalDateTime now = LocalDateTime.now();
-
-        // Calculate next target time (exact boundary of current or next lesson)
         LocalDateTime targetDateTime = null;
 
         try {
-            DaySchedule todaySchedule = ScheduleRepository.getInstance(context).getScheduleForDateSync(today);
+            DaySchedule todaySchedule = ScheduleRepository.getInstance(appContext).getScheduleForDateSync(today);
             if (todaySchedule != null && !todaySchedule.isEmpty()) {
                 List<Lesson> lessons = todaySchedule.getLessons();
                 for (Lesson lesson : lessons) {
@@ -96,7 +177,7 @@ public class WidgetUpdateManager extends BroadcastReceiver {
                         }
                     }
                     if (lesson.getEndTime() != null) {
-                        LocalDateTime endDateTime = LocalDateTime.of(today, lesson.getEndTime());
+                        LocalDateTime endDateTime = LocalDateTime.of(today, lesson.getEndTime()).plusSeconds(1);
                         if (endDateTime.isAfter(now)) {
                             if (targetDateTime == null || endDateTime.isBefore(targetDateTime)) {
                                 targetDateTime = endDateTime;
@@ -106,46 +187,47 @@ public class WidgetUpdateManager extends BroadcastReceiver {
                 }
             }
         } catch (Exception e) {
-            Logger.e("WidgetUpdateManager.scheduleNextAlarm", "Error calculating target alarm time: " + Logger.formatException(e), e);
+            Logger.e("WidgetUpdateManager.scheduleNextAlarm", "Error calculating target alarm time: " + Logger.formatException(e));
         }
 
-        // Maximum interval: 5 minutes so widgets stay fresh and never freeze
-        LocalDateTime fiveMinutesLater = now.plusMinutes(5);
-        if (targetDateTime == null || targetDateTime.isAfter(fiveMinutesLater)) {
-            targetDateTime = fiveMinutesLater;
+        // if no more transitions today, wake cleanly after midnight for the next day rollover
+        LocalDateTime nextMidnight = today.plusDays(1).atTime(0, 0, 5);
+        if (targetDateTime == null || targetDateTime.isAfter(nextMidnight)) {
+            targetDateTime = nextMidnight;
         }
 
         long triggerAtMillis = targetDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-        if (triggerAtMillis <= System.currentTimeMillis()) {
-            triggerAtMillis = System.currentTimeMillis() + 5 * 60 * 1000;
+        long minTrigger = System.currentTimeMillis() + 5_000L;
+        if (triggerAtMillis < minTrigger) {
+            triggerAtMillis = minTrigger;
         }
 
-        Intent intent = new Intent(context, WidgetUpdateManager.class);
-        intent.setAction(ACTION_SCHEDULE_ALARM_TICK);
-
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                context,
-                1001,
-                intent,
+        PendingIntent pendingIntent = createAlarmPendingIntent(
+                appContext,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
         try {
+            // use non-wakeup rtc so widgets never wake the cpu while the screen is off
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
+                    alarmManager.setExact(AlarmManager.RTC, triggerAtMillis, pendingIntent);
                 } else {
-                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
+                    alarmManager.setWindow(AlarmManager.RTC, triggerAtMillis, INEXACT_WINDOW_MILLIS, pendingIntent);
                 }
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
             } else {
-                alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
+                alarmManager.setExact(AlarmManager.RTC, triggerAtMillis, pendingIntent);
             }
-            Logger.d("WidgetUpdateManager.scheduleNextAlarm", "Next widget alarm scheduled at " + targetDateTime);
+            Logger.d("WidgetUpdateManager.scheduleNextAlarm", "Next non-wakeup widget alarm scheduled at " + targetDateTime);
         } catch (SecurityException se) {
-            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
-            Logger.w("WidgetUpdateManager.scheduleNextAlarm", "Fallback to standard alarm: " + Logger.formatException(se), se);
+            alarmManager.setWindow(AlarmManager.RTC, triggerAtMillis, INEXACT_WINDOW_MILLIS, pendingIntent);
+            Logger.w("WidgetUpdateManager.scheduleNextAlarm", "Fallback to inexact RTC window alarm: " + Logger.formatException(se));
         }
+    }
+
+    private static PendingIntent createAlarmPendingIntent(Context context, int flags) {
+        Intent intent = new Intent(context, WidgetUpdateManager.class);
+        intent.setAction(ACTION_SCHEDULE_ALARM_TICK);
+        return PendingIntent.getBroadcast(context, ALARM_REQUEST_CODE, intent, flags);
     }
 }

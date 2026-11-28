@@ -40,7 +40,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:animateLayoutChanges="true"
-        app:layout_constraintBottom_toTopOf="@+id/bottom_save_divider"
+        app:layout_constraintBottom_toTopOf="@+id/bottom_save_container"
         app:layout_constraintTop_toBottomOf="@+id/top_bar">
 
         <LinearLayout
@@ -472,7 +472,7 @@
                 android:textColor="?attr/text_secondary"
                 android:textSize="12.5sp" />
 
-            <!-- Theme Selection: 2 selectable tiles -->
+            <!-- Theme Selection: 3 selectable tiles (Auto, Dark, Light) -->
             <TextView
                 style="@style/WSPlanner.SectionHeader"
                 android:layout_width="wrap_content"
@@ -488,27 +488,65 @@
                 android:orientation="horizontal">
 
                 <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/card_widget_theme_dark"
+                    android:id="@+id/card_widget_theme_auto"
                     style="@style/WSPlanner.SelectableCard"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="6dp"
                     android:layout_weight="1"
-                    android:minHeight="48dp">
+                    android:minHeight="46dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:gravity="center"
-                        android:minHeight="48dp"
+                        android:minHeight="46dp"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="10dp">
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="8dp">
 
                         <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
-                            android:layout_marginEnd="8dp"
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_marginEnd="4dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_theme_auto"
+                            app:tint="?attr/app_text" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:fontFamily="sans-serif-medium"
+                            android:maxLines="1"
+                            android:text="@string/widget_theme_auto"
+                            android:textColor="?attr/app_text"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_widget_theme_dark"
+                    style="@style/WSPlanner.SelectableCard"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="3dp"
+                    android:layout_weight="1"
+                    android:minHeight="46dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:minHeight="46dp"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="8dp">
+
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_marginEnd="4dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_dark_mode"
                             app:tint="?attr/app_text" />
@@ -516,10 +554,12 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:ellipsize="end"
                             android:fontFamily="sans-serif-medium"
+                            android:maxLines="1"
                             android:text="@string/widget_theme_dark"
                             android:textColor="?attr/app_text"
-                            android:textSize="14sp" />
+                            android:textSize="13sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -530,21 +570,21 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
                     android:layout_weight="1"
-                    android:minHeight="48dp">
+                    android:minHeight="46dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:gravity="center"
-                        android:minHeight="48dp"
+                        android:minHeight="46dp"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="10dp">
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="8dp">
 
                         <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
-                            android:layout_marginEnd="8dp"
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_marginEnd="4dp"
                             android:contentDescription="@null"
                             android:src="@drawable/ic_light_mode"
                             app:tint="?attr/app_text" />
@@ -552,10 +592,12 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:ellipsize="end"
                             android:fontFamily="sans-serif-medium"
+                            android:maxLines="1"
                             android:text="@string/widget_theme_light"
                             android:textColor="?attr/app_text"
-                            android:textSize="14sp" />
+                            android:textSize="13sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
@@ -805,22 +847,29 @@
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <View
-        android:id="@+id/bottom_save_divider"
+    <LinearLayout
+        android:id="@+id/bottom_save_container"
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="?attr/divider_color"
-        app:layout_constraintBottom_toTopOf="@+id/button_save" />
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent">
 
-    <!-- Wide Save Button -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/button_save"
-        style="@style/WSPlanner.PrimaryButton"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginVertical="12dp"
-        android:text="@string/widget_save_settings"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        <View
+            android:id="@+id/bottom_save_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?attr/divider_color" />
+
+        <!-- Wide Save Button (shown only when adding a widget from home screen) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_save"
+            style="@style/WSPlanner.PrimaryButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginVertical="12dp"
+            android:text="@string/widget_save_settings" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

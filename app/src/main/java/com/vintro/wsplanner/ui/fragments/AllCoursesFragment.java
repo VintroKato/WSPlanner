@@ -1,9 +1,8 @@
 package com.vintro.wsplanner.ui.fragments;
 
+import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.content.res.ColorStateList;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,6 +24,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.transition.AutoTransition;
 import androidx.transition.Transition;
 import androidx.transition.TransitionManager;
@@ -44,7 +44,9 @@ import com.vintro.wsplanner.network.PUW;
 import com.vintro.wsplanner.network.StudyPlanScraper;
 import com.vintro.wsplanner.ui.adapters.AllCoursesAdapter;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
+import com.vintro.wsplanner.utils.AppExecutors;
 import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.utils.NetworkUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -86,6 +88,7 @@ public class AllCoursesFragment extends Fragment {
     private View sectionFilterType;
     private ChipGroup chipGroupType;
     private ChipGroup chipGroupStatus;
+    private SwipeRefreshLayout swipeRefreshCourses;
     private RecyclerView recyclerAllCourses;
     private ProgressBar progressLoading;
     private LinearLayout layoutEmptyState;
@@ -95,6 +98,7 @@ public class AllCoursesFragment extends Fragment {
     private final List<SubjectDetails> allCourses = new ArrayList<>();
     private String studentMajor = "";
     private String activeConfigSignature;
+    private long lastObservedDataVersion = -1L;
     private String initialSearchQuery = "";
 
     private final Set<LocationType> selectedLocations = EnumSet.noneOf(LocationType.class);
@@ -204,7 +208,7 @@ public class AllCoursesFragment extends Fragment {
         }
         cardFiltersPanel.setVisibility(filtersExpanded ? View.VISIBLE : View.GONE);
         updateFilterButtonUI();
-        loadCourses();
+        loadCourses(false);
     }
 
     @Override
@@ -228,6 +232,7 @@ public class AllCoursesFragment extends Fragment {
         sectionFilterType = view.findViewById(R.id.section_filter_type);
         chipGroupType = view.findViewById(R.id.chip_group_type);
         chipGroupStatus = view.findViewById(R.id.chip_group_status);
+        swipeRefreshCourses = view.findViewById(R.id.swipe_refresh_courses);
         recyclerAllCourses = view.findViewById(R.id.recycler_all_courses);
         progressLoading = view.findViewById(R.id.progress_loading);
         layoutEmptyState = view.findViewById(R.id.layout_empty_state);
@@ -237,6 +242,8 @@ public class AllCoursesFragment extends Fragment {
         recyclerAllCourses.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerAllCourses.setAdapter(adapter);
 
+        setupSwipeRefresh();
+
         buttonClearSearch.setOnClickListener(v -> {
             editSearch.setText("");
             applyFiltersAndSearch();
@@ -245,6 +252,35 @@ public class AllCoursesFragment extends Fragment {
         buttonToggleFilters.setOnClickListener(v -> toggleFilterPanel());
         buttonResetFilters.setOnClickListener(v -> resetAllFilters());
         buttonResetAllFilters.setOnClickListener(v -> resetAllFilters());
+    }
+
+    private void setupSwipeRefresh() {
+        if (swipeRefreshCourses == null || !isAdded()) return;
+        Context context = requireContext();
+        swipeRefreshCourses.setProgressBackgroundColorSchemeColor(UIHelper.getThemeColor(context, R.attr.card_bg));
+        swipeRefreshCourses.setColorSchemeColors(
+                UIHelper.getThemeColor(context, androidx.appcompat.R.attr.colorPrimary),
+                UIHelper.getThemeColor(context, R.attr.next_lesson_border)
+        );
+        swipeRefreshCourses.setOnRefreshListener(this::handleManualRefresh);
+    }
+
+    private void handleManualRefresh() {
+        if (!isAdded() || scheduleRepository == null) return;
+        long cooldownLeft = scheduleRepository.getCooldownRemainingSeconds();
+        if (cooldownLeft > 0) {
+            Logger.d(TAG + ".handleManualRefresh", "Courses refresh blocked by cooldown: " + cooldownLeft + "s");
+            if (swipeRefreshCourses != null) {
+                swipeRefreshCourses.setRefreshing(false);
+            }
+            Toast.makeText(requireContext(), getString(R.string.schedule_cooldown_message, cooldownLeft), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!NetworkUtils.isNetworkAvailable(requireContext())) {
+            Logger.w(TAG + ".handleManualRefresh", "Device offline during courses pull-to-refresh");
+        }
+        Logger.i(TAG + ".handleManualRefresh", "User triggered pull-to-refresh on AllCoursesFragment");
+        loadCourses(true);
     }
 
     private void toggleFilterPanel() {
@@ -349,13 +385,13 @@ public class AllCoursesFragment extends Fragment {
         }
         sectionFilterLocation.setVisibility(chipGroupLocation.getChildCount() > 0 ? View.VISIBLE : View.GONE);
 
-        // populate lesson type chips sorted by display name
+        // populate localized lesson type chips sorted alphabetically
         chipGroupType.removeAllViews();
         List<LessonType> sortedTypes = new ArrayList<>(availableTypes);
-        sortedTypes.sort(Comparator.comparing(LessonType::getDisplayName, String.CASE_INSENSITIVE_ORDER));
+        sortedTypes.sort(Comparator.comparing(t -> t.getLocalizedDisplayName(context), String.CASE_INSENSITIVE_ORDER));
         for (LessonType type : sortedTypes) {
             boolean isChecked = selectedTypes.contains(type);
-            Chip chip = createFilterChip(context, type.getDisplayName(), isChecked);
+            Chip chip = createFilterChip(context, type.getLocalizedDisplayName(context), isChecked);
             applyBlueChipStyle(context, chip, isChecked);
             chip.setOnCheckedChangeListener((buttonView, checked) -> {
                 if (checked) {
@@ -506,10 +542,13 @@ public class AllCoursesFragment extends Fragment {
         });
     }
 
-    private void loadCourses() {
+    private void loadCourses(boolean forceRefresh) {
         if (!isAdded() || scheduleRepository == null) return;
         if (!scheduleRepository.isConfigurationComplete()) {
             Logger.d(TAG + ".loadCourses", "Student configuration incomplete, showing empty courses");
+            if (swipeRefreshCourses != null) {
+                swipeRefreshCourses.setRefreshing(false);
+            }
             progressLoading.setVisibility(View.GONE);
             allCourses.clear();
             rebuildDynamicFilterChips();
@@ -518,19 +557,26 @@ public class AllCoursesFragment extends Fragment {
             return;
         }
 
-        Logger.d(TAG + ".loadCourses", "Loading all semester courses from repository");
-        progressLoading.setVisibility(View.VISIBLE);
-        recyclerAllCourses.setVisibility(View.GONE);
-        layoutEmptyState.setVisibility(View.GONE);
+        Logger.d(TAG + ".loadCourses", "Loading all semester courses from repository (forceRefresh=" + forceRefresh + ")");
+        if (!forceRefresh && allCourses.isEmpty()) {
+            progressLoading.setVisibility(View.VISIBLE);
+            recyclerAllCourses.setVisibility(View.GONE);
+            layoutEmptyState.setVisibility(View.GONE);
+        }
 
-        scheduleRepository.getAllCourses(false, new ScheduleRepository.ScheduleCallback<List<SubjectDetails>>() {
+        scheduleRepository.getAllCourses(forceRefresh, new ScheduleRepository.ScheduleCallback<List<SubjectDetails>>() {
             @Override
             public void onSuccess(List<SubjectDetails> result) {
                 Logger.i(TAG + ".loadCourses", "Loaded " + (result != null ? result.size() : 0) + " semester courses");
-                if (!isAdded() || getActivity() == null) return;
-                getActivity().runOnUiThread(() -> {
+                Activity activity = getActivity();
+                if (!isAdded() || activity == null) return;
+                activity.runOnUiThread(() -> {
                     if (!isAdded()) return;
+                    if (swipeRefreshCourses != null) {
+                        swipeRefreshCourses.setRefreshing(false);
+                    }
                     progressLoading.setVisibility(View.GONE);
+                    lastObservedDataVersion = scheduleRepository.getDataVersion();
                     allCourses.clear();
                     if (result != null) {
                         allCourses.addAll(result);
@@ -544,9 +590,13 @@ public class AllCoursesFragment extends Fragment {
             @Override
             public void onError(Exception e) {
                 Logger.e(TAG + ".loadCourses", "Error loading all courses: " + Logger.formatException(e));
-                if (!isAdded() || getActivity() == null) return;
-                getActivity().runOnUiThread(() -> {
+                Activity activity = getActivity();
+                if (!isAdded() || activity == null) return;
+                activity.runOnUiThread(() -> {
                     if (!isAdded()) return;
+                    if (swipeRefreshCourses != null) {
+                        swipeRefreshCourses.setRefreshing(false);
+                    }
                     progressLoading.setVisibility(View.GONE);
                     rebuildDynamicFilterChips();
                     updateFilterButtonUI();
@@ -559,17 +609,25 @@ public class AllCoursesFragment extends Fragment {
     private void checkConfigAndReloadIfNeeded() {
         if (!isAdded() || scheduleRepository == null) return;
         String currentSig = scheduleRepository.buildConfigSignature();
-        if (currentSig != null && !currentSig.equals(activeConfigSignature)) {
-            Logger.i(TAG + ".checkConfigAndReloadIfNeeded", "Student configuration changed, reloading courses");
+        long currentVersion = scheduleRepository.getDataVersion();
+        boolean configChanged = currentSig != null && !currentSig.equals(activeConfigSignature);
+        boolean dataChanged = currentVersion != lastObservedDataVersion;
+
+        if (configChanged || dataChanged) {
+            Logger.i(TAG + ".checkConfigAndReloadIfNeeded", "Courses refresh needed (configChanged=" + configChanged + ", dataChanged=" + dataChanged + ")");
             activeConfigSignature = currentSig;
             studentMajor = PreferencesManager.getGlobalMajorPref(requireContext());
             if (studentMajor == null) studentMajor = "";
-            loadCourses();
+            loadCourses(false);
+        } else if (adapter != null) {
+            // rebind visible cards so note indicator icons reflect edits made in SubjectDetailsActivity
+            adapter.notifyDataSetChanged();
         }
     }
 
     private void applyFiltersAndSearch() {
         if (!isAdded() || adapter == null) return;
+        Context context = requireContext();
         String rawQuery = getSearchQuery();
         String cleanQuery = rawQuery != null ? rawQuery.trim() : "";
         boolean hasQuery = !cleanQuery.isEmpty();
@@ -595,10 +653,14 @@ public class AllCoursesFragment extends Fragment {
             if (!matchesStatusFilter(course, now)) continue;
 
             if (hasQuery) {
+                String localizedType = course.getLessonType() != null
+                        ? course.getLessonType().getLocalizedDisplayName(context)
+                        : "";
                 String searchable = normalizePolishText(
                         course.getSubjectName() + " " +
                                 (course.getRawLessonType() != null ? course.getRawLessonType() : "") + " " +
                                 (course.getLessonType() != null ? course.getLessonType().getDisplayName() : "") + " " +
+                                localizedType + " " +
                                 course.getTeacherName()
                 );
                 if (!matchesAllTokens(searchable, tokens)) {
@@ -707,7 +769,7 @@ public class AllCoursesFragment extends Fragment {
             adapter.setStrefaLoading(true);
         }
 
-        new Thread(() -> {
+        AppExecutors.runIo(() -> {
             String url = null;
             try {
                 OkHttpClient client = PUW.globalLogin(appContext);
@@ -716,7 +778,7 @@ public class AllCoursesFragment extends Fragment {
                     if (degree == DegreeLevel.ZERO_YEAR) {
                         Logger.i(TAG + ".openStudentZone", "Resolving student zone for Rok Zerowy participant");
                     }
-                    url = StudyPlanScraper.getStudentZoneUrl(client, studentMajor, degree);
+                    url = StudyPlanScraper.getStudentZoneUrlCached(appContext, client, studentMajor, degree);
                 }
             } catch (Exception e) {
                 Logger.e(TAG + ".openStudentZone", "Error resolving student zone url: " + Logger.formatException(e));
@@ -726,21 +788,22 @@ public class AllCoursesFragment extends Fragment {
             MoodleAutologinManager.ResolutionResult resolution =
                     MoodleAutologinManager.resolveAutologinUriSync(appContext, safeTargetUrl);
 
-            if (!isAdded() || getActivity() == null) {
+            Activity activity = getActivity();
+            if (!isAdded() || activity == null) {
                 isOpeningStrefa = false;
                 return;
             }
-            getActivity().runOnUiThread(() -> {
+            activity.runOnUiThread(() -> {
                 isOpeningStrefa = false;
-                if (!isAdded() || getActivity() == null || getActivity().isFinishing() || getActivity().isDestroyed()) {
+                if (!isAdded() || activity.isFinishing() || activity.isDestroyed()) {
                     return;
                 }
                 if (adapter != null) {
                     adapter.setStrefaLoading(false);
                 }
-                MoodleAutologinManager.launchExternalBrowser(getActivity(), resolution);
+                MoodleAutologinManager.launchExternalBrowser(activity, resolution);
             });
-        }).start();
+        });
     }
 
     @Override

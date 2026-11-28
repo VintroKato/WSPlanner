@@ -27,7 +27,7 @@
     <string name="onboarding_english_hint">Номер группы</string>
     <string name="onboarding_specialty_title">Специализация</string>
     <string name="onboarding_specialty_subtitle">Выберите вашу специализацию</string>
-    <string name="onboarding_no_specialties">Специальности не найдены</string>
+    <string name="onboarding_no_specialties">Специализации не найдены</string>
     <string name="onboarding_no_specialties_desc">Ваш курс может обучаться по общей программе, или вы можете указать специальность вручную ниже.</string>
     <string name="onboarding_manual_specialty_switch">Ввести специализацию вручную</string>
     <string name="onboarding_manual_specialty_hint">Название специализации</string>
@@ -131,7 +131,7 @@
     <string name="subject_course_not_found">Курс не найден на PUW. Открываем дашборд…</string>
     <string name="maps_hint_format">(Google Maps: %1$s ↗)</string>
     <string name="maps_hint_wspa">(Google Maps: WSPA Lublin, ul. Bursaki 12 ↗)</string>
-    <string name="timeline_item_header_format">%1$d. %2$s, %3$s</string>
+    <string name="timeline_item_header_format">%1$s, %2$s</string>
     <string name="timeline_time_room_format">%1$s – %2$s · %3$s</string>
     <string name="common_loading">Загрузка…</string>
 
@@ -273,4 +273,38 @@
     <string name="schedule_opening_puw">Открытие PUW…</string>
     <string name="schedule_open_puw_tooltip">Открыть главный экран PUW</string>
     <string name="subject_open_puw_course_tooltip">Открыть страницу курса в PUW</string>
+
+    <!-- Localized lesson types -->
+    <string name="lesson_type_wyklad">Лекция</string>
+    <string name="lesson_type_cwiczenia">Практика</string>
+    <string name="lesson_type_laboratorium">Лабораторная</string>
+    <string name="lesson_type_warsztat">Практикум</string>
+    <string name="lesson_type_lektorat">Язык</string>
+    <string name="lesson_type_projekt">Проект</string>
+    <string name="lesson_type_seminarium">Семинар</string>
+    <string name="lesson_type_inne">Другое</string>
+
+    <!-- Keystore recovery -->
+    <string name="keystore_error_title">Ошибка защищённого хранилища</string>
+    <string name="keystore_error_message">Устройство не смогло расшифровать сохранённые данные входа (это бывает после обновления системы или смены блокировки экрана).\n\nСбросить сохранённые настройки и войти заново?</string>
+    <string name="keystore_error_reset">Сбросить и войти</string>
+    <string name="keystore_error_exit">Выйти</string>
+
+    <!-- Onboarding and settings helpers -->
+    <string name="onboarding_select_all_fields">Выберите все параметры обучения</string>
+    <string name="onboarding_load_courses_error">Не удалось загрузить программы обучения</string>
+    <string name="settings_clear_cache_refresh">Очистить кэш и обновить</string>
+    <string name="settings_cache_cleared_toast">Кэш очищен, обновляем расписание…</string>
+    <string name="settings_cache_cleared_offline_toast">Кэш очищен</string>
+    <string name="widget_theme_auto">Авто</string>
+    <string name="widget_next_class_header">Следующая пара · %1$s, %2$s</string>
+
+    <!-- Update progress and install permission -->
+    <string name="update_dialog_downloading_progress">Скачивание %1$d%% (%2$s / %3$s)</string>
+    <string name="update_install_permission_toast">Разрешите установку обновлений из WSPlanner в настройках и повторите попытку</string>
+
+    <!-- Teacher profile and notes badge -->
+    <string name="teacher_open_profile">Открыть профиль преподавателя</string>
+    <string name="teacher_email_retry_hint">Нет интернета · Нажмите для повтора</string>
+    <string name="subject_has_note_desc">Есть заметка</string>
 </resources>

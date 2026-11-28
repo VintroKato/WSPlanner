@@ -32,12 +32,17 @@ import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.DegreeLevel;
+import com.vintro.wsplanner.network.PUW;
+import com.vintro.wsplanner.network.StudyPlanScraper;
+import com.vintro.wsplanner.services.ScheduleSyncWorker;
 import com.vintro.wsplanner.services.UpdateManager;
 import com.vintro.wsplanner.ui.fragments.AllCoursesFragment;
 import com.vintro.wsplanner.ui.fragments.ScheduleFragment;
 import com.vintro.wsplanner.ui.fragments.SettingsFragment;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
+import com.vintro.wsplanner.ui.widgets.WidgetUpdateManager;
+import com.vintro.wsplanner.utils.AppExecutors;
 import com.vintro.wsplanner.utils.Logger;
 
 import java.time.LocalDate;
@@ -45,6 +50,7 @@ import java.time.LocalDate;
 public class MainActivity extends AppCompatActivity implements SettingsFragment.SettingsHost {
     private static final String TAG = "MainActivity";
     public static final String EXTRA_TARGET_TAB = "extra_target_tab";
+    public static final String EXTRA_TARGET_DATE = "extra_target_date";
 
     private static final String STATE_ACTIVE_TAB = "state_active_tab";
     private static final String TAG_SCHEDULE = "tab_schedule";
@@ -188,6 +194,10 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
         restoreOrInitFragments(savedInstanceState);
         setupBottomNavigation();
         updateSettingsUpdateBadge();
+        ScheduleSyncWorker.ensurePeriodicSyncScheduled(this);
+        if (savedInstanceState == null) {
+            AppExecutors.runIo(() -> UpdateManager.cleanupDownloadedApks(getApplicationContext()));
+        }
         checkAppUpdates();
     }
 
@@ -203,7 +213,7 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
         final int basePadV = Math.round(6 * density);
 
         ViewCompat.setOnApplyWindowInsetsListener(bottomNavigationBar, (v, insets) -> {
-            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
             v.setPadding(basePadH + bars.left, basePadV, basePadH + bars.right, basePadV + bars.bottom);
             return insets;
         });
@@ -246,7 +256,23 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
             activeTabId = R.id.nav_schedule;
         }
 
+        LocalDate initialTargetDate = parseTargetDateExtra(getIntent());
+        if (savedInstanceState == null && initialTargetDate != null && scheduleFragment == null) {
+            scheduleFragment = ScheduleFragment.newInstance(initialTargetDate);
+        }
+
         switchToTab(activeTabId, false);
+    }
+
+    private LocalDate parseTargetDateExtra(Intent intent) {
+        if (intent == null) return null;
+        String raw = intent.getStringExtra(EXTRA_TARGET_DATE);
+        if (raw == null || raw.trim().isEmpty()) return null;
+        try {
+            return LocalDate.parse(raw.trim());
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private void setupBottomNavigation() {
@@ -552,11 +578,17 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
         super.onNewIntent(intent);
         setIntent(intent);
         int requestedTab = intent.getIntExtra(EXTRA_TARGET_TAB, R.id.nav_schedule);
-        Logger.d(TAG + ".onNewIntent", "Received new intent targeting tab=" + requestedTab);
+        LocalDate targetDate = parseTargetDateExtra(intent);
+        Logger.d(TAG + ".onNewIntent", "Received new intent targeting tab=" + requestedTab + ", date=" + targetDate);
         if (requestedTab != activeTabId) {
             selectTab(requestedTab, true);
-        } else if (requestedTab == R.id.nav_schedule && scheduleFragment != null) {
-            scheduleFragment.onActivatedFromWidget();
+        }
+        if (requestedTab == R.id.nav_schedule && scheduleFragment != null) {
+            if (targetDate != null) {
+                scheduleFragment.navigateToTargetDate(targetDate);
+            } else {
+                scheduleFragment.onActivatedFromWidget();
+            }
         }
     }
 
@@ -653,6 +685,9 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
     public void onLanguageChanged() {
         Logger.i(TAG + ".onLanguageChanged", "Recreating MainActivity without animation to apply new locale on settings tab");
         UIHelper.setSelectedLanguage(this);
+        if (WidgetUpdateManager.hasActiveWidgets(this)) {
+            WidgetUpdateManager.updateAllWidgets(this);
+        }
         if (isFinishing() || isDestroyed()) return;
 
         Intent restartIntent = new Intent(this, MainActivity.class);
@@ -734,7 +769,9 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
         if (newNight != currentNightMode) {
             Logger.d(TAG + ".onConfigurationChanged", "System uiMode changed externally, syncing theme (isNight=" + newNight + ")");
             currentNightMode = newNight;
-            UIHelper.applyNightModeWithoutRecreate(this, newNight);
+            if (WidgetUpdateManager.hasActiveWidgets(this)) {
+                WidgetUpdateManager.updateAllWidgets(this);
+            }
             recreate();
         }
     }
@@ -748,14 +785,19 @@ public class MainActivity extends AppCompatActivity implements SettingsFragment.
 
     private void showKeystoreErrorDialog() {
         new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Защищенное хранилище")
-                .setMessage("Сбой защищенного хранилища ключей Android (Keystore). Для безопасности ваших данных необходимо заново выполнить вход в аккаунт.")
+                .setTitle(R.string.keystore_error_title)
+                .setMessage(R.string.keystore_error_message)
                 .setCancelable(false)
-                .setPositiveButton("Войти заново", (dialog, which) -> {
+                .setPositiveButton(R.string.keystore_error_reset, (dialog, which) -> {
+                    ScheduleSyncWorker.cancelPeriodicSync(this);
+                    PUW.clearSession();
+                    StudyPlanScraper.clearUrlCache(this);
+                    ScheduleRepository.getInstance(this).invalidateCache();
                     PreferencesManager.resetCorruptedStorage(this);
                     startActivity(new Intent(this, LoginActivity.class));
                     finish();
                 })
+                .setNegativeButton(R.string.keystore_error_exit, (dialog, which) -> finishAffinity())
                 .show();
     }
 }

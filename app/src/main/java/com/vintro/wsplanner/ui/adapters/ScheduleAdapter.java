@@ -2,7 +2,6 @@ package com.vintro.wsplanner.ui.adapters;
 
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,12 +16,14 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.vintro.wsplanner.R;
+import com.vintro.wsplanner.enums.LessonType;
 import com.vintro.wsplanner.enums.LocationType;
 import com.vintro.wsplanner.models.DaySchedule;
 import com.vintro.wsplanner.models.Lesson;
 import com.vintro.wsplanner.models.Location;
 import com.vintro.wsplanner.ui.activities.SubjectDetailsActivity;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
+import com.vintro.wsplanner.ui.widgets.WidgetActionHelper;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -188,6 +189,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         private final TextView badgeNow;
         private final TextView timeLeftText;
         private final TextView lessonTimeRange;
+        private final ImageView iconHasNote;
         private final TextView badgeLocation;
         private final TextView subjectName;
         private final View rowLessonType;
@@ -206,6 +208,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             badgeNow = itemView.findViewById(R.id.badge_now);
             timeLeftText = itemView.findViewById(R.id.time_left_text);
             lessonTimeRange = itemView.findViewById(R.id.lesson_time_range);
+            iconHasNote = itemView.findViewById(R.id.icon_has_note);
             badgeLocation = itemView.findViewById(R.id.badge_location);
             subjectName = itemView.findViewById(R.id.subject_name);
             rowLessonType = itemView.findViewById(R.id.row_lesson_type);
@@ -224,11 +227,25 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             String end = lesson.getEndTime() != null ? lesson.getEndTime().format(timeFormatter) : "--:--";
             lessonTimeRange.setText(start + " – " + end);
 
+            if (iconHasNote != null) {
+                boolean hasNote = SubjectDetailsActivity.hasSavedNote(
+                        context,
+                        lesson.getSubjectName(),
+                        lesson.getResolvedLessonType(),
+                        lesson.getLessonType()
+                );
+                iconHasNote.setVisibility(hasNote ? View.VISIBLE : View.GONE);
+            }
+
             subjectName.setText(lesson.getSubjectName());
+            LessonType resolvedType = lesson.getResolvedLessonType();
             String rawType = lesson.getLessonType();
-            if (rawType != null && !rawType.trim().isEmpty()) {
+            String displayType = (resolvedType != null && resolvedType != LessonType.INNE)
+                    ? resolvedType.getLocalizedDisplayName(context)
+                    : (rawType != null && !rawType.trim().isEmpty() ? rawType.trim() : null);
+            if (displayType != null && !displayType.trim().isEmpty()) {
                 rowLessonType.setVisibility(View.VISIBLE);
-                String formatted = rawType.substring(0, 1).toUpperCase(Locale.getDefault()) + rawType.substring(1);
+                String formatted = displayType.substring(0, 1).toUpperCase(Locale.getDefault()) + displayType.substring(1);
                 lessonTypeText.setText(formatted);
             } else {
                 rowLessonType.setVisibility(View.GONE);
@@ -250,11 +267,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 View.OnClickListener mapClick = v -> {
                     String query = loc.getMapQueryUrl();
                     if (query != null) {
-                        try {
-                            Intent mapIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(query));
-                            context.startActivity(mapIntent);
-                        } catch (Exception ignored) {
-                        }
+                        WidgetActionHelper.openLocationInMaps(context, query);
                     }
                 };
                 locationText.setOnClickListener(mapClick);

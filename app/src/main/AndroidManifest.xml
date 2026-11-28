@@ -6,6 +6,26 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+    </queries>
 
     <application
         android:name=".WSPlannerApp"
@@ -22,7 +42,7 @@
         <activity
             android:name=".ui.activities.SettingsActivity"
             android:exported="false"
-            android:configChanges="locale|layoutDirection|uiMode|orientation|screenSize|smallestScreenSize|screenLayout|colorMode"
+            android:configChanges="uiMode"
             />
         <activity
             android:name=".ui.activities.LoginActivity"
@@ -33,13 +53,22 @@
             android:exported="false" />
         <activity
             android:name=".ui.activities.SetupSpecialtyActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".ui.activities.SetupAdditionalActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".ui.activities.SubjectDetailsActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.activities.WidgetTrampolineActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <activity
             android:name=".ui.activities.StudentPanelActivity"
             android:exported="false"
@@ -63,10 +92,7 @@
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.vintro.wsplanner.ACTION_WIDGET_TOGGLE_LESSON" />
-                <action android:name="com.vintro.wsplanner.ACTION_WIDGET_CARD_CLICK" />
-                <action android:name="com.vintro.wsplanner.ACTION_WIDGET_OPEN_EXCEL" />
                 <action android:name="com.vintro.wsplanner.ACTION_WIDGET_REFRESH" />
-                <action android:name="com.vintro.wsplanner.ACTION_WIDGET_OPEN_MAPS" />
             </intent-filter>
 
             <meta-data
@@ -82,8 +108,6 @@
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.vintro.wsplanner.ACTION_DAILY_REFRESH" />
-                <action android:name="com.vintro.wsplanner.ACTION_DAILY_OPEN_EXCEL" />
-                <action android:name="com.vintro.wsplanner.ACTION_DAILY_ITEM_CLICK" />
             </intent-filter>
 
             <meta-data
@@ -97,14 +121,26 @@
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false" />
 
-        <!-- Precise Widget Update Receiver for Alarm & User Present -->
+        <!-- Internal Widget Update Receiver for Scheduled Ticks & Refresh -->
         <receiver
             android:name=".ui.widgets.WidgetUpdateManager"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.vintro.wsplanner.ACTION_SCHEDULE_ALARM_TICK" />
                 <action android:name="com.vintro.wsplanner.ACTION_REFRESH_WIDGETS" />
-                <action android:name="android.intent.action.USER_PRESENT" />
+            </intent-filter>
+        </receiver>
+
+        <!-- System Events Receiver to Restore Widget Alarms and WorkManager After Reboot or Time Changes -->
+        <receiver
+            android:name=".ui.widgets.WidgetSystemReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
 

@@ -2,7 +2,6 @@ package com.vintro.wsplanner.ui.adapters;
 
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,6 +20,7 @@ import com.vintro.wsplanner.models.SubjectDetails;
 import com.vintro.wsplanner.ui.activities.SubjectDetailsActivity;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.ui.views.SegmentedProgressBar;
+import com.vintro.wsplanner.ui.widgets.WidgetActionHelper;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -168,6 +168,7 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         private final View statusStripe;
         private final SegmentedProgressBar segmentedProgressBar;
         private final TextView textProgress;
+        private final ImageView iconHasNote;
         private final TextView badgeLessonType;
         private final TextView textCourseName;
         private final View rowTeacher;
@@ -181,6 +182,7 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
             statusStripe = itemView.findViewById(R.id.course_status_stripe);
             segmentedProgressBar = itemView.findViewById(R.id.segmented_progress_bar);
             textProgress = itemView.findViewById(R.id.text_progress);
+            iconHasNote = itemView.findViewById(R.id.icon_has_note);
             badgeLessonType = itemView.findViewById(R.id.badge_lesson_type);
             textCourseName = itemView.findViewById(R.id.text_course_name);
             rowTeacher = itemView.findViewById(R.id.row_teacher);
@@ -201,11 +203,21 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
             segmentedProgressBar.setProgress(completed, total);
             textProgress.setText(completed + " / " + total);
 
+            if (iconHasNote != null) {
+                boolean hasNote = SubjectDetailsActivity.hasSavedNote(
+                        context,
+                        details.getSubjectName(),
+                        details.getLessonType(),
+                        details.getRawLessonType()
+                );
+                iconHasNote.setVisibility(hasNote ? View.VISIBLE : View.GONE);
+            }
+
             String rawType = details.getRawLessonType();
             LessonType resolvedType = details.getLessonType();
-            String displayType = (rawType != null && !rawType.trim().isEmpty())
-                    ? rawType.trim()
-                    : ((resolvedType != null && resolvedType != LessonType.INNE) ? resolvedType.getDisplayName() : null);
+            String displayType = (resolvedType != null && resolvedType != LessonType.INNE)
+                    ? resolvedType.getLocalizedDisplayName(context)
+                    : ((rawType != null && !rawType.trim().isEmpty()) ? rawType.trim() : null);
 
             if (displayType != null && !displayType.trim().isEmpty()) {
                 badgeLessonType.setVisibility(View.VISIBLE);
@@ -233,11 +245,7 @@ public class AllCoursesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
                 View.OnClickListener mapClick = v -> {
                     String query = loc.getMapQueryUrl();
                     if (query != null) {
-                        try {
-                            Intent mapIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(query));
-                            context.startActivity(mapIntent);
-                        } catch (Exception ignored) {
-                        }
+                        WidgetActionHelper.openLocationInMaps(context, query);
                     }
                 };
                 textLocation.setOnClickListener(mapClick);

@@ -26,6 +26,7 @@ import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.DegreeLevel;
 import com.vintro.wsplanner.enums.StudyMode;
 import com.vintro.wsplanner.models.ParsedCourse;
+import com.vintro.wsplanner.network.StudyPlanScraper;
 import com.vintro.wsplanner.services.CourseSetupService;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
@@ -51,6 +52,7 @@ public class SetupCourseActivity extends AppCompatActivity {
     private DegreeLevel selectedLevel;
     private StudyMode selectedMode;
     private int selectedYear = -1;
+    private boolean isReOnboarding = false;
 
     private List<ParsedCourse> availableCourses = new ArrayList<>();
     private String loadedStudentFullName = null;
@@ -87,10 +89,11 @@ public class SetupCourseActivity extends AppCompatActivity {
         yearLayout = findViewById(R.id.year_layout);
         confirmButton = findViewById(R.id.confirm_button);
 
+        isReOnboarding = getIntent().getBooleanExtra(EXTRA_FROM_STUDENT_PANEL, false)
+                || PreferencesManager.isOnboardingCompleted(this);
+
         if (backButton != null) {
-            boolean showBack = getIntent().getBooleanExtra(EXTRA_FROM_STUDENT_PANEL, false)
-                    || PreferencesManager.isOnboardingCompleted(this);
-            if (showBack) {
+            if (isReOnboarding) {
                 backButton.setVisibility(View.VISIBLE);
                 backButton.setOnClickListener(v -> finish());
             } else {
@@ -164,7 +167,7 @@ public class SetupCourseActivity extends AppCompatActivity {
 
     private void populateUI(Integer englishGroup, String seminarTeacher) {
         if (availableCourses.isEmpty()) {
-            Toast.makeText(this, "No courses found", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.onboarding_load_courses_error, Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -439,12 +442,13 @@ public class SetupCourseActivity extends AppCompatActivity {
 
     private void saveAndContinue() {
         if (selectedCourse == null || selectedLevel == null || selectedMode == null || selectedYear == -1) {
-            Toast.makeText(this, "Please select all options", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.onboarding_select_all_fields, Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // clear saved visible weekdays so repository recomputes recommended days for the selected course
+        // clear saved visible weekdays and puw url cache so repository recomputes for the selected course
         PreferencesManager.clearVisibleWeekdaysPref(this);
+        StudyPlanScraper.clearUrlCache(this);
 
         PreferencesManager.saveGlobalPrefs(
                 this,
@@ -470,21 +474,31 @@ public class SetupCourseActivity extends AppCompatActivity {
             }
         }
 
-        Logger.i("SetupCourseActivity.saveAndContinue", "Saved configuration: " + selectedCourse.fieldOfStudy + ", " + selectedLevel + ", " + selectedMode + ", year " + selectedYear);
+        Logger.i("SetupCourseActivity.saveAndContinue", "Saved configuration: " + selectedCourse.fieldOfStudy + ", " + selectedLevel + ", " + selectedMode + ", year " + selectedYear + " (reOnboarding=" + isReOnboarding + ")");
 
         if (selectedYear == 1) {
             PreferencesManager.setGlobalSpecialtyPref(this, null);
             PreferencesManager.setGlobalSpecialtyConfigured(this, true);
-            PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_ADDITIONAL);
+            if (!isReOnboarding) {
+                PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_ADDITIONAL);
+            }
 
             Intent intent = new Intent(this, SetupAdditionalActivity.class);
+            if (isReOnboarding) {
+                intent.putExtra(EXTRA_FROM_STUDENT_PANEL, true);
+            }
             startActivity(intent);
         } else {
-            // move to specialty step
-            PreferencesManager.setGlobalSpecialtyConfigured(this, false);
-            PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_SPECIALTY);
+            // move to specialty step without trapping returning users in onboarding if they cancel
+            if (!isReOnboarding) {
+                PreferencesManager.setGlobalSpecialtyConfigured(this, false);
+                PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_SPECIALTY);
+            }
 
             Intent intent = new Intent(this, SetupSpecialtyActivity.class);
+            if (isReOnboarding) {
+                intent.putExtra(EXTRA_FROM_STUDENT_PANEL, true);
+            }
             startActivity(intent);
         }
     }

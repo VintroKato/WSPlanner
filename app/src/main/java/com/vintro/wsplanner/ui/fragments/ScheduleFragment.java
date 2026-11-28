@@ -2,6 +2,7 @@ package com.vintro.wsplanner.ui.fragments;
 
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
+import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
@@ -35,6 +36,7 @@ import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.models.DaySchedule;
+import com.vintro.wsplanner.models.Lesson;
 import com.vintro.wsplanner.network.MoodleAutologinManager;
 import com.vintro.wsplanner.ui.adapters.DayPagerAdapter;
 import com.vintro.wsplanner.ui.adapters.ScheduleAdapter;
@@ -49,6 +51,7 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -96,6 +99,7 @@ public class ScheduleFragment extends Fragment {
     private final List<LocalDate> visibleDates = new ArrayList<>();
     private Set<DayOfWeek> activeVisibleWeekdays = EnumSet.noneOf(DayOfWeek.class);
     private String activeConfigSignature;
+    private long lastObservedDataVersion = -1L;
     private boolean isBackToTodayVisible = false;
     private boolean isSyncSpinning = false;
     private boolean isOpeningPuw = false;
@@ -650,6 +654,15 @@ public class ScheduleFragment extends Fragment {
         lastSyncText.setText(text);
     }
 
+    public void navigateToTargetDate(@Nullable LocalDate targetDate) {
+        if (!isAdded() || targetDate == null) return;
+        Logger.d(TAG + ".navigateToTargetDate", "Navigating schedule to requested date: " + targetDate);
+        navigateToDate(targetDate);
+        if (dayPagerAdapter != null && scheduleViewPager != null) {
+            dayPagerAdapter.scrollToTop(scheduleViewPager.getCurrentItem());
+        }
+    }
+
     private void loadSchedule(boolean forceRefresh) {
         if (!isAdded() || scheduleRepository == null || !scheduleRepository.isConfigurationComplete()) {
             Logger.d(TAG + ".loadSchedule", "Student configuration incomplete, skipping schedule load");
@@ -665,13 +678,15 @@ public class ScheduleFragment extends Fragment {
             @Override
             public void onSuccess(DaySchedule result) {
                 Logger.i(TAG + ".loadSchedule", "Schedule loaded successfully. Day items count: " + (result != null ? result.getLessons().size() : 0));
-                if (!isAdded() || getActivity() == null) return;
-                getActivity().runOnUiThread(() -> {
+                Activity activity = getActivity();
+                if (!isAdded() || activity == null) return;
+                activity.runOnUiThread(() -> {
                     if (!isAdded()) return;
                     if (swipeRefreshLayout != null) {
                         swipeRefreshLayout.setRefreshing(false);
                     }
                     setSyncSpinning(false);
+                    lastObservedDataVersion = scheduleRepository.getDataVersion();
                     rebuildVisibleDates(true, false);
                     if (dayPagerAdapter != null && scheduleViewPager != null) {
                         dayPagerAdapter.onScheduleLoaded(scheduleViewPager.getCurrentItem());
@@ -687,8 +702,9 @@ public class ScheduleFragment extends Fragment {
             @Override
             public void onError(Exception e) {
                 Logger.e(TAG + ".loadSchedule", "Failed to load schedule: " + Logger.formatException(e), e);
-                if (!isAdded() || getActivity() == null) return;
-                getActivity().runOnUiThread(() -> {
+                Activity activity = getActivity();
+                if (!isAdded() || activity == null) return;
+                activity.runOnUiThread(() -> {
                     if (!isAdded()) return;
                     if (swipeRefreshLayout != null) {
                         swipeRefreshLayout.setRefreshing(false);
@@ -754,14 +770,10 @@ public class ScheduleFragment extends Fragment {
         Toast.makeText(requireContext(), getString(R.string.schedule_opening_file), Toast.LENGTH_SHORT).show();
         setHeaderButtonLoading(buttonOpenFile, iconOpenFile, progressOpenFile, true);
 
-        tickerHandler.postDelayed(() -> {
+        ScheduleFileOpener.openExcelSchedule(requireContext(), () -> {
             if (!isAdded()) return;
-            try {
-                ScheduleFileOpener.openExcelSchedule(requireContext());
-            } finally {
-                setHeaderButtonLoading(buttonOpenFile, iconOpenFile, progressOpenFile, false);
-            }
-        }, 180);
+            setHeaderButtonLoading(buttonOpenFile, iconOpenFile, progressOpenFile, false);
+        });
     }
 
     private void openPuwHome() {
@@ -840,9 +852,34 @@ public class ScheduleFragment extends Fragment {
     }
 
     private void onMinuteTick() {
-        if (isAdded() && !isHidden() && dayPagerAdapter != null) {
-            dayPagerAdapter.refreshDate(LocalDate.now());
+        if (!isAdded() || isHidden() || dayPagerAdapter == null) {
+            return;
         }
+        LocalDate today = LocalDate.now();
+        if (!today.isEqual(anchorToday)) {
+            Logger.i(TAG + ".onMinuteTick", "Midnight rollover detected during active session, syncing schedule state");
+            syncStateIfActive();
+            return;
+        }
+        if (scheduleRepository != null && scheduleRepository.isMemoryCacheLoaded()) {
+            DaySchedule todaySchedule = scheduleRepository.getScheduleForDateFromMemory(today);
+            if (todaySchedule == null || todaySchedule.isEmpty()) {
+                return;
+            }
+            // skip redundant rebinds after all lessons for today finished more than two minutes ago
+            LocalTime cutoff = LocalTime.now().minusMinutes(2);
+            boolean hasActiveOrUpcoming = false;
+            for (Lesson lesson : todaySchedule.getLessons()) {
+                if (lesson.getEndTime() == null || lesson.getEndTime().isAfter(cutoff)) {
+                    hasActiveOrUpcoming = true;
+                    break;
+                }
+            }
+            if (!hasActiveOrUpcoming) {
+                return;
+            }
+        }
+        dayPagerAdapter.refreshDate(today);
     }
 
     private void syncStateIfActive() {
@@ -852,19 +889,23 @@ public class ScheduleFragment extends Fragment {
         boolean midnightChanged = !today.isEqual(anchorToday);
         Set<DayOfWeek> prefDays = PreferencesManager.getVisibleWeekdaysPref(requireContext());
         boolean weekdaysChanged = pendingWeekdaysRebuild || !prefDays.equals(activeVisibleWeekdays);
+        long currentDataVersion = scheduleRepository.getDataVersion();
+        boolean dataVersionChanged = lastObservedDataVersion != -1L && currentDataVersion != lastObservedDataVersion;
 
         if (midnightChanged && selectedDate.isBefore(today)) {
             selectedDate = today;
         }
 
-        if (midnightChanged || weekdaysChanged) {
-            Logger.i(TAG + ".syncStateIfActive", "Rebuilding visible dates (midnightChanged=" + midnightChanged + ", weekdaysChanged=" + weekdaysChanged + ")");
+        if (midnightChanged || weekdaysChanged || dataVersionChanged) {
+            Logger.i(TAG + ".syncStateIfActive", "Rebuilding visible dates (midnightChanged=" + midnightChanged
+                    + ", weekdaysChanged=" + weekdaysChanged + ", dataVersionChanged=" + dataVersionChanged + ")");
             if (weekdaysChanged) {
                 pendingWeekdaysRebuild = false;
                 extraPickedDate = null;
             }
+            lastObservedDataVersion = currentDataVersion;
             rebuildVisibleDates(true, false);
-            if (weekdaysChanged && dayPagerAdapter != null && scheduleViewPager != null) {
+            if ((weekdaysChanged || dataVersionChanged) && dayPagerAdapter != null && scheduleViewPager != null) {
                 dayPagerAdapter.onScheduleLoaded(RecyclerView.NO_POSITION);
             }
         } else {
@@ -888,7 +929,11 @@ public class ScheduleFragment extends Fragment {
             loadSchedule(false);
         } else if (scheduleRepository.isMemoryCacheLoaded()) {
             if (dayPagerAdapter != null) {
+                // refresh today and selected date so status badges and note indicators stay current
                 dayPagerAdapter.refreshDate(today);
+                if (selectedDate != null && !selectedDate.isEqual(today)) {
+                    dayPagerAdapter.refreshDate(selectedDate);
+                }
             }
         } else {
             loadSchedule(false);
@@ -896,7 +941,9 @@ public class ScheduleFragment extends Fragment {
 
         checkScheduleFreshnessAndAutoUpdate();
 
-        if (scheduleRepository.isConfigurationComplete()) {
+        if ((midnightChanged || configChanged)
+                && scheduleRepository.isConfigurationComplete()
+                && WidgetUpdateManager.hasActiveWidgets(requireContext())) {
             WidgetUpdateManager.updateAllWidgets(requireContext());
             WidgetUpdateManager.scheduleNextAlarm(requireContext());
         }

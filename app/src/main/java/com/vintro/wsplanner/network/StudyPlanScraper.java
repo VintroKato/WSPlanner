@@ -1,5 +1,13 @@
 package com.vintro.wsplanner.network;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import com.vintro.wsplanner.enums.DegreeLevel;
+import com.vintro.wsplanner.enums.StudyMode;
+import com.vintro.wsplanner.models.ParsedCourse;
+import com.vintro.wsplanner.utils.Logger;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -8,6 +16,7 @@ import org.jsoup.select.Elements;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -16,12 +25,32 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-import com.vintro.wsplanner.models.ParsedCourse;
-import com.vintro.wsplanner.utils.Logger;
-import com.vintro.wsplanner.enums.DegreeLevel;
-import com.vintro.wsplanner.enums.StudyMode;
-
+// scrapes puw moodle pages for courses, schedules, student zone links, and metadata
 public class StudyPlanScraper {
+    private static final String COURSES_PAGE_URL = PUW.baseUrl + "my/courses.php";
+    private static final String URL_CACHE_PREFS = "puw_url_cache";
+    private static final long URL_CACHE_TTL_MS = 7L * 24L * 60L * 60L * 1000L;
+
+    // safely resolve absolute url from an anchor element with fallback for unit tests without base uri
+    private static String resolveHref(Element link) {
+        if (link == null) return "";
+        String abs = link.attr("abs:href");
+        if (abs != null && !abs.trim().isEmpty()) {
+            return abs.trim();
+        }
+        String raw = link.attr("href");
+        return raw != null ? raw.trim() : "";
+    }
+
+    // unified schedule folder name check shared by onboarding and schedule download
+    private static boolean isScheduleFolderName(String folderNameLower) {
+        if (folderNameLower == null) return false;
+        return folderNameLower.contains("plany zajęć")
+                || folderNameLower.contains("plan zajęć")
+                || folderNameLower.contains("rozklad")
+                || folderNameLower.contains("rozkład")
+                || folderNameLower.contains("harmonogram");
+    }
 
     public static String extractSeminarTeacherFromCourseTitle(String rawTitle) {
         if (rawTitle == null || rawTitle.trim().isEmpty()) {
@@ -53,17 +82,17 @@ public class StudyPlanScraper {
 
             // skip years or semester labels
             if (partLower.contains("sem.") || partLower.contains("semestr") ||
-                partLower.contains("nabór") || partLower.contains("nabor") ||
-                partLower.contains("rok") || partLower.matches(".*\\b20\\d{2}\\b.*") ||
-                partLower.matches(".*\\b\\d{2}/\\d{2}\\b.*") ||
-                partLower.matches(".*\\b\\d{4}/\\d{4}\\b.*")) {
+                    partLower.contains("nabór") || partLower.contains("nabor") ||
+                    partLower.contains("rok") || partLower.matches(".*\\b20\\d{2}\\b.*") ||
+                    partLower.matches(".*\\b\\d{2}/\\d{2}\\b.*") ||
+                    partLower.matches(".*\\b\\d{4}/\\d{4}\\b.*")) {
                 continue;
             }
 
             // check for academic title
             boolean hasAcademicTitle = partLower.contains("mgr") || partLower.contains("dr") ||
-                                       partLower.contains("prof") || partLower.contains("doc") ||
-                                       partLower.contains("inż") || partLower.contains("inz");
+                    partLower.contains("prof") || partLower.contains("doc") ||
+                    partLower.contains("inż") || partLower.contains("inz");
 
             // check for name and surname pattern
             boolean looksLikeName = part.matches("^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+(\\s+[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+)+$");
@@ -81,7 +110,7 @@ public class StudyPlanScraper {
         if (teacher != null) return teacher;
 
         // check courses page as fallback
-        teacher = findSeminarTeacherInUrl(client, PUW.baseUrl + "my/courses.php");
+        teacher = findSeminarTeacherInUrl(client, COURSES_PAGE_URL);
         return teacher;
     }
 
@@ -91,7 +120,7 @@ public class StudyPlanScraper {
             if (!response.isSuccessful() || response.body() == null) {
                 return null;
             }
-            Document doc = Jsoup.parse(response.body().string());
+            Document doc = Jsoup.parse(response.body().string(), url);
 
             // check title attributes
             Elements titleElements = doc.select("[title]");
@@ -128,7 +157,7 @@ public class StudyPlanScraper {
                 return null;
             }
 
-            Document doc = Jsoup.parse(response.body().string());
+            Document doc = Jsoup.parse(response.body().string(), PUW.homeUrl);
 
             // find links with title attribute
             Elements courseLinks = doc.select("a[title]");
@@ -138,8 +167,6 @@ public class StudyPlanScraper {
 
                 // check if english course
                 if (title.toLowerCase().contains("język angielski") && title.toLowerCase().contains("lektorat")) {
-
-                    // extract group number after grupa keyword
                     Pattern pattern = Pattern.compile("grupa\\s+(\\d+)", Pattern.CASE_INSENSITIVE);
                     Matcher matcher = pattern.matcher(title);
 
@@ -155,7 +182,7 @@ public class StudyPlanScraper {
             Logger.e("StudyPlanScraper.getEnglishGroup", "Error fetching English group: " + Logger.formatException(e));
         }
 
-        return null; // not found
+        return null;
     }
 
     // get available courses from home page
@@ -184,7 +211,7 @@ public class StudyPlanScraper {
         if (html == null) return courses;
         Document doc = Jsoup.parse(html, PUW.baseUrl);
 
-        // find student zone links
+        // find student zone links case-insensitively
         Elements allCourseLinks = doc.select("a[title*='Strefa studenta'], a[title*='strefa studenta']");
         List<Element> regularCourseLinks = new ArrayList<>();
         for (Element el : allCourseLinks) {
@@ -195,11 +222,10 @@ public class StudyPlanScraper {
         }
 
         if (!regularCourseLinks.isEmpty()) {
-            // regular degree student zones take precedence
             Logger.d("StudyPlanScraper.parseAvailableCoursesFromHtml", "Found " + regularCourseLinks.size() + " regular student zone link(s)");
             for (Element link : regularCourseLinks) {
                 ParsedCourse course = new ParsedCourse();
-                course.courseUrl = link.attr("href");
+                course.courseUrl = resolveHref(link);
 
                 String title = link.attr("title");
                 String[] parts = title.split(" - ");
@@ -212,13 +238,13 @@ public class StudyPlanScraper {
                     course.degreeLevel = parseDegreeLevel(parts[2]);
                 }
 
-                if (client != null) {
+                if (client != null && !course.courseUrl.isEmpty()) {
                     fetchCourseDetails(client, course);
                 }
                 courses.add(course);
             }
         } else {
-            // fallback for preparatory program: Strefa uczestnika kursu Rok Zerowy
+            // fallback for preparatory program
             Logger.d("StudyPlanScraper.parseAvailableCoursesFromHtml", "No regular student zones found, checking Rok Zerowy links");
             Elements zeroYearLinks = doc.select("a[title*='ROK ZEROWY'], a[title*='Rok zerowy'], a[title*='rok zerowy'], a[title*='Strefa uczestnika'], a[title*='strefa uczestnika']");
             if (zeroYearLinks.isEmpty()) {
@@ -233,7 +259,7 @@ public class StudyPlanScraper {
 
             if (!zeroYearLinks.isEmpty()) {
                 Element link = zeroYearLinks.first();
-                String href = link.attr("href");
+                String href = resolveHref(link);
                 String title = link.attr("title");
                 Logger.i("StudyPlanScraper.parseAvailableCoursesFromHtml", "Rok Zerowy participant zone detected: title=" + title + ", url=" + href);
                 ParsedCourse course = new ParsedCourse();
@@ -242,7 +268,7 @@ public class StudyPlanScraper {
                 course.degreeLevel = DegreeLevel.ZERO_YEAR;
                 course.availableModesAndYears.put("st", new ArrayList<>(List.of(1)));
 
-                if (client != null) {
+                if (client != null && !course.courseUrl.isEmpty()) {
                     fetchCourseDetails(client, course);
                 }
                 course.availableModesAndYears.putIfAbsent("st", new ArrayList<>());
@@ -260,11 +286,12 @@ public class StudyPlanScraper {
 
     // check course folders
     private static void fetchCourseDetails(OkHttpClient client, ParsedCourse course) {
+        if (course.courseUrl == null || course.courseUrl.isEmpty()) return;
         Request request = new Request.Builder().url(course.courseUrl).build();
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful() || response.body() == null) return;
 
-            Document doc = Jsoup.parse(response.body().string());
+            Document doc = Jsoup.parse(response.body().string(), course.courseUrl);
             Elements folderLinks = doc.select("div.activityinstance > a, a[href*='folder/view.php']");
 
             boolean isZeroYear = (course.degreeLevel == DegreeLevel.ZERO_YEAR);
@@ -273,18 +300,15 @@ public class StudyPlanScraper {
                 String folderName = folderLink.select("span.instancename").text().toLowerCase();
                 if (folderName.isEmpty()) folderName = folderLink.text().toLowerCase();
 
-                if (!isZeroYear && !folderName.contains("plany zajęć") && !folderName.contains("plan zajęć")
-                        && !folderName.contains("rozklad") && !folderName.contains("harmonogram")
-                        && !folderName.contains("rok zerowy")) {
+                if (!isZeroYear && !isScheduleFolderName(folderName) && !folderName.contains("rok zerowy")) {
                     continue;
                 }
 
-                // try getting study mode from folder name
                 String folderMode = determineStudyMode(folderName);
-                String folderUrl = folderLink.attr("href");
-
-                // parse schedule files
-                processFolderFiles(client, folderUrl, course, folderMode);
+                String folderUrl = resolveHref(folderLink);
+                if (!folderUrl.isEmpty()) {
+                    processFolderFiles(client, folderUrl, course, folderMode);
+                }
             }
         } catch (Exception e) {
             Logger.e("StudyPlanScraper.fetchCourseDetails", "Error fetching course details: " + Logger.formatException(e));
@@ -298,7 +322,7 @@ public class StudyPlanScraper {
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful() || response.body() == null) return;
 
-            Document doc = Jsoup.parse(response.body().string());
+            Document doc = Jsoup.parse(response.body().string(), folderUrl);
             Elements files = doc.select("span.fp-filename, a[href*='pluginfile.php']");
 
             for (Element file : files) {
@@ -314,7 +338,6 @@ public class StudyPlanScraper {
                     continue;
                 }
 
-                // extract mode and roman numeral year
                 Pattern pattern = Pattern.compile("(nst puw|nst|st)\\s+([IV]+)\\s*-", Pattern.CASE_INSENSITIVE);
                 Matcher matcher = pattern.matcher(fileName);
 
@@ -323,17 +346,14 @@ public class StudyPlanScraper {
                     String romanYear = matcher.group(2);
                     int year = romanToInt(romanYear);
 
-                    // fallback to mode from file name
                     String effectiveMode = (folderMode != null) ? folderMode : fileMode;
 
-                    // add year to mode
                     course.availableModesAndYears.putIfAbsent(effectiveMode, new ArrayList<>());
                     if (!course.availableModesAndYears.get(effectiveMode).contains(year)) {
                         course.availableModesAndYears.get(effectiveMode).add(year);
                     }
                 }
 
-                // fallback to degree level from file name
                 if (course.degreeLevel == null) {
                     String lowerFileName = fileName.toLowerCase();
                     if (lowerFileName.contains("i stopnia")) course.degreeLevel = DegreeLevel.BACHELORS;
@@ -347,13 +367,11 @@ public class StudyPlanScraper {
         }
     }
 
-    // helper methods
-
     public static String getScheduleFileUrl(OkHttpClient client, String major, DegreeLevel degreeLevel, StudyMode studyMode, int year) {
         Request request = new Request.Builder().url(PUW.homeUrl).build();
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful() || response.body() == null) return null;
-            Document doc = Jsoup.parse(response.body().string());
+            Document doc = Jsoup.parse(response.body().string(), PUW.homeUrl);
 
             boolean isZeroYear = (degreeLevel == DegreeLevel.ZERO_YEAR)
                     || (major != null && major.toLowerCase().contains("rok zerowy"));
@@ -363,39 +381,38 @@ public class StudyPlanScraper {
                 Logger.i("StudyPlanScraper.getScheduleFileUrl", "Resolving schedule file for Rok Zerowy (major=" + major + ")");
                 Elements zeroLinks = doc.select("a[title*='ROK ZEROWY'], a[title*='Rok zerowy'], a[title*='rok zerowy'], a[title*='Strefa uczestnika'], a[title*='strefa uczestnika']");
                 if (!zeroLinks.isEmpty()) {
-                    courseUrl = zeroLinks.first().attr("href");
+                    courseUrl = resolveHref(zeroLinks.first());
                 } else {
                     for (Element link : doc.select("a[href*='course/view.php']")) {
                         String t = (link.attr("title") + " " + link.text()).toLowerCase();
                         if (t.contains("rok zerowy") || t.contains("uczestnika")) {
-                            courseUrl = link.attr("href");
+                            courseUrl = resolveHref(link);
                             break;
                         }
                     }
                 }
                 Logger.d("StudyPlanScraper.getScheduleFileUrl", "Rok Zerowy course URL resolved: " + courseUrl);
             } else {
-                Elements courseLinks = doc.select("a[title*='Strefa studenta']");
+                Elements courseLinks = doc.select("a[title*='Strefa studenta'], a[title*='strefa studenta']");
                 for (Element link : courseLinks) {
                     String title = link.attr("title").toLowerCase();
-                    if (title.contains(major.toLowerCase()) && 
-                        title.contains(getDegreeLevelString(degreeLevel).toLowerCase())) {
-                        courseUrl = link.attr("href");
+                    if (major != null && title.contains(major.toLowerCase()) &&
+                            title.contains(getDegreeLevelString(degreeLevel).toLowerCase())) {
+                        courseUrl = resolveHref(link);
                         break;
                     }
                 }
             }
-            if (courseUrl == null) {
+            if (courseUrl == null || courseUrl.isEmpty()) {
                 Logger.w("StudyPlanScraper.getScheduleFileUrl", "No course URL found for major=" + major + ", degreeLevel=" + degreeLevel);
                 return null;
             }
-            
+
             request = new Request.Builder().url(courseUrl).build();
             try (Response response2 = client.newCall(request).execute()) {
                 if (!response2.isSuccessful() || response2.body() == null) return null;
-                Document doc2 = Jsoup.parse(response2.body().string());
+                Document doc2 = Jsoup.parse(response2.body().string(), courseUrl);
 
-                // direct file link on course view (common for single-course participants)
                 if (isZeroYear) {
                     Elements directLinks = doc2.select("a[href*='pluginfile.php']");
                     Logger.d("StudyPlanScraper.getScheduleFileUrl", "Scanning " + directLinks.size() + " direct file links in Rok Zerowy course");
@@ -407,18 +424,22 @@ public class StudyPlanScraper {
 
                         Logger.d("StudyPlanScraper.getScheduleFileUrl", "Inspecting file link: " + name);
                         if (isRokZerowyScheduleFile(name)) {
-                            String downloadUrl = link.attr("href");
-                            if (!downloadUrl.contains("forcedownload=1")) {
-                                downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                            String downloadUrl = resolveHref(link);
+                            if (!downloadUrl.isEmpty()) {
+                                if (!downloadUrl.contains("forcedownload=1")) {
+                                    downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                                }
+                                Logger.i("StudyPlanScraper.getScheduleFileUrl", "Resolved Rok Zerowy direct schedule file URL: " + downloadUrl);
+                                return downloadUrl;
                             }
-                            Logger.i("StudyPlanScraper.getScheduleFileUrl", "Resolved Rok Zerowy direct schedule file URL: " + downloadUrl);
-                            return downloadUrl;
                         } else if (name.toLowerCase().endsWith(".xlsx") && fallbackDirectUrl == null) {
-                            String downloadUrl = link.attr("href");
-                            if (!downloadUrl.contains("forcedownload=1")) {
-                                downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                            String downloadUrl = resolveHref(link);
+                            if (!downloadUrl.isEmpty()) {
+                                if (!downloadUrl.contains("forcedownload=1")) {
+                                    downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                                }
+                                fallbackDirectUrl = downloadUrl;
                             }
-                            fallbackDirectUrl = downloadUrl;
                         }
                     }
                     if (fallbackDirectUrl != null) {
@@ -428,18 +449,19 @@ public class StudyPlanScraper {
                 }
 
                 Elements folderLinks = doc2.select("div.activityinstance > a, a[href*='folder/view.php']");
-                
+
                 for (Element folderLink : folderLinks) {
                     String folderName = folderLink.select("span.instancename").text().toLowerCase();
                     if (folderName.isEmpty()) folderName = folderLink.text().toLowerCase();
 
-                    if (!isZeroYear && !folderName.contains("plany zajęć") && !folderName.contains("plan zajęć")) continue;
-                    
-                    String folderUrl = folderLink.attr("href");
+                    if (!isZeroYear && !isScheduleFolderName(folderName)) continue;
+
+                    String folderUrl = resolveHref(folderLink);
+                    if (folderUrl.isEmpty()) continue;
                     Request req3 = new Request.Builder().url(folderUrl).build();
                     try (Response response3 = client.newCall(req3).execute()) {
                         if (!response3.isSuccessful() || response3.body() == null) continue;
-                        Document doc3 = Jsoup.parse(response3.body().string());
+                        Document doc3 = Jsoup.parse(response3.body().string(), folderUrl);
                         String downloadUrl = extractScheduleFileFromFolderDoc(doc3, isZeroYear, studyMode, year, folderName);
                         if (downloadUrl != null) {
                             Logger.i("StudyPlanScraper.getScheduleFileUrl", "Resolved schedule file URL: " + downloadUrl);
@@ -481,18 +503,22 @@ public class StudyPlanScraper {
 
                 Logger.d("StudyPlanScraper.extractScheduleFileFromFolderDoc", "Inspecting folder file: " + fileName);
                 if (isRokZerowyScheduleFile(fileName)) {
-                    String downloadUrl = fileLink.attr("href");
-                    if (!downloadUrl.contains("forcedownload=1")) {
-                        downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                    String downloadUrl = resolveHref(fileLink);
+                    if (!downloadUrl.isEmpty()) {
+                        if (!downloadUrl.contains("forcedownload=1")) {
+                            downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                        }
+                        Logger.i("StudyPlanScraper.extractScheduleFileFromFolderDoc", "Matched Rok Zerowy schedule file: " + fileName + " -> " + downloadUrl);
+                        return downloadUrl;
                     }
-                    Logger.i("StudyPlanScraper.extractScheduleFileFromFolderDoc", "Matched Rok Zerowy schedule file: " + fileName + " -> " + downloadUrl);
-                    return downloadUrl;
                 } else if (fileName.toLowerCase().endsWith(".xlsx") && fallbackXlsxUrl == null) {
-                    String downloadUrl = fileLink.attr("href");
-                    if (!downloadUrl.contains("forcedownload=1")) {
-                        downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                    String downloadUrl = resolveHref(fileLink);
+                    if (!downloadUrl.isEmpty()) {
+                        if (!downloadUrl.contains("forcedownload=1")) {
+                            downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                        }
+                        fallbackXlsxUrl = downloadUrl;
                     }
-                    fallbackXlsxUrl = downloadUrl;
                 }
             }
             if (fallbackXlsxUrl != null) {
@@ -519,11 +545,13 @@ public class StudyPlanScraper {
                     }
 
                     if (fileMode == studyMode && fileYear == year) {
-                        String downloadUrl = fileLink.attr("href");
-                        if (!downloadUrl.contains("forcedownload=1")) {
-                            downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                        String downloadUrl = resolveHref(fileLink);
+                        if (!downloadUrl.isEmpty()) {
+                            if (!downloadUrl.contains("forcedownload=1")) {
+                                downloadUrl += (downloadUrl.contains("?") ? "&" : "?") + "forcedownload=1";
+                            }
+                            return downloadUrl;
                         }
-                        return downloadUrl;
                     }
                 }
             }
@@ -566,12 +594,79 @@ public class StudyPlanScraper {
         }
     }
 
+    // cached lookup for puw course urls with 7-day ttl
+    public static String findCourseUrlCached(Context context, OkHttpClient client, String subjectName, String lessonType) {
+        if (subjectName == null || subjectName.trim().isEmpty()) {
+            return null;
+        }
+        String cacheKey = "course|" + subjectName.trim().toLowerCase(Locale.ROOT)
+                + "|" + (lessonType != null ? lessonType.trim().toLowerCase(Locale.ROOT) : "");
+        String cached = getCachedUrl(context, cacheKey);
+        if (cached != null) {
+            Logger.d("StudyPlanScraper.findCourseUrlCached", "Course URL cache HIT for '" + subjectName + "'");
+            return cached;
+        }
+        String resolved = findCourseUrl(client, subjectName, lessonType);
+        if (resolved != null && !resolved.isEmpty()) {
+            putCachedUrl(context, cacheKey, resolved);
+        }
+        return resolved;
+    }
+
+    // cached lookup for student zone url with 7-day ttl
+    public static String getStudentZoneUrlCached(Context context, OkHttpClient client, String major, DegreeLevel degreeLevel) {
+        String cacheKey = "strefa|"
+                + (major != null ? major.trim().toLowerCase(Locale.ROOT) : "")
+                + "|" + (degreeLevel != null ? degreeLevel.name() : "");
+        String cached = getCachedUrl(context, cacheKey);
+        if (cached != null) {
+            Logger.d("StudyPlanScraper.getStudentZoneUrlCached", "Student Zone URL cache HIT");
+            return cached;
+        }
+        String resolved = getStudentZoneUrl(client, major, degreeLevel);
+        if (resolved != null && !resolved.isEmpty()) {
+            putCachedUrl(context, cacheKey, resolved);
+        }
+        return resolved;
+    }
+
+    // clear cached puw course and student zone urls
+    public static void clearUrlCache(Context context) {
+        if (context == null) return;
+        context.getApplicationContext()
+                .getSharedPreferences(URL_CACHE_PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .clear()
+                .apply();
+        Logger.d("StudyPlanScraper.clearUrlCache", "Cleared cached PUW course and Student Zone URLs");
+    }
+
+    private static String getCachedUrl(Context context, String key) {
+        if (context == null || key == null) return null;
+        SharedPreferences prefs = context.getApplicationContext().getSharedPreferences(URL_CACHE_PREFS, Context.MODE_PRIVATE);
+        String url = prefs.getString("u_" + key, null);
+        long savedAt = prefs.getLong("t_" + key, 0L);
+        if (url != null && !url.isEmpty() && (System.currentTimeMillis() - savedAt) < URL_CACHE_TTL_MS) {
+            return url;
+        }
+        return null;
+    }
+
+    private static void putCachedUrl(Context context, String key, String url) {
+        if (context == null || key == null || url == null) return;
+        context.getApplicationContext()
+                .getSharedPreferences(URL_CACHE_PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putString("u_" + key, url)
+                .putLong("t_" + key, System.currentTimeMillis())
+                .apply();
+    }
+
     // find best matching course url on puw
     public static String findCourseUrl(OkHttpClient client, String subjectName, String lessonType) {
         if (subjectName == null || subjectName.trim().isEmpty()) {
             return null;
         }
-
         return searchBestCourse(client, subjectName, lessonType);
     }
 
@@ -586,7 +681,7 @@ public class StudyPlanScraper {
     public static String getStudentZoneUrl(OkHttpClient client, String major, DegreeLevel degreeLevel) {
         try {
             Request request = new Request.Builder()
-                    .url(PUW.baseUrl + "/my/courses.php")
+                    .url(COURSES_PAGE_URL)
                     .build();
 
             try (Response response = client.newCall(request).execute()) {
@@ -602,10 +697,10 @@ public class StudyPlanScraper {
             Logger.e("StudyPlanScraper.getStudentZoneUrl", "Error fetching courses: " + Logger.formatException(e));
         }
 
-        // fallback to /my/
+        // fallback to dashboard
         try {
             Request request = new Request.Builder()
-                    .url(PUW.baseUrl + "/my/")
+                    .url(PUW.homeUrl)
                     .build();
 
             try (Response response = client.newCall(request).execute()) {
@@ -627,7 +722,6 @@ public class StudyPlanScraper {
         Elements courseLinks = doc.select("a[href*='course/view.php']");
         if (courseLinks.isEmpty()) return null;
 
-        // Prepare major keywords
         List<String> majorKeywords = new ArrayList<>();
         if (major != null && !major.trim().isEmpty()) {
             String cleanMajor = major.replaceAll("[^a-zA-Zа-яА-Я0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ ]", " ").toLowerCase().trim();
@@ -638,7 +732,6 @@ public class StudyPlanScraper {
             }
         }
 
-        // Prepare degree tokens with spaces around, e.g. " i "
         List<String> degreeTokens = new ArrayList<>();
         if (degreeLevel == DegreeLevel.BACHELORS) {
             degreeTokens.add(" i ");
@@ -663,8 +756,8 @@ public class StudyPlanScraper {
                 if (rawText == null || rawText.trim().isEmpty()) continue;
                 String lower = rawText.toLowerCase();
                 if ((lower.contains("rok zerowy") || lower.contains("uczestnika")) && lower.contains("strefa")) {
-                    String url = link.attr("abs:href");
-                    if (url != null && !url.isEmpty()) {
+                    String url = resolveHref(link);
+                    if (!url.isEmpty()) {
                         Logger.i("StudyPlanScraper.extractStudentZoneUrlFromHtml", "Found Rok Zerowy student zone URL: " + url);
                         return url;
                     }
@@ -675,8 +768,8 @@ public class StudyPlanScraper {
                 if (rawText == null || rawText.trim().isEmpty()) continue;
                 String lower = rawText.toLowerCase();
                 if (lower.contains("rok zerowy") || lower.contains("uczestnika")) {
-                    String url = link.attr("abs:href");
-                    if (url != null && !url.isEmpty()) {
+                    String url = resolveHref(link);
+                    if (!url.isEmpty()) {
                         Logger.i("StudyPlanScraper.extractStudentZoneUrlFromHtml", "Found Rok Zerowy course URL: " + url);
                         return url;
                     }
@@ -693,14 +786,12 @@ public class StudyPlanScraper {
         for (Element link : courseLinks) {
             String rawText = link.text();
             if (rawText == null || rawText.trim().isEmpty()) continue;
-            // Pad text with spaces for accurate token boundary checks (e.g. " i ")
             String paddedText = " " + rawText.toLowerCase().replace('-', ' ').replace('_', ' ').replaceAll("\\s+", " ") + " ";
 
             if (!paddedText.contains("strefa")) {
                 continue;
             }
 
-            // Priority rule: Regular student zone takes strict precedence over finished rok zerowy
             boolean isZeroYearLink = paddedText.contains("rok zerowy") || paddedText.contains("uczestnika");
             if (!isZeroYear && isZeroYearLink) {
                 continue;
@@ -726,23 +817,16 @@ public class StudyPlanScraper {
                 }
             }
 
-            String url = link.attr("abs:href");
-            if (url == null || url.isEmpty()) continue;
+            String url = resolveHref(link);
+            if (url.isEmpty()) continue;
 
-            // Priority 1: "strefa" + major + degree (with spaces e.g. " i ")
             if (matchesMajor && matchesDegree) {
                 if (bestP1Url == null) bestP1Url = url;
-            }
-            // Priority 2: "strefa" + major
-            else if (matchesMajor) {
+            } else if (matchesMajor) {
                 if (bestP2Url == null) bestP2Url = url;
-            }
-            // Priority 3: "strefa" + "studenta"
-            else if (paddedText.contains("studenta")) {
+            } else if (paddedText.contains("studenta")) {
                 if (bestP3Url == null) bestP3Url = url;
-            }
-            // Priority 4: any "strefa"
-            else {
+            } else {
                 if (bestP4Url == null) bestP4Url = url;
             }
         }
@@ -756,7 +840,7 @@ public class StudyPlanScraper {
     private static String searchBestCourse(OkHttpClient client, String subjectName, String lessonType) {
         try {
             Request request = new Request.Builder()
-                    .url(PUW.baseUrl + "/my/courses.php")
+                    .url(COURSES_PAGE_URL)
                     .build();
 
             try (Response response = client.newCall(request).execute()) {
@@ -772,10 +856,10 @@ public class StudyPlanScraper {
             Logger.e("StudyPlanScraper.searchBestCourse", "Error searching best course: " + Logger.formatException(e));
         }
 
-        // fallback to my page
+        // fallback to dashboard
         try {
             Request request = new Request.Builder()
-                    .url(PUW.baseUrl + "/my/")
+                    .url(PUW.homeUrl)
                     .build();
             try (Response response = client.newCall(request).execute()) {
                 if (response.isSuccessful() && response.body() != null) {
@@ -820,7 +904,6 @@ public class StudyPlanScraper {
                 }
             }
 
-            // match at least 60% of subject words
             int requiredMatches = (subjectWords.size() <= 2) ? subjectWords.size() : (int) Math.ceil(subjectWords.size() * 0.6);
             if (matchedSubjectWords < requiredMatches) {
                 continue;
@@ -828,47 +911,43 @@ public class StudyPlanScraper {
 
             int score = matchedSubjectWords * 10;
 
-            // bonus for exact phrase match
             if (normalizedCourseText.contains(cleanSubject)) {
                 score += 50;
             }
 
-            // bonus if lesson type matches
             if (cleanType != null && !cleanType.isEmpty() && normalizedCourseText.contains(cleanType)) {
                 score += 15;
             }
 
-            // penalty if contains student zone
             if (normalizedCourseText.contains("strefa studenta") && !cleanSubject.contains("strefa studenta")) {
                 score -= 40;
             }
 
             if (score > maxScore) {
                 maxScore = score;
-                bestUrl = link.attr("abs:href");
+                bestUrl = resolveHref(link);
             }
         }
 
         return bestUrl;
     }
 
-    // find course url by keywords
     private static String searchCourseByKeywords(OkHttpClient client, String... keywords) {
         try {
             Request request = new Request.Builder()
-                    .url(PUW.baseUrl + "/my/courses.php")
+                    .url(COURSES_PAGE_URL)
                     .build();
 
             try (Response response = client.newCall(request).execute()) {
                 if (!response.isSuccessful() || response.body() == null) {
-                    return searchCourseByKeywordsOnUrl(client, PUW.baseUrl + "/my/", keywords);
+                    return searchCourseByKeywordsOnUrl(client, PUW.homeUrl, keywords);
                 }
                 String html = response.body().string();
                 String foundUrl = extractCourseUrlFromHtml(html, keywords);
                 if (foundUrl != null) {
                     return foundUrl;
                 }
-                return searchCourseByKeywordsOnUrl(client, PUW.baseUrl + "/my/", keywords);
+                return searchCourseByKeywordsOnUrl(client, PUW.homeUrl, keywords);
             }
         } catch (IOException e) {
             Logger.e("StudyPlanScraper.searchCourseByKeywords", "Error searching course by keywords: " + Logger.formatException(e));
@@ -906,7 +985,8 @@ public class StudyPlanScraper {
                 }
             }
             if (allMatch) {
-                return link.attr("abs:href");
+                String resolved = resolveHref(link);
+                return resolved.isEmpty() ? null : resolved;
             }
         }
         return null;

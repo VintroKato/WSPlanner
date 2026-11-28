@@ -139,7 +139,7 @@
     <string name="subject_course_not_found">Course not found on PUW. Opening dashboard…</string>
     <string name="maps_hint_format">(Google Maps: %1$s ↗)</string>
     <string name="maps_hint_wspa">(Google Maps: WSPA Lublin, ul. Bursaki 12 ↗)</string>
-    <string name="timeline_item_header_format">%1$d. %2$s, %3$s</string>
+    <string name="timeline_item_header_format">%1$s, %2$s</string>
     <string name="timeline_time_room_format">%1$s – %2$s · %3$s</string>
     <string name="common_loading">Loading…</string>
 
@@ -283,4 +283,40 @@
     <string name="schedule_opening_puw">Opening PUW…</string>
     <string name="schedule_open_puw_tooltip">Open PUW home screen</string>
     <string name="subject_open_puw_course_tooltip">Open course page in PUW</string>
+
+    <!-- Localized lesson types -->
+    <string name="lesson_type_wyklad">Lecture</string>
+    <string name="lesson_type_cwiczenia">Exercises</string>
+    <string name="lesson_type_laboratorium">Lab</string>
+    <string name="lesson_type_warsztat">Workshop</string>
+    <string name="lesson_type_lektorat">Language</string>
+    <string name="lesson_type_projekt">Project</string>
+    <string name="lesson_type_seminarium">Seminar</string>
+    <string name="lesson_type_inne">Other</string>
+
+    <!-- Keystore recovery -->
+    <string name="keystore_error_title">Secure storage error</string>
+    <string name="keystore_error_message">Your device could not unlock encrypted credentials (this can happen after a system update or screen lock change).\n\nWould you like to reset saved settings and sign in again?</string>
+    <string name="keystore_error_reset">Reset and sign in</string>
+    <string name="keystore_error_exit">Exit</string>
+
+    <!-- Onboarding and settings helpers -->
+    <string name="onboarding_select_all_fields">Please select all study options</string>
+    <string name="onboarding_load_courses_error">Failed to load study programs</string>
+    <string name="settings_clear_cache_refresh">Clear cache &amp; refresh</string>
+    <string name="settings_cache_cleared_toast">Cache cleared, updating schedule…</string>
+    <string name="settings_cache_cleared_offline_toast">Cache cleared</string>
+
+    <!-- Widget auto theme and next class preview -->
+    <string name="widget_theme_auto">Auto</string>
+    <string name="widget_next_class_header">Next class · %1$s, %2$s</string>
+
+    <!-- Update progress and install permission -->
+    <string name="update_dialog_downloading_progress">Downloading %1$d%% (%2$s / %3$s)</string>
+    <string name="update_install_permission_toast">Allow installing updates from WSPlanner in settings, then try again</string>
+
+    <!-- Teacher profile and notes badge -->
+    <string name="teacher_open_profile">Open teacher profile</string>
+    <string name="teacher_email_retry_hint">No internet · Tap to retry</string>
+    <string name="subject_has_note_desc">Has saved note</string>
 </resources>

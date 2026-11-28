@@ -5,11 +5,11 @@ import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.RemoteViews;
+import android.widget.Toast;
 
 import androidx.core.content.ContextCompat;
 
@@ -17,49 +17,86 @@ import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.data.ScheduleRepository;
 import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.LessonType;
-import com.vintro.wsplanner.enums.LocationType;
 import com.vintro.wsplanner.models.DaySchedule;
 import com.vintro.wsplanner.models.Lesson;
 import com.vintro.wsplanner.models.Location;
+import com.vintro.wsplanner.services.ScheduleSyncWorker;
 import com.vintro.wsplanner.ui.activities.MainActivity;
 import com.vintro.wsplanner.ui.activities.SubjectDetailsActivity;
+import com.vintro.wsplanner.ui.activities.WidgetTrampolineActivity;
+import com.vintro.wsplanner.utils.AppExecutors;
 import com.vintro.wsplanner.utils.Logger;
+import com.vintro.wsplanner.utils.NetworkUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-// app widget displaying current or upcoming lesson
+// app widget displaying current or upcoming lesson with bal-safe click actions
 public class CurrentLessonWidget extends AppWidgetProvider {
 
     public static final String ACTION_TOGGLE_LESSON = "com.vintro.wsplanner.ACTION_WIDGET_TOGGLE_LESSON";
-    public static final String ACTION_CARD_CLICK = "com.vintro.wsplanner.ACTION_WIDGET_CARD_CLICK";
-    public static final String ACTION_OPEN_EXCEL = "com.vintro.wsplanner.ACTION_WIDGET_OPEN_EXCEL";
     public static final String ACTION_REFRESH = "com.vintro.wsplanner.ACTION_WIDGET_REFRESH";
-    public static final String ACTION_OPEN_MAPS = "com.vintro.wsplanner.ACTION_WIDGET_OPEN_MAPS";
-    public static final String EXTRA_MAP_QUERY = "extra_map_query";
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
-    // update all widget instances and reschedule next alarm
+    // update widget instances off the main thread and schedule next lesson transition alarm
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+        if (appWidgetIds == null || appWidgetIds.length == 0) return;
         Logger.d("CurrentLessonWidget.onUpdate", "onUpdate called for " + appWidgetIds.length + " widgets");
-        for (int widgetId : appWidgetIds) {
-            updateWidget(context, appWidgetManager, widgetId);
-        }
-        WidgetUpdateManager.scheduleNextAlarm(context);
+        final Context appContext = context.getApplicationContext();
+        final int[] idsCopy = appWidgetIds.clone();
+        final PendingResult pendingResult = goAsync();
+        AppExecutors.runIo(() -> {
+            try {
+                AppWidgetManager manager = AppWidgetManager.getInstance(appContext);
+                for (int widgetId : idsCopy) {
+                    updateWidget(appContext, manager, widgetId);
+                }
+                WidgetUpdateManager.scheduleNextAlarm(appContext);
+            } catch (Exception e) {
+                Logger.e("CurrentLessonWidget.onUpdate", "Error updating widgets: " + Logger.formatException(e));
+            } finally {
+                try {
+                    pendingResult.finish();
+                } catch (Exception ignored) {
+                }
+            }
+        });
     }
 
     // respond to widget resizing or configuration options change
     @Override
     public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager, int appWidgetId, Bundle newOptions) {
         super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions);
-        updateWidget(context, appWidgetManager, appWidgetId);
+        final Context appContext = context.getApplicationContext();
+        AppExecutors.runIo(() -> updateWidget(appContext, AppWidgetManager.getInstance(appContext), appWidgetId));
     }
 
-    // handle widget user interactions and broadcast actions
+    // clean up per-widget toggle preference when instances are removed
+    @Override
+    public void onDeleted(Context context, int[] appWidgetIds) {
+        super.onDeleted(context, appWidgetIds);
+        if (appWidgetIds == null) return;
+        for (int widgetId : appWidgetIds) {
+            PreferencesManager.clearWidgetForcedNext(context, widgetId);
+        }
+        Logger.d("CurrentLessonWidget.onDeleted", "Cleaned up state for " + appWidgetIds.length + " removed widget(s)");
+    }
+
+    // cancel transition alarms when no home screen widgets remain
+    @Override
+    public void onDisabled(Context context) {
+        super.onDisabled(context);
+        if (!WidgetUpdateManager.hasActiveWidgets(context)) {
+            WidgetUpdateManager.cancelScheduledAlarm(context);
+            Logger.i("CurrentLessonWidget.onDisabled", "Last widget removed; cancelled transition alarm");
+        }
+    }
+
+    // handle non-activity widget broadcast actions (toggle and workmanager refresh)
     @Override
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
@@ -68,159 +105,56 @@ public class CurrentLessonWidget extends AppWidgetProvider {
         Logger.d("CurrentLessonWidget.onReceive", "Received widget action: " + action);
 
         int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
+        final Context appContext = context.getApplicationContext();
 
         if (ACTION_TOGGLE_LESSON.equals(action)) {
-            if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                if (!PreferencesManager.isOnboardingCompleted(context)
-                        || !ScheduleRepository.getInstance(context).isConfigurationComplete()) {
-                    openMainActivity(context);
-                    return;
-                }
-                LocalDate today = LocalDate.now();
-                LocalDateTime now = LocalDateTime.now();
-                DaySchedule schedule = ScheduleRepository.getInstance(context).getScheduleForDateSync(today);
-                Lesson current = schedule != null ? schedule.getCurrentLesson(now) : null;
-                Lesson next = schedule != null ? schedule.getNextLesson(now) : null;
+            if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return;
+            final PendingResult pendingResult = goAsync();
+            AppExecutors.runIo(() -> {
+                try {
+                    if (!WidgetActionHelper.isScheduleConfigured(appContext)) {
+                        return;
+                    }
+                    LocalDate today = LocalDate.now();
+                    LocalDateTime now = LocalDateTime.now();
+                    DaySchedule schedule = ScheduleRepository.getInstance(appContext).getScheduleForDateSync(today);
+                    Lesson current = schedule != null ? schedule.getCurrentLesson(now) : null;
+                    Lesson next = schedule != null ? schedule.getNextLesson(now) : null;
 
-                if (current != null && next != null) {
-                    boolean currentlyNext = PreferencesManager.isWidgetShowingForcedNext(context, widgetId);
-                    PreferencesManager.setWidgetShowingForcedNext(context, widgetId, !currentlyNext);
-                    AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-                    updateWidget(context, appWidgetManager, widgetId);
-                } else {
-                    AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-                    updateWidget(context, appWidgetManager, widgetId);
+                    if (current != null && next != null) {
+                        boolean currentlyNext = PreferencesManager.isWidgetShowingForcedNext(appContext, widgetId);
+                        PreferencesManager.setWidgetShowingForcedNext(appContext, widgetId, !currentlyNext);
+                    }
+                    updateWidget(appContext, AppWidgetManager.getInstance(appContext), widgetId);
+                } catch (Exception e) {
+                    Logger.e("CurrentLessonWidget.onReceive", "Error toggling widget lesson: " + Logger.formatException(e));
+                } finally {
+                    try {
+                        pendingResult.finish();
+                    } catch (Exception ignored) {
+                    }
                 }
-            }
-        } else if (ACTION_CARD_CLICK.equals(action)) {
-            handleCardClick(context, widgetId);
-        } else if (ACTION_OPEN_EXCEL.equals(action)) {
-            WidgetActionHelper.openExcelSchedule(context);
+            });
         } else if (ACTION_REFRESH.equals(action)) {
-            // trigger background load with force refresh
-            Logger.d("CurrentLessonWidget.onReceive", "Manual widget refresh requested");
-            ScheduleRepository.getInstance(context).getScheduleForDate(LocalDate.now(), true, new ScheduleRepository.ScheduleCallback<DaySchedule>() {
-                @Override
-                public void onSuccess(DaySchedule result) {
-                    Logger.i("CurrentLessonWidget.onReceive", "Widget refresh succeeded, updating all widgets");
-                    WidgetUpdateManager.updateAllWidgets(context);
-                }
-
-                @Override
-                public void onError(Exception e) {
-                    Logger.w("CurrentLessonWidget.onReceive", "Widget refresh failed (offline fallback): " + Logger.formatException(e));
-                }
-            });
-        } else if (ACTION_OPEN_MAPS.equals(action)) {
-            String query = intent.getStringExtra(EXTRA_MAP_QUERY);
-            WidgetActionHelper.openLocationInMaps(context, query);
-        }
-    }
-
-    // route card tap based on user preference or toggle current/next
-    private void handleCardClick(Context context, int widgetId) {
-        if (!PreferencesManager.isOnboardingCompleted(context)
-                || !ScheduleRepository.getInstance(context).isConfigurationComplete()) {
-            openMainActivity(context);
-            return;
-        }
-
-        String clickAction = PreferencesManager.getWidgetClickAction(context);
-        Logger.d("CurrentLessonWidget.handleCardClick", "Handling card click with configured action: " + clickAction);
-
-        if (PreferencesManager.WIDGET_CLICK_OPEN_DETAILS.equals(clickAction)) {
-            LocalDate today = LocalDate.now();
-            LocalDateTime now = LocalDateTime.now();
-            DaySchedule schedule = ScheduleRepository.getInstance(context).getScheduleForDateSync(today);
-            boolean showForcedNext = (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) && PreferencesManager.isWidgetShowingForcedNext(context, widgetId);
-
-            Lesson current = schedule != null ? schedule.getCurrentLesson(now) : null;
-            Lesson next = schedule != null ? schedule.getNextLesson(now) : null;
-            Lesson target = null;
-            if (current != null && !showForcedNext) {
-                target = current;
-            } else if (next != null) {
-                target = next;
-            } else if (current != null) {
-                target = current;
+            if (!WidgetActionHelper.isScheduleConfigured(appContext)) {
+                return;
             }
-
-            if (target != null) {
-                openLessonDetails(context, target);
-            } else {
-                performBreakAction(context);
+            if (!NetworkUtils.isNetworkAvailable(appContext)) {
+                Toast.makeText(appContext, R.string.no_internet_connection, Toast.LENGTH_SHORT).show();
+                return;
             }
-        } else if (PreferencesManager.WIDGET_CLICK_OPEN_APP.equals(clickAction)) {
-            openMainActivity(context);
-        } else if (PreferencesManager.WIDGET_CLICK_OPEN_EXCEL.equals(clickAction)) {
-            WidgetActionHelper.openExcelSchedule(context);
-        } else if (PreferencesManager.WIDGET_CLICK_REFRESH.equals(clickAction)) {
-            ScheduleRepository.getInstance(context).getScheduleForDate(LocalDate.now(), true, new ScheduleRepository.ScheduleCallback<DaySchedule>() {
-                @Override
-                public void onSuccess(DaySchedule result) {
-                    Logger.i("CurrentLessonWidget.handleCardClick", "Widget refresh succeeded, updating all widgets");
-                    WidgetUpdateManager.updateAllWidgets(context);
-                }
-
-                @Override
-                public void onError(Exception e) {
-                    Logger.w("CurrentLessonWidget.handleCardClick", "Widget refresh failed (offline fallback): " + Logger.formatException(e));
-                }
-            });
-        } else {
-            // Default: TOGGLE if both exist, otherwise open main app
-            if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                LocalDate today = LocalDate.now();
-                LocalDateTime now = LocalDateTime.now();
-                DaySchedule schedule = ScheduleRepository.getInstance(context).getScheduleForDateSync(today);
-                Lesson current = schedule != null ? schedule.getCurrentLesson(now) : null;
-                Lesson next = schedule != null ? schedule.getNextLesson(now) : null;
-
-                if (current != null && next != null) {
-                    boolean currentlyNext = PreferencesManager.isWidgetShowingForcedNext(context, widgetId);
-                    PreferencesManager.setWidgetShowingForcedNext(context, widgetId, !currentlyNext);
-                    AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-                    updateWidget(context, appWidgetManager, widgetId);
-                } else {
-                    openMainActivity(context);
-                }
-            } else {
-                openMainActivity(context);
-            }
+            Logger.d("CurrentLessonWidget.onReceive", "Manual widget refresh requested via WorkManager");
+            Toast.makeText(appContext, R.string.widget_syncing, Toast.LENGTH_SHORT).show();
+            ScheduleSyncWorker.enqueueManualWidgetRefresh(appContext, false);
         }
     }
 
-    private static void performBreakAction(Context context) {
-        String breakAction = PreferencesManager.getWidgetBreakAction(context);
-        if (PreferencesManager.WIDGET_BREAK_OPEN_EXCEL.equals(breakAction)) {
-            WidgetActionHelper.openExcelSchedule(context);
-        } else {
-            openMainActivity(context);
-        }
-    }
-
-    private static void openLessonDetails(Context context, Lesson lesson) {
-        if (lesson != null && lesson.getSubjectName() != null && !lesson.getSubjectName().isEmpty()) {
-            Intent detailsIntent = new Intent(context, SubjectDetailsActivity.class);
-            detailsIntent.putExtra(SubjectDetailsActivity.EXTRA_SUBJECT_NAME, lesson.getSubjectName());
-            detailsIntent.putExtra(SubjectDetailsActivity.EXTRA_LESSON_TYPE, lesson.getLessonType());
-            detailsIntent.putExtra("subject_name", lesson.getSubjectName());
-            detailsIntent.putExtra("lesson_type", lesson.getLessonType());
-            detailsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            context.startActivity(detailsIntent);
-        } else {
-            openMainActivity(context);
-        }
-    }
-
-    // render current lesson widget layout and configure tap targets
+    // render current lesson widget layout and bind bal-safe tap targets
     public static void updateWidget(Context context, AppWidgetManager appWidgetManager, int widgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_current_lesson);
-
-        // Apply Background Theme
         applyTheme(context, views);
 
-        // Adapt padding for compact launcher grid cells (e.g. Xiaomi MIUI / HyperOS)
+        // adapt padding for compact launcher grid cells
         Bundle options = appWidgetManager.getAppWidgetOptions(widgetId);
         int minHeight = 110;
         if (options != null) {
@@ -234,33 +168,34 @@ public class CurrentLessonWidget extends AppWidgetProvider {
         int padVertical = dpToPx(context, isCompact ? 8 : 11);
         views.setViewPadding(R.id.widget_root, padHorizontal, padVertical, padHorizontal, padVertical);
 
-        // Click listeners on whole card, content, and chip
-        views.setOnClickPendingIntent(R.id.widget_root, createActionPendingIntent(context, widgetId, ACTION_CARD_CLICK));
-        views.setOnClickPendingIntent(R.id.widget_lesson_content, createActionPendingIntent(context, widgetId, ACTION_CARD_CLICK));
-        views.setOnClickPendingIntent(R.id.widget_top_bar, createActionPendingIntent(context, widgetId, ACTION_TOGGLE_LESSON));
-        views.setOnClickPendingIntent(R.id.widget_status_chip, createActionPendingIntent(context, widgetId, ACTION_TOGGLE_LESSON));
-        views.setOnClickPendingIntent(R.id.widget_empty_state, createOpenAppPendingIntent(context, widgetId));
-
-        // Onboarding Check
-        if (!PreferencesManager.isOnboardingCompleted(context)
-                || !ScheduleRepository.getInstance(context).isConfigurationComplete()) {
+        // onboarding check
+        if (!WidgetActionHelper.isScheduleConfigured(context)) {
             Logger.d("CurrentLessonWidget.updateWidget", "Widget " + widgetId + ": onboarding incomplete, showing setup prompt");
+            views.setViewVisibility(R.id.widget_top_bar, View.GONE);
+            views.setViewVisibility(R.id.widget_divider, View.GONE);
             views.setViewVisibility(R.id.widget_lesson_content, View.GONE);
-            views.setViewVisibility(R.id.widget_empty_state, View.VISIBLE);
-            views.setTextViewText(R.id.widget_empty_title, context.getString(R.string.widget_setup_required_title));
-            views.setTextViewText(R.id.widget_empty_subtitle, context.getString(R.string.widget_setup_required_desc));
+            WidgetActionHelper.bindEmptyStateSetup(context, views);
+
+            PendingIntent openApp = createOpenAppPendingIntent(context, widgetId);
+            views.setOnClickPendingIntent(R.id.widget_root, openApp);
+            views.setOnClickPendingIntent(R.id.widget_empty_state, openApp);
             appWidgetManager.updateAppWidget(widgetId, views);
             return;
         }
 
-        // Load Schedule
         LocalDate today = LocalDate.now();
         LocalDateTime now = LocalDateTime.now();
 
-        DaySchedule schedule = ScheduleRepository.getInstance(context).getScheduleForDateSync(today);
+        DaySchedule schedule;
+        try {
+            schedule = ScheduleRepository.getInstance(context).getScheduleForDateSync(today);
+        } catch (Exception e) {
+            Logger.e("CurrentLessonWidget.updateWidget", "Failed loading schedule for widget: " + Logger.formatException(e));
+            schedule = null;
+        }
+
         Lesson currentLesson = schedule != null ? schedule.getCurrentLesson(now) : null;
         Lesson nextLesson = schedule != null ? schedule.getNextLesson(now) : null;
-
         boolean forcedNext = PreferencesManager.isWidgetShowingForcedNext(context, widgetId);
 
         Lesson targetLesson = null;
@@ -282,21 +217,21 @@ public class CurrentLessonWidget extends AppWidgetProvider {
         Logger.d("CurrentLessonWidget.updateWidget", "Widget " + widgetId + " update: targetLesson=" + (targetLesson != null ? targetLesson.getSubjectName() : "none") + " (isCurrent=" + isCurrent + ")");
 
         if (targetLesson != null) {
+            views.setViewVisibility(R.id.widget_top_bar, View.VISIBLE);
+            views.setViewVisibility(R.id.widget_divider, View.VISIBLE);
             views.setViewVisibility(R.id.widget_lesson_content, View.VISIBLE);
             views.setViewVisibility(R.id.widget_empty_state, View.GONE);
 
-            // Status chip text (clean badge without time text breaking layout)
-            if (isCurrent) {
-                views.setTextViewText(R.id.widget_status_text, context.getString(R.string.schedule_badge_now));
-            } else {
-                views.setTextViewText(R.id.widget_status_text, context.getString(R.string.schedule_badge_next));
-            }
+            views.setTextViewText(
+                    R.id.widget_status_text,
+                    context.getString(isCurrent ? R.string.schedule_badge_now : R.string.schedule_badge_next)
+            );
 
-            // Format Subject Name with Type as prefix: "Type · Subject" (avoid duplicate if subject already starts with type)
+            // format localized type prefix while omitting generic unknown type
             LessonType type = targetLesson.getResolvedLessonType();
-            String typeStr = type != null ? type.getDisplayName() : (targetLesson.getLessonType() != null ? targetLesson.getLessonType() : "");
+            String typeStr = (type != null && type != LessonType.INNE) ? type.getLocalizedDisplayName(context) : "";
             String subject = targetLesson.getSubjectName() != null ? targetLesson.getSubjectName().trim() : "";
-            if (typeStr != null && !typeStr.trim().isEmpty()) {
+            if (!typeStr.isEmpty()) {
                 String cleanType = typeStr.trim();
                 if (!subject.toLowerCase(Locale.getDefault()).startsWith(cleanType.toLowerCase(Locale.getDefault()))) {
                     views.setTextViewText(R.id.widget_lesson_title, cleanType + " · " + subject);
@@ -307,51 +242,55 @@ public class CurrentLessonWidget extends AppWidgetProvider {
                 views.setTextViewText(R.id.widget_lesson_title, subject);
             }
 
-            // Time in top right
             String timeStr = "";
             if (targetLesson.getStartTime() != null && targetLesson.getEndTime() != null) {
                 timeStr = targetLesson.getStartTime().format(TIME_FORMATTER) + " – " + targetLesson.getEndTime().format(TIME_FORMATTER);
             }
             views.setTextViewText(R.id.widget_lesson_time, timeStr);
 
-            // Location
             Location loc = targetLesson.getLocation();
             String locDisplay = loc != null ? loc.getDisplayText() : "WSPA";
             views.setTextViewText(R.id.widget_lesson_location, locDisplay);
 
-            // If offsite with map URL, clicking location row opens maps
+            boolean canToggle = currentLesson != null && nextLesson != null;
+            PendingIntent cardPending = createLessonClickPendingIntent(context, widgetId, targetLesson, canToggle);
+            PendingIntent topPending = canToggle
+                    ? createBroadcastPendingIntent(context, widgetId, ACTION_TOGGLE_LESSON)
+                    : cardPending;
+
+            views.setOnClickPendingIntent(R.id.widget_root, cardPending);
+            views.setOnClickPendingIntent(R.id.widget_lesson_content, cardPending);
+            views.setOnClickPendingIntent(R.id.widget_top_bar, topPending);
+            views.setOnClickPendingIntent(R.id.widget_status_chip, topPending);
+
             if (loc != null && loc.getMapQueryUrl() != null && !loc.getMapQueryUrl().isEmpty()) {
-                Intent mapIntent = new Intent(context, CurrentLessonWidget.class);
-                mapIntent.setAction(ACTION_OPEN_MAPS);
-                mapIntent.putExtra(EXTRA_MAP_QUERY, loc.getMapQueryUrl());
-                PendingIntent mapPending = PendingIntent.getBroadcast(
-                        context,
-                        widgetId + 5000,
-                        mapIntent,
-                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-                );
+                PendingIntent mapPending = createOpenMapsPendingIntent(context, widgetId, loc.getMapQueryUrl());
                 views.setOnClickPendingIntent(R.id.widget_location_row, mapPending);
-            }
-
-        } else {
-            // Empty State
-            views.setViewVisibility(R.id.widget_lesson_content, View.GONE);
-            views.setViewVisibility(R.id.widget_empty_state, View.VISIBLE);
-            views.setViewVisibility(R.id.widget_empty_subtitle, View.GONE);
-
-            if (schedule != null && !schedule.isEmpty()) {
-                views.setTextViewText(R.id.widget_empty_title, context.getString(R.string.widget_classes_done));
             } else {
-                views.setTextViewText(R.id.widget_empty_title, context.getString(R.string.widget_no_classes_today));
+                views.setOnClickPendingIntent(R.id.widget_location_row, cardPending);
             }
+        } else {
+            // empty state hides top bar and divider cleanly
+            views.setViewVisibility(R.id.widget_top_bar, View.GONE);
+            views.setViewVisibility(R.id.widget_divider, View.GONE);
+            views.setViewVisibility(R.id.widget_lesson_content, View.GONE);
+
+            String emptyTitle = (schedule != null && !schedule.isEmpty())
+                    ? context.getString(R.string.widget_classes_done)
+                    : context.getString(R.string.widget_no_classes_today);
+            WidgetActionHelper.bindEmptyStateNoLessons(context, views, emptyTitle, now, isCompact ? 1 : 2);
+
+            PendingIntent breakPending = createBreakActionPendingIntent(context, widgetId);
+            views.setOnClickPendingIntent(R.id.widget_root, breakPending);
+            views.setOnClickPendingIntent(R.id.widget_empty_state, breakPending);
         }
 
         appWidgetManager.updateAppWidget(widgetId, views);
     }
 
     private static void applyTheme(Context context, RemoteViews views) {
-        String theme = PreferencesManager.getWidgetTheme(context);
-        if (PreferencesManager.WIDGET_THEME_LIGHT.equals(theme)) {
+        boolean isLight = WidgetActionHelper.isWidgetLightTheme(context);
+        if (isLight) {
             views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.bg_widget_light);
             views.setInt(R.id.widget_divider, "setBackgroundColor", ContextCompat.getColor(context, R.color.widget_divider_light));
             views.setInt(R.id.widget_status_chip, "setBackgroundResource", R.drawable.bg_badge_pill_light);
@@ -359,10 +298,7 @@ public class CurrentLessonWidget extends AppWidgetProvider {
             views.setTextColor(R.id.widget_lesson_title, ContextCompat.getColor(context, R.color.widget_text_light_primary));
             views.setTextColor(R.id.widget_lesson_time, ContextCompat.getColor(context, R.color.widget_text_light_primary));
             views.setTextColor(R.id.widget_lesson_location, ContextCompat.getColor(context, R.color.widget_text_light_secondary));
-            views.setTextColor(R.id.widget_empty_title, ContextCompat.getColor(context, R.color.widget_text_light_primary));
-            views.setTextColor(R.id.widget_empty_subtitle, ContextCompat.getColor(context, R.color.widget_text_light_secondary));
         } else {
-            // Default: Dark
             views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.bg_widget_dark);
             views.setInt(R.id.widget_divider, "setBackgroundColor", ContextCompat.getColor(context, R.color.widget_divider_dark));
             views.setInt(R.id.widget_status_chip, "setBackgroundResource", R.drawable.bg_badge_pill);
@@ -370,12 +306,40 @@ public class CurrentLessonWidget extends AppWidgetProvider {
             views.setTextColor(R.id.widget_lesson_title, ContextCompat.getColor(context, R.color.widget_text_dark_primary));
             views.setTextColor(R.id.widget_lesson_time, ContextCompat.getColor(context, R.color.widget_text_dark_primary));
             views.setTextColor(R.id.widget_lesson_location, ContextCompat.getColor(context, R.color.widget_text_dark_secondary));
-            views.setTextColor(R.id.widget_empty_title, ContextCompat.getColor(context, R.color.widget_text_dark_primary));
-            views.setTextColor(R.id.widget_empty_subtitle, ContextCompat.getColor(context, R.color.widget_text_dark_secondary));
+        }
+        WidgetActionHelper.applyEmptyStateTheme(context, views, isLight);
+    }
+
+    private static PendingIntent createLessonClickPendingIntent(Context context, int widgetId, Lesson lesson, boolean canToggle) {
+        String clickAction = PreferencesManager.getWidgetClickAction(context);
+        if (PreferencesManager.WIDGET_CLICK_OPEN_DETAILS.equals(clickAction)) {
+            if (lesson != null && lesson.getSubjectName() != null && !lesson.getSubjectName().isEmpty()) {
+                return createOpenDetailsPendingIntent(context, widgetId, lesson);
+            }
+            return createBreakActionPendingIntent(context, widgetId);
+        } else if (PreferencesManager.WIDGET_CLICK_OPEN_APP.equals(clickAction)) {
+            return createOpenAppPendingIntent(context, widgetId);
+        } else if (PreferencesManager.WIDGET_CLICK_OPEN_EXCEL.equals(clickAction)) {
+            return createOpenExcelPendingIntent(context, widgetId);
+        } else if (PreferencesManager.WIDGET_CLICK_REFRESH.equals(clickAction)) {
+            return createBroadcastPendingIntent(context, widgetId, ACTION_REFRESH);
+        } else {
+            if (canToggle) {
+                return createBroadcastPendingIntent(context, widgetId, ACTION_TOGGLE_LESSON);
+            }
+            return createBreakActionPendingIntent(context, widgetId);
         }
     }
 
-    private static PendingIntent createActionPendingIntent(Context context, int widgetId, String action) {
+    private static PendingIntent createBreakActionPendingIntent(Context context, int widgetId) {
+        String breakAction = PreferencesManager.getWidgetBreakAction(context);
+        if (PreferencesManager.WIDGET_BREAK_OPEN_EXCEL.equals(breakAction)) {
+            return createOpenExcelPendingIntent(context, widgetId);
+        }
+        return createOpenAppPendingIntent(context, widgetId);
+    }
+
+    private static PendingIntent createBroadcastPendingIntent(Context context, int widgetId, String action) {
         Intent intent = new Intent(context, CurrentLessonWidget.class);
         intent.setAction(action);
         intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
@@ -399,11 +363,39 @@ public class CurrentLessonWidget extends AppWidgetProvider {
         );
     }
 
-    private static void openMainActivity(Context context) {
-        Intent intent = new Intent(context, MainActivity.class);
-        intent.putExtra(MainActivity.EXTRA_TARGET_TAB, R.id.nav_schedule);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        context.startActivity(intent);
+    private static PendingIntent createOpenDetailsPendingIntent(Context context, int widgetId, Lesson lesson) {
+        Intent detailsIntent = new Intent(context, SubjectDetailsActivity.class);
+        detailsIntent.putExtra(SubjectDetailsActivity.EXTRA_SUBJECT_NAME, lesson.getSubjectName());
+        detailsIntent.putExtra(SubjectDetailsActivity.EXTRA_LESSON_TYPE, lesson.getLessonType());
+        detailsIntent.putExtra("subject_name", lesson.getSubjectName());
+        detailsIntent.putExtra("lesson_type", lesson.getLessonType());
+        detailsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        return PendingIntent.getActivity(
+                context,
+                widgetId + 2000,
+                detailsIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+    }
+
+    private static PendingIntent createOpenExcelPendingIntent(Context context, int widgetId) {
+        Intent intent = WidgetTrampolineActivity.createOpenExcelIntent(context);
+        return PendingIntent.getActivity(
+                context,
+                widgetId + 3000,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+    }
+
+    private static PendingIntent createOpenMapsPendingIntent(Context context, int widgetId, String mapQuery) {
+        Intent intent = WidgetTrampolineActivity.createOpenMapsIntent(context, mapQuery);
+        return PendingIntent.getActivity(
+                context,
+                widgetId + 5000,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
     }
 
     private static int dpToPx(Context context, float dp) {

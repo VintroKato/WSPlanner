@@ -169,8 +169,13 @@ public class BachelorFullTimeParser implements ScheduleParser {
         return false;
     }
 
-    int academicYearStart = LocalDate.now().getYear();
+    int academicYearStart = computeDefaultAcademicYearStart();
     int academicYearEnd = academicYearStart + 1;
+
+    private static int computeDefaultAcademicYearStart() {
+        LocalDate today = LocalDate.now();
+        return today.getMonthValue() < 9 ? today.getYear() - 1 : today.getYear();
+    }
 
     public void setAcademicYears(int start, int end) {
         this.academicYearStart = start;
@@ -263,6 +268,14 @@ public class BachelorFullTimeParser implements ScheduleParser {
         return lower.startsWith("mgr") || lower.startsWith("dr ") || lower.startsWith("dr.") ||
                 lower.startsWith("prof") || lower.startsWith("ks.") || lower.startsWith("inż") ||
                 lower.startsWith("inz");
+    }
+
+    // match exact language group number without matching multi-digit prefixes such as gr.10 for gr.1
+    private static boolean matchesTargetLangGroup(String normalizedLine, String targetGr) {
+        if (normalizedLine == null || targetGr == null || targetGr.isEmpty()) {
+            return false;
+        }
+        return Pattern.compile("gr\\." + Pattern.quote(targetGr) + "(?!\\d)").matcher(normalizedLine).find();
     }
 
     public List<Lesson> parseLessonBlock(String block, String targetGroup, LocalTime defaultStart, LocalTime defaultEnd, String targetLangGroup, String seminarTeacher) {
@@ -364,6 +377,8 @@ public class BachelorFullTimeParser implements ScheduleParser {
         boolean readingMyGroup = true;
         boolean isSeminarSubject = subjectName.toLowerCase().contains("seminarium") || subjectName.toLowerCase().contains("dyplom");
         boolean seminarFound = false;
+        boolean hasLangGroupLines = false;
+        boolean langGroupMatched = false;
 
         while (lineIdx < lines.size()) {
             String line = lines.get(lineIdx++);
@@ -390,13 +405,13 @@ public class BachelorFullTimeParser implements ScheduleParser {
                     continue;
                 }
 
+                hasLangGroupLines = true;
                 String normalizedLine = lowerLine.replace(" ", "");
                 String targetGr = targetLangGroup != null ? targetLangGroup.replace(" ", "").toLowerCase() : "";
 
-                if (!targetGr.isEmpty() && (normalizedLine.startsWith("gr." + targetGr + "-") ||
-                        normalizedLine.startsWith("gr." + targetGr + "–") ||
-                        normalizedLine.contains("gr." + targetGr))) {
-                    readingMyGroup = true; //  our group
+                if (!targetGr.isEmpty() && matchesTargetLangGroup(normalizedLine, targetGr)) {
+                    readingMyGroup = true;
+                    langGroupMatched = true;
                     Logger.d("BachelorFullTimeParser.parseLessonBlock", "Matched target lang group: '" + line + "' (target: '" + targetLangGroup + "')");
                     String[] parts = line.split("[-–]");
                     if (parts.length >= 2) globalTeacher = parts[1].trim();
@@ -405,7 +420,7 @@ public class BachelorFullTimeParser implements ScheduleParser {
                         if (room != null) globalRoom = room;
                     }
                 } else {
-                    readingMyGroup = false; // foreign group
+                    readingMyGroup = false;
                     Logger.d("BachelorFullTimeParser.parseLessonBlock", "Skipped foreign lang group line: '" + line + "' (target: '" + targetLangGroup + "')");
                 }
                 continue;
@@ -619,6 +634,12 @@ public class BachelorFullTimeParser implements ScheduleParser {
         // skip seminar if teacher not matched
         if (isSeminarSubject && !seminarFound) {
             Logger.d("BachelorFullTimeParser.parseLessonBlock", "Skipping seminar subject '" + subjectName + "': teacher not matched (target: " + seminarTeacher + ")");
+            return lessons;
+        }
+
+        // skip language group block if none of its groups matched the target group
+        if (hasLangGroupLines && !langGroupMatched) {
+            Logger.d("BachelorFullTimeParser.parseLessonBlock", "Skipping language block '" + subjectName + "': no matching group found (target: " + targetLangGroup + ")");
             return lessons;
         }
 

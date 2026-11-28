@@ -23,9 +23,12 @@ import com.vintro.wsplanner.data.preferences.PreferencesManager;
 import com.vintro.wsplanner.enums.DegreeLevel;
 import com.vintro.wsplanner.enums.InputState;
 import com.vintro.wsplanner.enums.StudyMode;
+import com.vintro.wsplanner.network.StudyPlanScraper;
 import com.vintro.wsplanner.services.CourseSetupService;
+import com.vintro.wsplanner.services.ScheduleSyncWorker;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
+import com.vintro.wsplanner.ui.widgets.WidgetUpdateManager;
 import com.vintro.wsplanner.utils.Logger;
 import com.vintro.wsplanner.utils.NetworkUtils;
 
@@ -332,8 +335,14 @@ public class SetupAdditionalActivity extends AppCompatActivity {
         // reset visible weekdays so repository detects recommended days for the new course
         PreferencesManager.clearVisibleWeekdaysPref(this);
 
-        // clear cached schedule
+        // clear cached schedule and puw url cache so new course data loads fresh
+        StudyPlanScraper.clearUrlCache(this);
         ScheduleRepository.getInstance(this).invalidateCache();
+        ScheduleSyncWorker.ensurePeriodicSyncScheduled(this);
+        if (WidgetUpdateManager.hasActiveWidgets(this)) {
+            WidgetUpdateManager.updateAllWidgets(this);
+            WidgetUpdateManager.scheduleNextAlarm(this);
+        }
 
         Logger.i("SetupAdditionalActivity.finishSetup", "Onboarding setup completed successfully (major=" + major + ", degree=" + degreeLevel + ", mode=" + studyMode + ", year=" + year + ", surname=" + Logger.maskSurname(enteredSurname) + "). Navigating to MainActivity.");
 

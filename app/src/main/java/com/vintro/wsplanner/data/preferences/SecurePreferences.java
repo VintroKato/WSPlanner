@@ -15,6 +15,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.security.ProviderException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -31,8 +32,9 @@ public class SecurePreferences implements SharedPreferences {
     private static final String ANDROID_KEYSTORE = "AndroidKeyStore";
     private static final String KEY_ALIAS = "wsplanner_master_key";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
-    private static final int GCM_IV_LENGTH = 12; // 96-bit IV standard for GCM
-    private static final int GCM_TAG_LENGTH = 128; // 128-bit authentication tag
+    private static final String HEALTH_CHECK_PAYLOAD = "wsplanner_keystore_probe";
+    private static final int GCM_IV_LENGTH = 12;
+    private static final int GCM_TAG_LENGTH = 128;
 
     private static volatile SecretKey cachedSecretKey;
 
@@ -85,6 +87,31 @@ public class SecurePreferences implements SharedPreferences {
         cachedSecretKey = null;
     }
 
+    // delete master key alias from keystore so emergency recovery can generate a fresh key
+    public static synchronized void deleteMasterKey() {
+        cachedSecretKey = null;
+        try {
+            KeyStore keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
+            keyStore.load(null);
+            if (keyStore.containsAlias(KEY_ALIAS)) {
+                keyStore.deleteEntry(KEY_ALIAS);
+                Logger.i("SecurePreferences.deleteMasterKey", "Deleted AndroidKeyStore master key alias");
+            }
+        } catch (Exception e) {
+            Logger.e("SecurePreferences.deleteMasterKey", "Failed to delete AndroidKeyStore key alias: " + Logger.formatException(e));
+        }
+    }
+
+    // verify keystore can actively encrypt and decrypt a test payload
+    public boolean verifyRoundTrip() {
+        String encrypted = encrypt(HEALTH_CHECK_PAYLOAD);
+        if (encrypted == null) {
+            return false;
+        }
+        String decrypted = decrypt(encrypted);
+        return HEALTH_CHECK_PAYLOAD.equals(decrypted);
+    }
+
     private static SecretKey getKey() throws GeneralSecurityException, IOException {
         SecretKey key = cachedSecretKey;
         if (key != null) {
@@ -94,7 +121,14 @@ public class SecurePreferences implements SharedPreferences {
             if (cachedSecretKey == null) {
                 KeyStore keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
                 keyStore.load(null);
-                cachedSecretKey = (SecretKey) keyStore.getKey(KEY_ALIAS, null);
+                SecretKey loaded = (SecretKey) keyStore.getKey(KEY_ALIAS, null);
+                if (loaded == null) {
+                    Logger.w("SecurePreferences.getKey", "Master key missing from AndroidKeyStore, regenerating");
+                    ensureKeyExists();
+                    keyStore.load(null);
+                    loaded = (SecretKey) keyStore.getKey(KEY_ALIAS, null);
+                }
+                cachedSecretKey = loaded;
             }
             return cachedSecretKey;
         }
@@ -105,6 +139,10 @@ public class SecurePreferences implements SharedPreferences {
         if (plainText == null) return null;
         try {
             SecretKey key = getKey();
+            if (key == null) {
+                Logger.e("SecurePreferences.encrypt", "Encryption aborted because master key is null");
+                return null;
+            }
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
             cipher.init(Cipher.ENCRYPT_MODE, key);
             byte[] iv = cipher.getIV();
@@ -114,11 +152,12 @@ public class SecurePreferences implements SharedPreferences {
             buffer.put(iv);
             buffer.put(cipherText);
             return Base64.encodeToString(buffer.array(), Base64.NO_WRAP);
-        } catch (GeneralSecurityException e) {
+        } catch (GeneralSecurityException | ProviderException e) {
             cachedSecretKey = null;
             Logger.e("SecurePreferences.encrypt", "Encryption failed: " + Logger.formatException(e));
             return null;
         } catch (Exception e) {
+            cachedSecretKey = null;
             Logger.e("SecurePreferences.encrypt", "Encryption failed: " + Logger.formatException(e));
             return null;
         }
@@ -139,15 +178,20 @@ public class SecurePreferences implements SharedPreferences {
             buffer.get(cipherText);
 
             SecretKey key = getKey();
+            if (key == null) {
+                Logger.e("SecurePreferences.decrypt", "Decryption aborted because master key is null");
+                return null;
+            }
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
             cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(GCM_TAG_LENGTH, iv));
             byte[] plainBytes = cipher.doFinal(cipherText);
             return new String(plainBytes, StandardCharsets.UTF_8);
-        } catch (GeneralSecurityException e) {
+        } catch (GeneralSecurityException | ProviderException e) {
             cachedSecretKey = null;
             Logger.e("SecurePreferences.decrypt", "Decryption failed: " + Logger.formatException(e));
             return null;
         } catch (Exception e) {
+            cachedSecretKey = null;
             Logger.e("SecurePreferences.decrypt", "Decryption failed: " + Logger.formatException(e));
             return null;
         }
@@ -269,9 +313,18 @@ public class SecurePreferences implements SharedPreferences {
                 decryptedCache.remove(key);
             } else {
                 String encrypted = encrypt(value);
+                if (encrypted == null) {
+                    // retry once in case the keystore key was transiently invalidated
+                    cachedSecretKey = null;
+                    encrypted = encrypt(value);
+                }
                 if (encrypted != null) {
                     delegateEditor.putString(key, encrypted);
                     decryptedCache.put(key, new CachedEntry(encrypted, value));
+                } else {
+                    Logger.e("SecurePreferences.putString", "Failed to encrypt value for key '" + key + "'; removing stale entry");
+                    delegateEditor.remove(key);
+                    decryptedCache.remove(key);
                 }
             }
             return this;

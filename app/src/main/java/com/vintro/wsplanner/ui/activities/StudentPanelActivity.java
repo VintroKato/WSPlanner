@@ -362,7 +362,9 @@ public class StudentPanelActivity extends AppCompatActivity {
                 + Logger.maskSurname(enteredSurname) + ", englishGroup=" + englishGroup + ", hasSeminarTeacher=" + (seminarTeacher != null));
 
         ScheduleRepository.getInstance(this).invalidateMemoryCache();
-        WidgetUpdateManager.updateAllWidgets(this);
+        if (WidgetUpdateManager.hasActiveWidgets(this)) {
+            WidgetUpdateManager.updateAllWidgets(this);
+        }
 
         Toast.makeText(this, R.string.student_panel_saved_toast, Toast.LENGTH_SHORT).show();
         finish();

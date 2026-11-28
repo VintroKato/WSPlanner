@@ -16,8 +16,7 @@
         <View
             android:id="@+id/timeline_line_top"
             android:layout_width="2dp"
-            android:layout_height="0dp"
-            android:layout_above="@id/timeline_dot_container"
+            android:layout_height="6dp"
             android:layout_alignParentTop="true"
             android:layout_centerHorizontal="true"
             android:background="?attr/divider_color" />
@@ -27,49 +26,19 @@
             android:layout_width="22dp"
             android:layout_height="22dp"
             android:layout_alignParentTop="true"
-            android:layout_centerHorizontal="true">
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="6dp">
 
-            <!-- Completed dot -->
-            <FrameLayout
-                android:id="@+id/dot_completed"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:background="@drawable/bg_timeline_dot_completed">
-
-                <ImageView
-                    android:layout_width="12dp"
-                    android:layout_height="12dp"
-                    android:layout_gravity="center"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_check"
-                    app:tint="?attr/button_text" />
-            </FrameLayout>
-
-            <!-- Upcoming dot -->
             <TextView
-                android:id="@+id/dot_upcoming_number"
+                android:id="@+id/timeline_dot_number"
                 android:layout_width="22dp"
                 android:layout_height="22dp"
                 android:background="@drawable/bg_timeline_dot_upcoming"
                 android:gravity="center"
-                android:text="4"
+                android:text="1"
                 android:textColor="?attr/text_muted"
                 android:textSize="10sp"
-                android:textStyle="bold"
-                android:visibility="gone" />
-
-            <!-- Current / Nearest dot -->
-            <TextView
-                android:id="@+id/dot_current_number"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:background="@drawable/bg_timeline_dot_current"
-                android:gravity="center"
-                android:text="3"
-                android:textColor="?attr/button_text"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:visibility="gone" />
+                android:textStyle="bold" />
         </FrameLayout>
 
         <View
@@ -78,8 +47,6 @@
             android:layout_height="match_parent"
             android:layout_below="@id/timeline_dot_container"
             android:layout_centerHorizontal="true"
-            android:layout_marginTop="2dp"
-            android:layout_marginBottom="2dp"
             android:background="?attr/divider_color" />
     </RelativeLayout>
 
@@ -90,6 +57,7 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:orientation="vertical"
+        android:paddingTop="6dp"
         android:paddingBottom="16dp">
 
         <!-- Standard meeting row -->
@@ -97,6 +65,9 @@
             android:id="@+id/standard_content_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
             android:orientation="vertical">
 
             <LinearLayout
@@ -161,6 +132,8 @@
             android:id="@+id/nearest_card_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
             android:visibility="gone"
             app:cardBackgroundColor="?attr/card_bg"
             app:cardCornerRadius="14dp"
@@ -194,6 +167,7 @@
                         android:textStyle="bold" />
 
                     <TextView
+                        android:id="@+id/nearest_status_badge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"

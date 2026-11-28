@@ -80,10 +80,6 @@ public class UIHelper {
         return themedContext;
     }
 
-    public static Context cloneContext(Context context) {
-        return getThemedContext(context, isNightMode(context));
-    }
-
     public static void setSelectedTheme(Context context) {
         AppTheme theme = PreferencesManager.getThemePref(context);
         Logger.d("UIHelper.setSelectedTheme", "Changing theme to " + theme);
@@ -114,18 +110,27 @@ public class UIHelper {
 
     public static void setSelectedLanguage(Context context) {
         if (context == null) return;
+        if (!PreferencesManager.hasExplicitLanguage(context)) {
+            return;
+        }
         Language language = PreferencesManager.getLanguagePref(context);
         Locale locale = new Locale(language.code);
         Locale.setDefault(locale);
 
-        LocaleListCompat locales = LocaleListCompat.forLanguageTags(language.code);
-        Logger.d("UIHelper.setSelectedLanguage", "Changing language to " + language + " with locales " + locales.toLanguageTags());
-        AppCompatDelegate.setApplicationLocales(locales);
+        LocaleListCompat targetLocales = LocaleListCompat.forLanguageTags(language.code);
+        LocaleListCompat currentLocales = AppCompatDelegate.getApplicationLocales();
+        if (!targetLocales.toLanguageTags().equalsIgnoreCase(currentLocales.toLanguageTags())) {
+            Logger.d("UIHelper.setSelectedLanguage", "Changing language to " + language + " with locales " + targetLocales.toLanguageTags());
+            AppCompatDelegate.setApplicationLocales(targetLocales);
+        }
 
-        applyLocaleToResources(context, locale);
-        Context appContext = context.getApplicationContext();
-        if (appContext != null && appContext != context) {
-            applyLocaleToResources(appContext, locale);
+        // keep legacy resource configuration sync only below Android 13 where LocaleManager is unavailable
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+            applyLocaleToResources(context, locale);
+            Context appContext = context.getApplicationContext();
+            if (appContext != null && appContext != context) {
+                applyLocaleToResources(appContext, locale);
+            }
         }
     }
 
@@ -133,14 +138,15 @@ public class UIHelper {
         if (context == null) return;
         Resources res = context.getResources();
         if (res == null) return;
-        Configuration config = new Configuration(res.getConfiguration());
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-            android.os.LocaleList localeList = new android.os.LocaleList(locale);
-            android.os.LocaleList.setDefault(localeList);
-            config.setLocales(localeList);
-        } else {
-            config.locale = locale;
+        Configuration currentConfig = res.getConfiguration();
+        Locale currentLocale = currentConfig.getLocales().isEmpty() ? null : currentConfig.getLocales().get(0);
+        if (currentLocale != null && locale.getLanguage().equalsIgnoreCase(currentLocale.getLanguage())) {
+            return;
         }
+        Configuration config = new Configuration(currentConfig);
+        android.os.LocaleList localeList = new android.os.LocaleList(locale);
+        android.os.LocaleList.setDefault(localeList);
+        config.setLocales(localeList);
         res.updateConfiguration(config, res.getDisplayMetrics());
     }
 

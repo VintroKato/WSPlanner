@@ -4,11 +4,11 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.card.MaterialCardView;
@@ -29,6 +29,11 @@ import java.util.Map;
 
 // adapter for semester meetings timeline
 public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.TimelineViewHolder> {
+
+    public interface OnTimelineLessonClickListener {
+        void onLessonClick(Lesson lesson);
+    }
+
     private final Context context;
     private final List<Lesson> lessons = new ArrayList<>();
     private final int lineCompletedColor;
@@ -36,12 +41,17 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
     private final int textPrimaryColor;
     private final int textSecondaryColor;
     private final int textMutedColor;
+    private final int buttonTextColor;
     private final int badgePuwTextColor;
     private final int badgeFieldTextColor;
     private final int badgeWspaTextColor;
+    private final int badgeNowTextColor;
+    private final int badgeNextTextColor;
 
     private int nearestIndex = -1;
     private String primaryLocationText = null;
+    @Nullable
+    private OnTimelineLessonClickListener lessonClickListener;
 
     private final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
     private final DateTimeFormatter dayMonthFormatter = DateTimeFormatter.ofPattern("dd.MM");
@@ -53,9 +63,16 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
         this.textPrimaryColor = UIHelper.getThemeColor(context, R.attr.app_text);
         this.textSecondaryColor = UIHelper.getThemeColor(context, R.attr.text_secondary);
         this.textMutedColor = UIHelper.getThemeColor(context, R.attr.text_muted);
+        this.buttonTextColor = UIHelper.getThemeColor(context, R.attr.button_text);
         this.badgePuwTextColor = UIHelper.getThemeColor(context, R.attr.badge_puw_text);
         this.badgeFieldTextColor = UIHelper.getThemeColor(context, R.attr.badge_field_text);
         this.badgeWspaTextColor = UIHelper.getThemeColor(context, R.attr.badge_wspa_text);
+        this.badgeNowTextColor = UIHelper.getThemeColor(context, R.attr.badge_now_text);
+        this.badgeNextTextColor = UIHelper.getThemeColor(context, R.attr.badge_next_text);
+    }
+
+    public void setOnTimelineLessonClickListener(@Nullable OnTimelineLessonClickListener listener) {
+        this.lessonClickListener = listener;
     }
 
     public void submitLessons(List<Lesson> newLessons) {
@@ -84,7 +101,7 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
         }
         primaryLocationText = maxLoc;
 
-        // find next upcoming lesson
+        // find current or next upcoming lesson
         nearestIndex = -1;
         LocalDateTime now = LocalDateTime.now();
         for (int i = 0; i < lessons.size(); i++) {
@@ -119,9 +136,7 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
     class TimelineViewHolder extends RecyclerView.ViewHolder {
         private final View timelineLineTop;
         private final View timelineLineBottom;
-        private final FrameLayout dotCompleted;
-        private final TextView dotUpcomingNumber;
-        private final TextView dotCurrentNumber;
+        private final TextView timelineDotNumber;
 
         private final LinearLayout standardContentLayout;
         private final TextView timelineDateTitle;
@@ -131,6 +146,7 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
 
         private final MaterialCardView nearestCardLayout;
         private final TextView nearestDateTitle;
+        private final TextView nearestStatusBadge;
         private final TextView nearestTimeText;
         private final TextView nearestRoomText;
 
@@ -138,9 +154,7 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
             super(itemView);
             timelineLineTop = itemView.findViewById(R.id.timeline_line_top);
             timelineLineBottom = itemView.findViewById(R.id.timeline_line_bottom);
-            dotCompleted = itemView.findViewById(R.id.dot_completed);
-            dotUpcomingNumber = itemView.findViewById(R.id.dot_upcoming_number);
-            dotCurrentNumber = itemView.findViewById(R.id.dot_current_number);
+            timelineDotNumber = itemView.findViewById(R.id.timeline_dot_number);
 
             standardContentLayout = itemView.findViewById(R.id.standard_content_layout);
             timelineDateTitle = itemView.findViewById(R.id.timeline_date_title);
@@ -150,6 +164,7 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
 
             nearestCardLayout = itemView.findViewById(R.id.nearest_card_layout);
             nearestDateTitle = itemView.findViewById(R.id.nearest_date_title);
+            nearestStatusBadge = itemView.findViewById(R.id.nearest_status_badge);
             nearestTimeText = itemView.findViewById(R.id.nearest_time_text);
             nearestRoomText = itemView.findViewById(R.id.nearest_room_text);
         }
@@ -157,6 +172,7 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
         void bind(Lesson lesson, int position, boolean isNearest, boolean isFirst, boolean isLast) {
             LocalDateTime now = LocalDateTime.now();
             boolean isPast = lesson.isPast(now);
+            boolean isCurrent = lesson.isCurrent(now);
             int itemNumber = position + 1;
 
             timelineLineTop.setVisibility(isFirst ? View.INVISIBLE : View.VISIBLE);
@@ -165,20 +181,13 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
             timelineLineTop.setBackgroundColor(isPast || isNearest ? lineCompletedColor : lineUpcomingColor);
             timelineLineBottom.setBackgroundColor((isPast && !isNearest) ? lineCompletedColor : lineUpcomingColor);
 
-            if (isNearest) {
-                dotCompleted.setVisibility(View.GONE);
-                dotUpcomingNumber.setVisibility(View.GONE);
-                dotCurrentNumber.setVisibility(View.VISIBLE);
-                dotCurrentNumber.setText(String.valueOf(itemNumber));
-            } else if (isPast) {
-                dotCompleted.setVisibility(View.VISIBLE);
-                dotUpcomingNumber.setVisibility(View.GONE);
-                dotCurrentNumber.setVisibility(View.GONE);
+            timelineDotNumber.setText(String.valueOf(itemNumber));
+            if (isNearest || isPast) {
+                timelineDotNumber.setBackgroundResource(R.drawable.bg_timeline_dot_completed);
+                timelineDotNumber.setTextColor(buttonTextColor);
             } else {
-                dotCompleted.setVisibility(View.GONE);
-                dotUpcomingNumber.setVisibility(View.VISIBLE);
-                dotCurrentNumber.setVisibility(View.GONE);
-                dotUpcomingNumber.setText(String.valueOf(itemNumber));
+                timelineDotNumber.setBackgroundResource(R.drawable.bg_timeline_dot_upcoming);
+                timelineDotNumber.setTextColor(textMutedColor);
             }
 
             String dayName = "";
@@ -190,13 +199,19 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
                 }
                 dayMonth = lesson.getDate().format(dayMonthFormatter);
             }
-            String headerTitle = context.getString(R.string.timeline_item_header_format, itemNumber, dayName, dayMonth);
+            String headerTitle = context.getString(R.string.timeline_item_header_format, dayName, dayMonth);
 
             String start = lesson.getStartTime() != null ? lesson.getStartTime().format(timeFormatter) : "--:--";
             String end = lesson.getEndTime() != null ? lesson.getEndTime().format(timeFormatter) : "--:--";
             Location loc = lesson.getLocation();
             String room = loc != null ? loc.getDisplayText() : "—";
             String subtitle = context.getString(R.string.timeline_time_room_format, start, end, room);
+
+            View.OnClickListener clickListener = v -> {
+                if (lessonClickListener != null) {
+                    lessonClickListener.onLessonClick(lesson);
+                }
+            };
 
             if (isNearest) {
                 standardContentLayout.setVisibility(View.GONE);
@@ -205,6 +220,22 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
                 nearestDateTitle.setText(headerTitle);
                 nearestTimeText.setText(start + " – " + end);
                 nearestRoomText.setText(room);
+
+                if (nearestStatusBadge != null) {
+                    nearestStatusBadge.setBackgroundTintList(null);
+                    if (isCurrent) {
+                        nearestStatusBadge.setText(R.string.schedule_badge_now);
+                        nearestStatusBadge.setBackgroundResource(R.drawable.bg_badge_now);
+                        nearestStatusBadge.setTextColor(badgeNowTextColor);
+                    } else {
+                        nearestStatusBadge.setText(R.string.subject_status_next);
+                        nearestStatusBadge.setBackgroundResource(R.drawable.bg_badge_next);
+                        nearestStatusBadge.setTextColor(badgeNextTextColor);
+                    }
+                }
+
+                nearestCardLayout.setOnClickListener(clickListener);
+                standardContentLayout.setOnClickListener(null);
             } else {
                 standardContentLayout.setVisibility(View.VISIBLE);
                 nearestCardLayout.setVisibility(View.GONE);
@@ -247,6 +278,9 @@ public class TimelineAdapter extends RecyclerView.Adapter<TimelineAdapter.Timeli
                 } else {
                     badgeSpecialLocation.setVisibility(View.GONE);
                 }
+
+                standardContentLayout.setOnClickListener(clickListener);
+                nearestCardLayout.setOnClickListener(null);
             }
         }
     }

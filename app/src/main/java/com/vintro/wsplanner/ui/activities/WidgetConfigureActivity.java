@@ -38,6 +38,7 @@ import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
 import com.vintro.wsplanner.ui.widgets.CurrentLessonWidget;
 import com.vintro.wsplanner.ui.widgets.DailyScheduleWidget;
+import com.vintro.wsplanner.ui.widgets.WidgetActionHelper;
 import com.vintro.wsplanner.ui.widgets.WidgetUpdateManager;
 import com.vintro.wsplanner.utils.Logger;
 
@@ -81,15 +82,17 @@ public class WidgetConfigureActivity extends AppCompatActivity {
 
     // preview pin hint
     private TextView previewPinHint;
+    private View bottomSaveContainer;
 
     // sections
     private LinearLayout sectionSmallWidgetOptions;
     private LinearLayout sectionDailyWidgetOptions;
 
     // theme tiles
+    private MaterialCardView cardThemeAuto;
     private MaterialCardView cardThemeDark;
     private MaterialCardView cardThemeLight;
-    private boolean isWidgetLightTheme = false;
+    private String selectedWidgetTheme = PreferencesManager.WIDGET_THEME_SYSTEM;
 
     // small widget actions
     private RadioGroup clickActionRadioGroup;
@@ -217,6 +220,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         sectionDailyWidgetOptions = findViewById(R.id.section_daily_widget_options);
 
         // theme tiles
+        cardThemeAuto = findViewById(R.id.card_widget_theme_auto);
         cardThemeDark = findViewById(R.id.card_widget_theme_dark);
         cardThemeLight = findViewById(R.id.card_widget_theme_light);
 
@@ -242,6 +246,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         switchShowApp = findViewById(R.id.switch_show_app);
 
         previewPinHint = findViewById(R.id.preview_pin_hint);
+        bottomSaveContainer = findViewById(R.id.bottom_save_container);
 
         MaterialButton buttonSave = findViewById(R.id.button_save);
         buttonSave.setOnClickListener(v -> saveSettings());
@@ -256,6 +261,9 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             Logger.d("WidgetConfigureActivity.determineInitialTab", "Configuring specific widget " + appWidgetId + " (isDaily=" + isDaily + ")");
 
             widgetTypeCapsule.setVisibility(View.GONE);
+            if (bottomSaveContainer != null) {
+                bottomSaveContainer.setVisibility(View.VISIBLE);
+            }
             if (previewPinHint != null) {
                 previewPinHint.setVisibility(View.GONE);
             }
@@ -276,6 +284,9 @@ public class WidgetConfigureActivity extends AppCompatActivity {
 
         Logger.d("WidgetConfigureActivity.determineInitialTab", "Opened from settings: showing general widget tabs");
         widgetTypeCapsule.setVisibility(View.VISIBLE);
+        if (bottomSaveContainer != null) {
+            bottomSaveContainer.setVisibility(View.GONE);
+        }
         setupPinAffordance();
         showSmallWidgetUI();
     }
@@ -319,9 +330,16 @@ public class WidgetConfigureActivity extends AppCompatActivity {
     // load existing preferences into UI controls
     private void loadSettings() {
         String theme = PreferencesManager.getWidgetTheme(this);
-        isWidgetLightTheme = PreferencesManager.WIDGET_THEME_LIGHT.equals(theme);
-        UIHelper.setSelectableCardChecked(this, cardThemeDark, !isWidgetLightTheme);
-        UIHelper.setSelectableCardChecked(this, cardThemeLight, isWidgetLightTheme);
+        if (PreferencesManager.WIDGET_THEME_LIGHT.equals(theme)) {
+            selectedWidgetTheme = PreferencesManager.WIDGET_THEME_LIGHT;
+        } else if (PreferencesManager.WIDGET_THEME_DARK.equals(theme)) {
+            selectedWidgetTheme = PreferencesManager.WIDGET_THEME_DARK;
+        } else {
+            selectedWidgetTheme = PreferencesManager.WIDGET_THEME_SYSTEM;
+        }
+        UIHelper.setSelectableCardChecked(this, cardThemeAuto, PreferencesManager.WIDGET_THEME_SYSTEM.equals(selectedWidgetTheme));
+        UIHelper.setSelectableCardChecked(this, cardThemeDark, PreferencesManager.WIDGET_THEME_DARK.equals(selectedWidgetTheme));
+        UIHelper.setSelectableCardChecked(this, cardThemeLight, PreferencesManager.WIDGET_THEME_LIGHT.equals(selectedWidgetTheme));
 
         // click action
         String clickAction = PreferencesManager.getWidgetClickAction(this);
@@ -388,8 +406,9 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             }
         });
 
-        cardThemeDark.setOnClickListener(v -> selectWidgetTheme(false));
-        cardThemeLight.setOnClickListener(v -> selectWidgetTheme(true));
+        cardThemeAuto.setOnClickListener(v -> selectWidgetTheme(PreferencesManager.WIDGET_THEME_SYSTEM));
+        cardThemeDark.setOnClickListener(v -> selectWidgetTheme(PreferencesManager.WIDGET_THEME_DARK));
+        cardThemeLight.setOnClickListener(v -> selectWidgetTheme(PreferencesManager.WIDGET_THEME_LIGHT));
 
         clickActionRadioGroup.setOnCheckedChangeListener((group, checkedId) -> {
             boolean needsBreakOption = (checkedId == R.id.radio_click_toggle || checkedId == R.id.radio_click_details);
@@ -399,28 +418,38 @@ public class WidgetConfigureActivity extends AppCompatActivity {
                 TransitionManager.beginDelayedTransition(configureContentContainer, transition);
             }
             updateBreakVisibility(needsBreakOption);
+            savePreferences();
         });
+
+        breakActionRadioGroup.setOnCheckedChangeListener((group, checkedId) -> savePreferences());
+
+        dailyClickActionRadioGroup.setOnCheckedChangeListener((group, checkedId) -> savePreferences());
 
         switchShowExcel.setOnCheckedChangeListener((btn, checked) -> {
             if (previewBtnExcel != null) previewBtnExcel.setVisibility(checked ? View.VISIBLE : View.GONE);
+            savePreferences();
         });
         switchShowRefresh.setOnCheckedChangeListener((btn, checked) -> {
             if (previewBtnRefresh != null) previewBtnRefresh.setVisibility(checked ? View.VISIBLE : View.GONE);
+            savePreferences();
         });
         switchShowApp.setOnCheckedChangeListener((btn, checked) -> {
             if (previewBtnApp != null) previewBtnApp.setVisibility(checked ? View.VISIBLE : View.GONE);
+            savePreferences();
         });
     }
 
-    private void selectWidgetTheme(boolean light) {
-        if (isWidgetLightTheme == light) {
+    private void selectWidgetTheme(String theme) {
+        if (selectedWidgetTheme.equals(theme)) {
             return;
         }
-        isWidgetLightTheme = light;
-        Logger.i("WidgetConfigureActivity.selectWidgetTheme", "Selected widget theme: " + (light ? "light" : "dark"));
-        AnimationHelper.animateCardSelection(this, cardThemeDark, !light);
-        AnimationHelper.animateCardSelection(this, cardThemeLight, light);
+        selectedWidgetTheme = theme;
+        Logger.i("WidgetConfigureActivity.selectWidgetTheme", "Selected widget theme: " + theme);
+        AnimationHelper.animateCardSelection(this, cardThemeAuto, PreferencesManager.WIDGET_THEME_SYSTEM.equals(theme));
+        AnimationHelper.animateCardSelection(this, cardThemeDark, PreferencesManager.WIDGET_THEME_DARK.equals(theme));
+        AnimationHelper.animateCardSelection(this, cardThemeLight, PreferencesManager.WIDGET_THEME_LIGHT.equals(theme));
         updatePreview();
+        savePreferences();
     }
 
     private void updateBreakVisibility(boolean showBreakOption) {
@@ -431,8 +460,8 @@ public class WidgetConfigureActivity extends AppCompatActivity {
 
     // update on-screen visual preview of widgets based on selected theme and button options
     private void updatePreview() {
-        boolean isLight = isWidgetLightTheme;
-        Logger.d("WidgetConfigureActivity.updatePreview", "Updating widget preview (isLight=" + isLight + ")");
+        boolean isLight = WidgetActionHelper.isWidgetLightTheme(this, selectedWidgetTheme);
+        Logger.d("WidgetConfigureActivity.updatePreview", "Updating widget preview (theme=" + selectedWidgetTheme + ", isLight=" + isLight + ")");
 
         // small widget preview update
         if (isLight) {
@@ -628,7 +657,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         pinOptions.putBoolean(EXTRA_PIN_SKIP_CONFIGURE, true);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            boolean isLight = isWidgetLightTheme;
+            boolean isLight = WidgetActionHelper.isWidgetLightTheme(this, selectedWidgetTheme);
             RemoteViews preview = new RemoteViews(getPackageName(),
                     isDaily ? R.layout.widget_preview_daily_schedule : R.layout.widget_preview_current_lesson);
 
@@ -638,14 +667,17 @@ public class WidgetConfigureActivity extends AppCompatActivity {
                 preview.setViewVisibility(R.id.preview_btn_app, switchShowApp.isChecked() ? View.VISIBLE : View.GONE);
 
                 if (isLight) {
+                    int lightIconColor = ContextCompat.getColor(this, R.color.widget_text_light_primary);
                     preview.setInt(R.id.widget_preview_daily_root, "setBackgroundResource", R.drawable.bg_widget_light);
-                    preview.setTextColor(R.id.preview_daily_title, ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                    preview.setTextColor(R.id.preview_daily_title, lightIconColor);
+                    preview.setInt(R.id.preview_btn_refresh, "setColorFilter", lightIconColor);
+                    preview.setInt(R.id.preview_btn_app, "setColorFilter", lightIconColor);
                     preview.setInt(R.id.preview_daily_card1, "setBackgroundResource", R.drawable.bg_widget_item_light);
                     preview.setInt(R.id.preview_daily_card2, "setBackgroundResource", R.drawable.bg_widget_item_light);
-                    preview.setTextColor(R.id.preview_card1_time, ContextCompat.getColor(this, R.color.widget_text_light_primary));
-                    preview.setTextColor(R.id.preview_card2_time, ContextCompat.getColor(this, R.color.widget_text_light_primary));
-                    preview.setTextColor(R.id.preview_card1_subject, ContextCompat.getColor(this, R.color.widget_text_light_primary));
-                    preview.setTextColor(R.id.preview_card2_subject, ContextCompat.getColor(this, R.color.widget_text_light_primary));
+                    preview.setTextColor(R.id.preview_card1_time, lightIconColor);
+                    preview.setTextColor(R.id.preview_card2_time, lightIconColor);
+                    preview.setTextColor(R.id.preview_card1_subject, lightIconColor);
+                    preview.setTextColor(R.id.preview_card2_subject, lightIconColor);
                     preview.setInt(R.id.preview_card1_type, "setBackgroundResource", R.drawable.bg_badge_rect_light);
                     preview.setInt(R.id.preview_card2_type, "setBackgroundResource", R.drawable.bg_badge_rect_light);
                     preview.setTextColor(R.id.preview_card1_type, ContextCompat.getColor(this, R.color.widget_badge_type_text_light));
@@ -691,7 +723,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
 
     // persist current widget settings to preferences and broadcast update
     private void savePreferences() {
-        String theme = isWidgetLightTheme ? PreferencesManager.WIDGET_THEME_LIGHT : PreferencesManager.WIDGET_THEME_DARK;
+        String theme = selectedWidgetTheme;
         PreferencesManager.setWidgetTheme(this, theme);
 
         String clickAction = PreferencesManager.WIDGET_CLICK_TOGGLE;
@@ -714,6 +746,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         Logger.i("WidgetConfigureActivity.savePreferences", "Saved widget settings: theme=" + theme + ", click=" + clickAction + ", break=" + breakAction + ", dailyAction=" + dailyAction);
 
         WidgetUpdateManager.updateAllWidgets(this);
+        WidgetUpdateManager.scheduleNextAlarmAsync(this);
     }
 
     // persist widget preferences and broadcast update to all widget instances

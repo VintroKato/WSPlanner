@@ -18,6 +18,7 @@ import com.vintro.wsplanner.R;
 import com.vintro.wsplanner.ui.fragments.SettingsFragment;
 import com.vintro.wsplanner.ui.helpers.AnimationHelper;
 import com.vintro.wsplanner.ui.helpers.UIHelper;
+import com.vintro.wsplanner.ui.widgets.WidgetUpdateManager;
 import com.vintro.wsplanner.utils.Logger;
 
 public class SettingsActivity extends AppCompatActivity implements SettingsFragment.SettingsHost {
@@ -26,6 +27,7 @@ public class SettingsActivity extends AppCompatActivity implements SettingsFragm
 
     private View rootContainer;
     private boolean currentNightMode;
+    private boolean isThemeAnimationRunning = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +63,7 @@ public class SettingsActivity extends AppCompatActivity implements SettingsFragm
 
     @Override
     public void onThemeAnimationStarted(boolean isNewNight) {
+        isThemeAnimationRunning = true;
         currentNightMode = isNewNight;
     }
 
@@ -69,12 +72,16 @@ public class SettingsActivity extends AppCompatActivity implements SettingsFragm
         currentNightMode = isNewNight;
         UIHelper.setSelectedTheme(this);
         UIHelper.applyNightModeWithoutRecreate(this, isNewNight);
+        isThemeAnimationRunning = false;
     }
 
     @Override
     public void onLanguageChanged() {
         Logger.i(TAG + ".onLanguageChanged", "Restarting SettingsActivity without animation to apply new locale");
         UIHelper.setSelectedLanguage(this);
+        if (WidgetUpdateManager.hasActiveWidgets(this)) {
+            WidgetUpdateManager.updateAllWidgets(this);
+        }
         if (isFinishing() || isDestroyed()) return;
 
         Intent intent = new Intent(this, SettingsActivity.class);
@@ -115,6 +122,14 @@ public class SettingsActivity extends AppCompatActivity implements SettingsFragm
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        // handled smoothly via animation to prevent activity recreation
+        if (isThemeAnimationRunning) {
+            return;
+        }
+        boolean newNight = UIHelper.isNightMode(this);
+        if (newNight != currentNightMode) {
+            Logger.d(TAG + ".onConfigurationChanged", "System uiMode changed externally, recreating SettingsActivity (isNight=" + newNight + ")");
+            currentNightMode = newNight;
+            recreate();
+        }
     }
 }

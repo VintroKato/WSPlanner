@@ -280,12 +280,18 @@ public class SetupSpecialtyActivity extends AppCompatActivity {
             }
         }
 
+        boolean isReOnboarding = getIntent().getBooleanExtra(SetupCourseActivity.EXTRA_FROM_STUDENT_PANEL, false);
         PreferencesManager.setGlobalSpecialtyPref(this, finalSpecialty);
         PreferencesManager.setGlobalSpecialtyConfigured(this, true);
-        PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_ADDITIONAL);
-        Logger.i("SetupSpecialtyActivity.continueToAdditional", "Continuing to additional setup with specialty: " + finalSpecialty + " (skipped=" + skipped + ")");
+        if (!isReOnboarding) {
+            PreferencesManager.setOnboardingStage(this, PreferencesManager.ONBOARDING_STAGE_ADDITIONAL);
+        }
+        Logger.i("SetupSpecialtyActivity.continueToAdditional", "Continuing to additional setup with specialty: " + finalSpecialty + " (skipped=" + skipped + ", reOnboarding=" + isReOnboarding + ")");
 
         Intent intent = new Intent(this, SetupAdditionalActivity.class);
+        if (isReOnboarding) {
+            intent.putExtra(SetupCourseActivity.EXTRA_FROM_STUDENT_PANEL, true);
+        }
         startActivity(intent);
     }
 }
